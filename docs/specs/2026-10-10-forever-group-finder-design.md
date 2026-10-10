@@ -44,7 +44,7 @@ structure of the other Forever addons (Forever Quest Log, Forever Combat Meter).
    Custom) as a selector; activities sorted by level fit and coloured (fits: normal, too low: grey, too high: red);
    multi-select checkboxes; at the bottom the switch **"Only in my level range"** (default on; off shows all
    activities, same rule as Blizzard). The checked activities are used for **both** the search and my listing.
-3. **Searching**: every user action searches when the last search is ≥ 3 s old: opening by click/key, ticking an
+3. **Searching**: every user action searches when the last search is ≥ 1 s old: opening by click/key, ticking an
    activity, changing category or filter, the refresh button. One search in flight at a time. The refresh button shows
    the age of the list ("4 s ago"). `LFG_LIST_SEARCH_RESULT_UPDATED` updates single rows live (full, delisted,
    changed) without re-sorting jumps; `LFG_LIST_SEARCH_FAILED` shows a short message.
@@ -81,7 +81,7 @@ GitHub `StephanRosin/forever-groupfinder` (public), TOC
   `Resize.lua`, `Options/*`, `MinimapButton`, `Commands.lua`, tools (`install`, `tools/package`, `tools/release`),
   `tests/run` with the Lua 5.1 mock incl. the secret type and the secret lint.
 - **`Finder.lua`** — the only code that calls `C_LFGList`: `Finder.Search(categoryID, activityIDs, languages)`
-  (min interval 3 s, one in flight, click-path only), result reading with per-field secret guards (secret → nil),
+  (min interval 1 s, one in flight, click-path only), result reading with per-field secret guards (secret → nil),
   event fan-out (`RESULTS`, `RESULT_UPDATED(id)`, `FAILED(reason)`, `ACTIVE_ENTRY`, `AVAILABILITY`), listing calls
   (create/update/remove), expiry events.
 - **`Activities.lua`** — categories, groups, activities with level ranges; level-fit classification; the level
@@ -106,7 +106,7 @@ keys in all four languages), plus the secret lint over the source.
 Before building the window: a throwaway probe addon (not committed) checks in game (a) whether a button click in an
 addon frame can call `Search` and `CreateListing`/`UpdateListing`, (b) whether setting the comment into Blizzard's
 `LFGListingComment` EditBox (after `GroupFinderVanillaStyle_LoadUI`) reaches the posted listing, or which other path
-works, (c) that `areaName` is filled for listed players. Results go into the plan; if (b) fails, posting with a comment
+works (as built: the addon opens Blizzard's listing tab and never writes the comment), (c) that `areaName` is filled for listed players. Results go into the plan; if (b) fails, posting with a comment
 opens Blizzard's comment field briefly.
 
 ## Out of scope (1.0)
