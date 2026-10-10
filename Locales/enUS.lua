@@ -324,3 +324,5 @@ L.COLUMN_HINT = "Click a group in the list to see its members, comment and actio
 L.COLUMN_PLAYERS = "Players who fit (%d)"
 L.COLUMN_NO_PLAYERS = "No solo player in the list wants a missing role."
 L.TIP_COLUMN_INVITE = "Invite this player to your group."
+L.OPT_NO_ROOM_ALPHA = "Groups without room for you stay visible at"
+L.NO_ROOM = "No room for you"

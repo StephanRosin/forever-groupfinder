@@ -258,7 +258,7 @@ function Rows.Whisper(entry)
     ns.Window.RefreshRows()
 end
 
--- The parts of a row that seen / delisted dim: text and icons. The green
+-- The parts of a row that seen / no room / delisted dim: text and icons. The green
 -- "room for me" edge, its tint and the selection outline keep full colour.
 local function dimmable(row)
     local list = {}
@@ -282,6 +282,8 @@ local function markers(row, entry)
     row.open:SetShown(open and true or false)
     local alpha = 1
     if entry.seen == true then alpha = S("seenAlpha") / 100 end
+    -- A group without room for any of my roles dims as a seen one.
+    if entry.noRoom == true then alpha = math.min(alpha, S("noRoomAlpha") / 100) end
     if entry.delisted == true then alpha = math.min(alpha, DELISTED_ALPHA) end
     row:SetAlpha(1)
     row.dimmed = alpha

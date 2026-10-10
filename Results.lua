@@ -21,6 +21,17 @@ local function roomFor(counts, myRoles)
     return false
 end
 
+-- No room for me: the counts name every one of my roles and none has a
+-- free place. Unknown counts are not "no room".
+local function noRoomFor(counts, myRoles)
+    if #myRoles == 0 then return false end
+    for _, role in ipairs(myRoles) do
+        local remaining = counts[role .. "_REMAINING"]
+        if type(remaining) ~= "number" or remaining > 0 then return false end
+    end
+    return true
+end
+
 -- The best (lowest rank) fit of the activities; nil when none is known.
 local function bestFit(ids, activityFit)
     local best, rank = nil, NO_FIT
@@ -62,6 +73,7 @@ local function buildRow(r, myRoles)
         activityIDs = r.activityIDs, leader = leader, comment = r.comment, age = r.age,
         members = members, counts = counts,
         freeForMe = not player and roomFor(counts, myRoles),
+        noRoom = not player and noRoomFor(counts, myRoles),
         friend = r.friends, guild = r.guild,
         seen = Memory.IsSeen(key),
         area = player and first.area or nil,

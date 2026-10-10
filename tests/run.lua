@@ -116,7 +116,7 @@ local EXPECTED = {
     scale = 100, locked = false, sideWidth = 190,
     layout = "SIDEBAR", stackedWidth = 480, stackedHeight = 560, detailsWidth = 880, detailsHeight = 480,
     minInterval = 1, levelRangeOnly = true, category = 2, sortFriendsFirst = true,
-    filterMyRole = false, filterLevelFits = false, hideSeen = false,
+    filterMyRole = true, filterLevelFits = false, hideSeen = false,
     markOpenSlot = true, showPlayers = true, rowHeight = 22, playerRowHeight = 34,
     memoryMinutes = 30,
     expiryWarnMinutes = 5,
@@ -133,6 +133,7 @@ local EXPECTED = {
     chipFont = "Friz Quadrata", chipSize = 10, chipFlag = "SHADOW",
     ageFont = "Friz Quadrata", ageSize = 10, ageFlag = "SHADOW",
     playerRoleIconSize = 0, groupRoleIconSize = 16, classIconSize = 14, classColorNames = true, seenAlpha = 45,
+    noRoomAlpha = 45,
 }
 local expectedCount = 0
 for key, want in pairs(EXPECTED) do
@@ -166,7 +167,7 @@ local RANGES = {
     shadowAlpha = { 0, 100 }, bgAlpha = { 0, 100 }, headerSize = { 8, 24 }, activitySize = { 8, 20 },
     nameSize = { 8, 20 }, commentSize = { 8, 18 }, smallSize = { 7, 16 },
     minimapAngle = { 0, 360 },   -- the options slider; dragging sets it too
-    playerRoleIconSize = { 0, 48 }, groupRoleIconSize = { 10, 28 }, classIconSize = { 8, 28 }, seenAlpha = { 10, 100 },
+    playerRoleIconSize = { 0, 48 }, groupRoleIconSize = { 10, 28 }, classIconSize = { 8, 28 }, seenAlpha = { 10, 100 }, noRoomAlpha = { 10, 100 },
     levelSize = { 8, 24 }, locationSize = { 8, 20 }, chipSize = { 7, 16 }, ageSize = { 7, 16 },
 }
 local rangeCount = 0
@@ -1848,17 +1849,74 @@ local chips = f.filters.chips
 check("no role chip in the filter bar", chips.filterMyRole, nil)
 local room = LP.Frame().roomOnly
 check("room toggle with my roles", room:IsShown() and room.label:GetText(), "Only room for me")
-check("room toggle off by default", room.on, false)
+check("room toggle on by default", room.on, true)
+check("room filter on by default", S("filterMyRole"), true)
 M.state.time = M.state.time + 5
 k = searches()
 click(room)
-check("room toggle sets filterMyRole", S("filterMyRole"), true)
+check("room toggle clears filterMyRole", S("filterMyRole"), false)
 check("room toggle searched", searches(), k + 1)
-check("room toggle shows on", LP.Frame().roomOnly.on, true)
-check("room toggle: only groups with room for a tank", #W.Built().groups, 2)
-check("room toggle: players stay", #W.Built().players, 1)
+check("room toggle shows off", LP.Frame().roomOnly.on, false)
+-- Off: a group without room for my roles stays, dimmed as a seen one, below.
+result(7, "Fullup", { member("Fullup", "WARRIOR"), member("F2", "PRIEST") })
+lfg.counts[7] = { TANK = 1, HEALER = 1, DAMAGER = 0, TANK_REMAINING = 0, HEALER_REMAINING = 0, DAMAGER_REMAINING = 3 }
+result(8, "Unknown", { member("Unknown", "MAGE"), member("U2", "MAGE") })
+lfg.counts[8] = nil
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+local fullRow, unknownRow
+for _, row in ipairs(f.pool.used) do
+    if row.entry and row.entry.id == 7 then fullRow = row end
+    if row.entry and row.entry.id == 8 then unknownRow = row end
+end
+check("no room: listed with the filter off", fullRow ~= nil, true)
+check("no room: marked", fullRow.entry.noRoom, true)
+check("no room: dimmed like seen", fullRow.activity:GetAlpha(), S("seenAlpha") / 100)
+check("no room: frame keeps full alpha", fullRow:GetAlpha(), 1)
+check("no room: no green edge", fullRow.edge:IsShown(), false)
+check("no room: below the groups with room", (function()
+    local groups = W.Built().groups
+    local seenFull = false
+    for _, r in ipairs(groups) do
+        if r.id == 7 then seenFull = true elseif seenFull and r.freeForMe then return false end
+    end
+    return seenFull
+end)(), true)
+check("unknown counts: not dimmed", unknownRow ~= nil and unknownRow.entry.noRoom == false and unknownRow.activity:GetAlpha(), 1)
+check("room for me: not marked", W.Built().groups[1].noRoom, false)
+Settings.Set("noRoomAlpha", 70)
+for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 7 then fullRow = row end end
+check("no room dim amount applies", fullRow.activity:GetAlpha(), 0.7)
+Settings.Set("noRoomAlpha", nil)
+for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 7 then fullRow = row end end
+ForeverGroupFinderChar.roles = { tank = true, healer = false, dps = true }
+W.Rebuild()
+check("a second role with room: not dimmed", (function()
+    for _, r in ipairs(W.Built().groups) do if r.id == 7 then return r.noRoom end end
+end)(), false)
+ForeverGroupFinderChar.roles = nil
+W.Rebuild()
+-- The detail panel says so.
+click(fullRow)
+check("detail note: no room", D.Frame().header.note:GetText(), "No room for you")
+check("detail note in red", D.Frame().header.note._textColor[1], ns.Controls.RED[1])
+for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then click(row) end end
+check("detail note empty with room", D.Frame().header.note:GetText(), "")
+D.Close()
+M.state.time = M.state.time + 5
 click(room)
-check("room toggle clears it", S("filterMyRole"), false)
+check("room toggle sets it again", S("filterMyRole"), true)
+check("room toggle shows on", LP.Frame().roomOnly.on, true)
+check("on: the group without room is hidden", (function()
+    for _, r in ipairs(W.Built().groups) do if r.id == 7 then return false end end
+    return true
+end)(), true)
+check("on: unknown counts hidden too (no known room, as before)", (function()
+    for _, r in ipairs(W.Built().groups) do if r.id == 8 then return true end end
+    return false
+end)(), false)
+check("room toggle: players stay", #W.Built().players, 1)
+lfg.results[7], lfg.results[8] = nil, nil
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
 click(chips.filterLevelFits)
 check("level chip", S("filterLevelFits"), true)
 click(chips.filterLevelFits)
@@ -2280,6 +2338,12 @@ check("details: open group moves into the column", D.OpenID(), 1)
 check("details: floating panel closed", D.Frame():IsShown(), false)
 check("details: embedded shown", f.detail:IsShown(), true)
 check("details: embedded title", f.detail.header.title:GetText(), "The Deadmines")
+check("details: embedded no-room note empty with room", f.detail.header.note:GetText(), "")
+D.Row().noRoom = true
+D.Refresh()
+check("details: embedded no-room note", f.detail.header.note:GetText(), "No room for you")
+D.Row().noRoom = false
+D.Refresh()
 check("details: embedded members", f.detail.members[1]:IsShown() and f.detail.members[1].name:GetText(), "Grimnar")
 check("details: column right of the list", f.detail._points.TOPLEFT[3], 880 - Layouts.COLUMN_W)
 check("details: list left of the column", f.listWidth, 880 - Layouts.COLUMN_W - 1 - 16)

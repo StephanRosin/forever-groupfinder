@@ -253,10 +253,13 @@ function Detail.Refresh()
     if not (h and current and h:IsShown()) then return end
     Controls.Restyle(h.header.title)
     h.header.title:SetText(Rows.ActivityText(current.activityIDs))
+    -- A group without a free place for any of my roles says so.
+    h.header.note:SetText(current.noRoom == true and L.NO_ROOM or "")
     if h == p then
         Detail.Layout(height)
         ns.Header.Layout(p.header, WIDTH)
     end
+    Controls.Color(h.header.note, Controls.RED)
     updateButtons(h)
     render(h)
 end
@@ -388,9 +391,12 @@ function Detail.CreateEmbedded(parent)
     h.buttons = {}
     h.close = ns.Header.CloseButton(h, function() return L.TIP_CLOSE end, function() Detail.Close() end)
     h.close:SetPoint("RIGHT", h, "RIGHT", 4, 0)
+    h.note = Controls.Text(h, "small")
+    h.note:SetJustifyH("RIGHT")
+    h.note:SetPoint("RIGHT", h.close, "LEFT", -4, 0)
     h.title = Controls.Text(h, "activity")
     h.title:SetPoint("LEFT", h, "LEFT", 0, 0)
-    h.title:SetPoint("RIGHT", h.close, "LEFT", -4, 0)
+    h.title:SetPoint("RIGHT", h.note, "LEFT", -4, 0)
     buildContent(e, h)
     e.body:ClearAllPoints()
     e.body:SetPoint("TOPLEFT", h, "BOTTOMLEFT", 0, -GAP)

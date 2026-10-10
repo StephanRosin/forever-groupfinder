@@ -200,6 +200,7 @@ local function lookRows()
         num("playerRowHeight", "OPT_PLAYER_ROW_HEIGHT"),
         colorRow("openEdgeColor", "OPT_OPEN_EDGE_COLOR", true),
         num("seenAlpha", "OPT_SEEN_ALPHA", "%"),
+        num("noRoomAlpha", "OPT_NO_ROOM_ALPHA", "%"),
         { type = "header", label = "OPT_LOOK_ICONS" },
         num("playerRoleIconSize", "OPT_PLAYER_ROLE_ICON"),
         { type = "text", label = "OPT_PLAYER_ROLE_ICON_HINT" },

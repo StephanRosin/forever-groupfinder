@@ -45,7 +45,7 @@ Settings.DEFAULTS = {
     levelRangeOnly = true,
     category = 2,
     sortFriendsFirst = true,
-    filterMyRole = false,
+    filterMyRole = true,    -- "Only room for me": groups without room for my roles are hidden
     filterLevelFits = false,
     hideSeen = false,
     languages = {},         -- empty: all languages
@@ -61,6 +61,7 @@ Settings.DEFAULTS = {
     chipBorderColor = { 0.36, 0.29, 0.13 },
     openEdgeColor = { 0.25, 0.75, 0.37 },
     seenAlpha = 45,         -- percent: how visible a seen row stays
+    noRoomAlpha = 45,       -- percent: a group without room for my roles
     memoryMinutes = 30,
 
     -- Listing
@@ -142,6 +143,7 @@ Settings.RANGES = {
     groupRoleIconSize = { 10, 28 },
     classIconSize = { 8, 28 },
     seenAlpha = { 10, 100 },
+    noRoomAlpha = { 10, 100 },
     levelSize = { 8, 24 },
     locationSize = { 8, 20 },
     chipSize = { 7, 16 },

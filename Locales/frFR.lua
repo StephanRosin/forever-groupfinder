@@ -303,3 +303,5 @@ L.COLUMN_HINT = "Clique sur un groupe de la liste pour voir ici ses membres, son
 L.COLUMN_PLAYERS = "Joueurs qui conviennent (%d)"
 L.COLUMN_NO_PLAYERS = "Aucun joueur seul de la liste ne cherche un rôle manquant."
 L.TIP_COLUMN_INVITE = "Inviter ce joueur dans ton groupe."
+L.OPT_NO_ROOM_ALPHA = "Les groupes sans place pour toi restent visibles à"
+L.NO_ROOM = "Pas de place pour toi"
