@@ -4,7 +4,7 @@ local Finder, Activities, Results, Rows, Layouts = ns.Finder, ns.Activities, ns.
 local S = Settings.Get
 
 -- The finder's main window: Forever Quest Log's header (Header.lua: shine,
--- line, grip, title with the list's age; refresh, lock, options, close) and
+-- line, grip, title; lock, options, close), the refresh in the filter row,
 -- its parts: the activity
 -- list (Side.lua), my listing (ListingPanel.lua), the filter chips, the
 -- result list (Rows.lua: groups first, players below), the group details
@@ -354,7 +354,12 @@ function Window.LayoutFilters()
     local ps = #S("playstyles")
     chips.playstyle:SetLabel(ps > 0 and L.FILTER_PLAYSTYLE_N:format(ps) or L.FILTER_PLAYSTYLE)
     chips.playstyle:SetOn(ps > 0)
-    local items = { chips.filterLevelFits, chips.hideSeen, chips.language, chips.playstyle }
+    -- The refresh button first, as wide as its longest label (no jumping).
+    local rb = f.refresh
+    rb:SetLabel(L.REFRESH_BUTTON .. " · " .. L.AGE_MINUTES:format(59))
+    rb:SetWidth(math.floor(rb.label:GetStringWidth() + 34))
+    Window.UpdateRefresh()
+    local items = { rb, chips.filterLevelFits, chips.hideSeen, chips.language, chips.playstyle }
     for _, entry in ipairs({ { chips.ignored, #ns.Memory.IgnoreList(), L.CHIP_IGNORED },
         { chips.hidden, #ns.Memory.HiddenList(), L.CHIP_HIDDEN } }) do
         local c, count = entry[1], entry[2]
@@ -368,7 +373,7 @@ function Window.LayoutFilters()
     bar.text:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, 0)
     local x, line = 0, 0
     for _, c in ipairs(items) do
-        local w = c:Fit()
+        local w = c.Fit and c:Fit() or c:GetWidth()
         local limit = line == 0 and (width - TEXT_W - 8) or width
         if x > 0 and x + w > limit then x, line = 0, line + 1 end
         c:ClearAllPoints()
@@ -388,6 +393,15 @@ local function createFilters(parent)
         bar.chips[key] = Controls.CheckLabel(bar, { onClick = function() Window.ToggleFilter(key) end,
             tip = function() return L["TIP_" .. key:upper()] end })
     end
+    -- The refresh: a large labelled button with the list's age; searches
+    -- (a click), glows while the list is outdated.
+    f.refresh = Controls.Button(bar, { text = "", icon = "Reset", onClick = function() Window.Search() end,
+        tip = function(self) return self.outdated and L.TIP_OUTDATED or L.TIP_REFRESH end })
+    f.refresh.glow = f.refresh:CreateTexture(nil, "BACKGROUND", nil, -1)
+    f.refresh.glow:SetPoint("TOPLEFT", -3, 3)
+    f.refresh.glow:SetPoint("BOTTOMRIGHT", 3, -3)
+    f.refresh.glow:SetColorTexture(1, 0.79, 0.19, 0.5)
+    f.refresh.glow:Hide()
     bar.chips.language = Controls.Chip(bar, { text = "", icon = "ChevronDown",
         onClick = function(self) openLanguageMenu(self) end, tip = function() return L.TIP_LANGUAGES end })
     bar.chips.playstyle = Controls.Chip(bar, { text = "", icon = "ChevronDown",
@@ -409,26 +423,38 @@ end
 
 -- Header ---------------------------------------------------------------------------------------
 
--- The list's age after the title ("4 s ago", "Searching..."); the refresh
--- button turns gold and pulses while the list is outdated; the lock is
--- blue while unlocked, dim while locked (as the quest log's).
+-- The header: the lock is blue while unlocked, dim while locked (as the
+-- quest log's). The list's age and the refresh live in the filter row.
 function Window.UpdateHeader()
     if not f then return end
     local h = f.header
-    local note = ""
-    if Finder.IsSearching() then
-        note = L.SEARCHING
-    else
-        local age = Controls.Age(Finder.LastSearchAge())
-        if age then note = L.REFRESH_AGE:format(age) end   -- plain: our formatted text
-    end
-    h.note:SetText(note)
-    local outdated = receivedAt ~= nil and Window.Outdated()
-    h.refresh.outdated = outdated
-    h.refresh.on = outdated
-    h.refresh.glow:SetShown(outdated)
     h.lock.icon:SetTexture(Media.Icon(S("locked") and "Lock" or "Unlock"))
     ns.Header.Layout(h, f.layoutWidth)
+    Window.UpdateRefresh()
+end
+
+-- "Refresh · 21 s" (the age dim) or "Refresh · Searching..."; gold with a
+-- pulsing glow while the list is outdated.
+local AGE_COLOR = "|cff8c8a80"
+function Window.RefreshLabel()
+    local age
+    if Finder.IsSearching() then
+        age = L.SEARCHING
+    else
+        age = Controls.Age(Finder.LastSearchAge())
+    end
+    if not age then return L.REFRESH_BUTTON end   -- plain: our formatted text
+    return L.REFRESH_BUTTON .. AGE_COLOR .. " · " .. age .. "|r"
+end
+
+function Window.UpdateRefresh()
+    if not f then return end
+    local b = f.refresh
+    b:SetLabel(Window.RefreshLabel())
+    local outdated = receivedAt ~= nil and Window.Outdated()
+    b.outdated = outdated
+    b:SetOn(outdated)
+    b.glow:SetShown(outdated)
 end
 
 local function savePosition()
@@ -440,8 +466,8 @@ local function canMove()
     return not S("locked") or (IsControlKeyDown and IsControlKeyDown())
 end
 
--- The quest log's header: grip, title, the list's age, and from the right
--- close, options, lock, refresh.
+-- The quest log's header: grip, title, and from the right close, options,
+-- lock.
 local function createHeader()
     local Header = ns.Header
     local h = Header.Create(f, { movable = function() return not S("locked") end })
@@ -451,15 +477,6 @@ local function createHeader()
     h.lock = Header.Button(h, "Lock", function() return S("locked") and L.TIP_UNLOCK_WINDOW or L.TIP_LOCK_WINDOW end,
         function() ns.ToggleLock() end, function() return not S("locked") end)
     h.lock.activeColor = Controls.ACCENT
-    h.refresh = Header.Button(h, "Reset", function(self) return self.outdated and L.TIP_OUTDATED or L.TIP_REFRESH end,
-        function() Window.Search() end, function() return h.refresh ~= nil and h.refresh.outdated == true end)
-    h.refresh.activeColor, h.refresh.offColor = Header.ON, Header.IDLE
-    -- The outdated mark: a gold glow behind the icon, pulsing.
-    h.refresh.glow = h.refresh:CreateTexture(nil, "BACKGROUND", nil, -1)
-    h.refresh.glow:SetPoint("TOPLEFT", 1, -1)
-    h.refresh.glow:SetPoint("BOTTOMRIGHT", -1, 1)
-    h.refresh.glow:SetColorTexture(1, 0.79, 0.19, 0.35)
-    h.refresh.glow:Hide()
     -- Dragging the header moves the window (unlocked, or with Ctrl).
     h:SetScript("OnMouseDown", function(_, mouse)
         if mouse == "LeftButton" and canMove() then
@@ -614,7 +631,7 @@ local function create()
     ns.Resize.Attach(f, resizeSpec)
     local acc = 0
     f:SetScript("OnUpdate", function(_, elapsed)
-        local glow = f.header.refresh.glow
+        local glow = f.refresh.glow
         if glow:IsShown() then glow:SetAlpha(0.45 + 0.4 * math.sin(GetTime() * 5)) end
         acc = acc + (elapsed or 0)
         if acc < TICK then return end
