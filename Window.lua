@@ -1,12 +1,14 @@
 local ADDON, ns = ...
 local L, Settings, Media, Controls = ns.L, ns.Settings, ns.Media, ns.Controls
-local Finder, Activities, Results, Rows = ns.Finder, ns.Activities, ns.Results, ns.Rows
+local Finder, Activities, Results, Rows, Layouts = ns.Finder, ns.Activities, ns.Results, ns.Rows, ns.Layouts
 local S = Settings.Get
 
 -- The finder's main window: the FOREVER header (gold glow, line, title,
--- refresh with the list's age, lock, close), the activity column on the left
--- (Side.lua), my listing on the right (ListingPanel.lua), the filter chips and
--- the result list (Rows.lua): groups first, players below.
+-- refresh with the list's age, lock, close) and its parts: the activity
+-- list (Side.lua), my listing (ListingPanel.lua), the filter chips, the
+-- result list (Rows.lua: groups first, players below), the group details
+-- (Detail.lua) and the leader column (Column.lua). Layouts.lua places the
+-- parts for the chosen layout; this file builds them once and fills them.
 --
 -- Searching: C_LFGList.Search works only from a click or a key press. So
 -- Window.Search is called from OnClick handlers and from the open-by-click
@@ -19,6 +21,7 @@ local NAME = "ForeverGroupFinderWindow"
 local HEADER_H, BUTTON, ICON = 24, 16, 12
 local PAD = 8
 local FILTER_H = 18
+Window.FILTER_H = FILTER_H
 local TICK = 1           -- seconds between two clock updates (ages, remaining time)
 local LANGUAGES = {      -- the language filter, each in its own name
     { code = "enUS", label = "English" }, { code = "deDE", label = "Deutsch" },
@@ -148,6 +151,7 @@ end
 function Window.Rebuild()
     built = Results.Build(results, context(true))
     Window.RenderList()
+    ns.Column.Refresh()   -- the leader's fitting players come from the list
 end
 
 local function onResults()
@@ -192,8 +196,9 @@ end
 
 -- The list -----------------------------------------------------------------------------------
 
+-- The list's inner width in the current layout (Layouts.Arrange sets it).
 local function listWidth()
-    return S("width") - S("sideWidth") - 1 - 2 * PAD
+    return f and f.listWidth or 0
 end
 
 local function emptyText()
@@ -292,7 +297,7 @@ local function openLanguageMenu(owner)
     end)
 end
 
-local function layoutFilters()
+function Window.LayoutFilters()
     local bar = f.filters
     local chips = bar.chips
     chips.filterLevelFits:SetLabel(L.FILTER_LEVEL_FITS)
@@ -408,6 +413,8 @@ local function createHeader()
     end)
 end
 
+local resizeSpec   -- below with moving and resizing; layout() sets its ranges
+
 -- Look and layout --------------------------------------------------------------------------------
 
 -- x / y are UIParent units: the frame's own offsets are scaled.
@@ -430,52 +437,36 @@ function Window.ApplyLook(frame, width, height)
     })
 end
 
--- Lays out the right side below the listing (its height changes).
-function Window.LayoutRight()
+-- Places the parts for the current layout (the listing's height changes).
+function Window.Arrange()
     if not f then return end
-    local width = S("width") - S("sideWidth") - 1
-    local listingH = ns.ListingPanel.Layout(width - 2 * PAD)
-    f.listing:ClearAllPoints()
-    f.listing:SetPoint("TOPLEFT", f.right, "TOPLEFT", PAD, -PAD)
-    f.listing:SetSize(width - 2 * PAD, listingH)
-    local y = PAD + listingH + 6
-    f.rule:ClearAllPoints()
-    f.rule:SetPoint("TOPLEFT", f.right, "TOPLEFT", 0, -y)
-    f.rule:SetPoint("TOPRIGHT", f.right, "TOPRIGHT", 0, -y)
-    y = y + 6
-    f.filters:ClearAllPoints()
-    f.filters:SetPoint("TOPLEFT", f.right, "TOPLEFT", PAD, -y)
-    f.filters:SetWidth(width - 2 * PAD)
-    layoutFilters()
-    y = y + FILTER_H + 6
-    f.list:ClearAllPoints()
-    f.list:SetPoint("TOPLEFT", f.right, "TOPLEFT", PAD, -y)
-    f.list:SetPoint("BOTTOMRIGHT", f.right, "BOTTOMRIGHT", -PAD, PAD)
-    f.list.viewHeight = math.max(0, S("height") - HEADER_H - y - PAD)
+    Layouts.Arrange(f, f.layoutWidth or Layouts.Width(), f.layoutHeight or Layouts.Height(), HEADER_H)
 end
 
 local function layout(width, height)
+    f.layoutWidth, f.layoutHeight = width, height
     f:SetSize(width, height)
-    f.side:SetWidth(S("sideWidth"))
-    f.divider:ClearAllPoints()
-    f.divider:SetPoint("TOPLEFT", f.side, "TOPRIGHT", 0, 0)
-    f.divider:SetPoint("BOTTOMLEFT", f.side, "BOTTOMRIGHT", 0, 0)
-    ns.Side.SetHeight(height - HEADER_H)
     Controls.Restyle(f.header.title)
     f.header.title:SetText(L.WINDOW_TITLE)
     f.filters.text.hint:SetText(L.FILTER_TEXT)
     for _, grip in pairs(f.grips) do grip:SetShown(not S("locked")) end
     Window.ApplyLook(f, width, height)
+    resizeSpec.widthRange, resizeSpec.heightRange = Layouts.Ranges()
+    local mode = Layouts.Current()
+    local switched = f.mode ~= nil and f.mode ~= mode
+    if switched then Layouts.ClosePopup(f) end
+    f.mode = mode
     ns.Detail.Layout(height)
     Window.UpdateHeader()
-    Window.LayoutRight()
+    Window.Arrange()
+    if switched then ns.Detail.Rehost() end
 end
 
 -- Everything again from the settings (no search).
 function Window.Refresh()
     if not f then return end
     place(S("point"), S("relPoint"), S("x"), S("y"))
-    layout(S("width"), S("height"))
+    layout(Layouts.Width(), Layouts.Height())
     ns.Side.Refresh()
     ns.ListingPanel.Refresh()
     Window.Rebuild()
@@ -485,7 +476,7 @@ end
 -- Called when the checked activities or my listing changed.
 function Window.ListingChanged()
     ns.ListingPanel.Refresh()
-    Window.LayoutRight()
+    Window.Arrange()
 end
 
 -- The clock: ages, the remaining time and the expiry warning. Never searches.
@@ -500,12 +491,12 @@ function Window.Tick()
     end
 end
 
--- Moving and resizing ------------------------------------------------------------------------------
+-- Moving and resizing (the size settings are the layout's) ------------------------------
 
-local resizeSpec = {
+resizeSpec = {
     locked = function() return S("locked") end,
-    width = function() return S("width") end,
-    height = function() return S("height") end,
+    width = function() return Layouts.Width() end,
+    height = function() return Layouts.Height() end,
     widthRange = Settings.RANGES.width,
     heightRange = Settings.RANGES.height,
     live = function(_, r)
@@ -514,7 +505,8 @@ local resizeSpec = {
         Window.RenderList()
     end,
     commit = function(_, r)
-        Settings.SetMany({ width = r.width, height = r.height, point = "TOP", relPoint = "TOP",
+        local wKey, hKey = Layouts.SizeKeys()
+        Settings.SetMany({ [wKey] = r.width, [hKey] = r.height, point = "TOP", relPoint = "TOP",
             x = math.floor(r.x * r.scale + 0.5), y = math.floor(r.y * r.scale + 0.5) })
     end,
     done = function() Window.Refresh() end,
@@ -534,21 +526,23 @@ local function create()
     f.bg:SetAllPoints()
     f.clip = {}
     createHeader()
+    -- The parts, all children of the window; Layouts.lua places them.
     f.side = ns.Side.Create(f)
-    f.side:SetPoint("TOPLEFT", f.header, "BOTTOMLEFT", 0, 0)
-    f.side:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
     f.divider = f:CreateTexture(nil, "ARTWORK")
     f.divider:SetWidth(1)
     f.divider:SetColorTexture(0.16, 0.16, 0.16, 1)
-    f.right = CreateFrame("Frame", nil, f)
-    f.right:SetPoint("TOPLEFT", f.side, "TOPRIGHT", 1, 0)
-    f.right:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", 0, 0)
-    f.listing = ns.ListingPanel.Create(f.right)
-    f.rule = f.right:CreateTexture(nil, "ARTWORK")
+    f.columnLine = f:CreateTexture(nil, "ARTWORK")
+    f.columnLine:SetWidth(1)
+    f.columnLine:SetColorTexture(0.16, 0.16, 0.16, 1)
+    f.listing = ns.ListingPanel.Create(f)
+    f.rule = f:CreateTexture(nil, "ARTWORK")
     f.rule:SetHeight(1)
     f.rule:SetColorTexture(0.16, 0.16, 0.16, 1)
-    f.filters = createFilters(f.right)
-    f.list = Controls.Scroll(f.right)
+    f.filters = createFilters(f)
+    f.detail = ns.Detail.CreateEmbedded(f)
+    f.column = ns.Column.Create(f)
+    Layouts.Create(f)
+    f.list = Controls.Scroll(f)
     f.list.empty = Controls.Text(f.list, "comment")
     f.list.empty:SetPoint("TOPLEFT", 4, -6)
     f.pool = Rows.NewPool(f.list.child)
@@ -564,6 +558,7 @@ local function create()
     end)
     f:SetScript("OnHide", function()
         ns.Menu.CloseOwn()
+        Layouts.ClosePopup(f)
         ns.Detail.Close()
         if f.moving then
             f:StopMovingOrSizing()

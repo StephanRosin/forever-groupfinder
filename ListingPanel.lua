@@ -2,7 +2,8 @@ local ADDON, ns = ...
 local L, Settings, Controls, Activities, Listing = ns.L, ns.Settings, ns.Controls, ns.Activities, ns.Listing
 local S = Settings.Get
 
--- "My listing", the top of the window's right side: the checked activities
+-- "My listing" (Layouts.lua places it: above the list, or at the foot of
+-- the details column): the checked activities
 -- as chips, my roles (ns.Roles: only those my class can play) with the
 -- "only groups with room for me" toggle, the current comment (read-only; "Comment..."
 -- opens Blizzard's listing tab for players with an authenticator), the
@@ -16,6 +17,8 @@ local Panel = {}
 ns.ListingPanel = Panel
 
 local ROW_H, GAP = 18, 4
+local STATUS_H = 14       -- the status line under the title in a narrow panel
+local MIN_COMMENT_W = 60  -- less room than this: the comment wraps to its own line
 local BUTTON_GAP = 4
 local ROLE_KEYS = { "tank", "healer", "dps" }
 local ROLE_LABEL = { tank = "ROLE_TANK", healer = "ROLE_HEALER", dps = "ROLE_DAMAGER" }
@@ -39,8 +42,9 @@ local function solo()
     return not (IsInGroup and IsInGroup())
 end
 
--- "Missing: 1 Healer, 2 Damage" while I lead a group; nil otherwise.
-function Panel.LeaderText()
+-- { TANK = n, HEALER = n, DAMAGER = n } still missing while I lead a
+-- group (for the first ticked activity, else my listing's); nil otherwise.
+function Panel.LeaderMissing()
     if not (UnitIsGroupLeader and UnitIsGroupLeader("player")) then return nil end
     local ids = ns.Window.CheckedList()
     local id = ids[1]
@@ -49,7 +53,12 @@ function Panel.LeaderText()
         id = entry and entry.activityIDs[1]   -- plain: Finder converted the entry
     end
     if not id then return nil end   -- plain: an id from our own list
-    local missing = Listing.Missing(id)
+    return Listing.Missing(id)
+end
+
+-- "Missing: 1 Healer, 2 Damage" while I lead a group; nil otherwise.
+function Panel.LeaderText()
+    local missing = Panel.LeaderMissing()
     if not missing then return nil end
     local parts = {}
     for _, role in ipairs({ "TANK", "HEALER", "DAMAGER" }) do
@@ -277,14 +286,21 @@ function Panel.Layout(width)
     -- Line 1: title, status; Remove, Post, Template at the right.
     p.title:ClearAllPoints()
     p.title:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -y - 3)
-    p.status:ClearAllPoints()
-    p.status:SetPoint("LEFT", p.title, "RIGHT", 8, 0)
     local x = width
     for _, b in ipairs({ p.post, p.template }) do
         b:SetWidth(math.max(56, math.floor(b.label:GetStringWidth() + (b.icon and 30 or 18))))
         b:ClearAllPoints()
         b:SetPoint("TOPRIGHT", p, "TOPLEFT", x, -y)
         x = x - b:GetWidth() - BUTTON_GAP
+    end
+    -- A narrow panel (the details column) puts the status under the title.
+    local statusBelow = p.title:GetStringWidth() + 8 + p.status:GetStringWidth() + 8 > x
+    p.status:ClearAllPoints()
+    if statusBelow then
+        p.status:SetPoint("TOPLEFT", p.title, "BOTTOMLEFT", 0, -2)
+        y = y + STATUS_H
+    else
+        p.status:SetPoint("LEFT", p.title, "RIGHT", 8, 0)
     end
     y = y + ROW_H + GAP
     -- Line 2: the checked activities.
@@ -326,6 +342,11 @@ function Panel.Layout(width)
     p.roomOnly:SetPoint("TOPLEFT", p, "TOPLEFT", rx + 2, -y)
     rx = rx + 2 + p.roomOnly:Fit() + BUTTON_GAP
     p.comment:SetWidth(math.max(70, math.floor(p.comment.label:GetStringWidth() + 18)))
+    -- Too little room left for the comment: it goes to a line of its own.
+    if width - rx - 4 - p.comment:GetWidth() - 8 < MIN_COMMENT_W then
+        y = y + ROW_H + GAP
+        rx = -4
+    end
     p.comment:ClearAllPoints()
     p.comment:SetPoint("TOPRIGHT", p, "TOPLEFT", width, -y)
     p.commentText:ClearAllPoints()

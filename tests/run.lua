@@ -114,6 +114,7 @@ local EXPECTED = {
     replaceBlizzard = true, minimapShow = true, minimapAngle = 215, compartment = true,
     point = "CENTER", relPoint = "CENTER", x = 0, y = 40, width = 720, height = 460,
     scale = 100, locked = false, sideWidth = 190,
+    layout = "SIDEBAR", stackedWidth = 480, stackedHeight = 560, detailsWidth = 880, detailsHeight = 480,
     minInterval = 1, levelRangeOnly = true, category = 2, sortFriendsFirst = true,
     filterMyRole = false, filterLevelFits = false, hideSeen = false,
     markOpenSlot = true, showPlayers = true, rowHeight = 22, playerRowHeight = 34,
@@ -158,6 +159,7 @@ for _ in pairs(D) do total = total + 1 end
 check("no other default (languages, templates and whisperTemplates are the three tables)", total, expectedCount + 3)
 local RANGES = {
     width = { 560, 1100 }, height = { 320, 800 }, scale = { 50, 150 }, sideWidth = { 150, 280 },
+    stackedWidth = { 420, 900 }, stackedHeight = { 360, 1000 }, detailsWidth = { 720, 1300 }, detailsHeight = { 360, 900 },
     minInterval = { 1, 15 }, rowHeight = { 16, 36 }, playerRowHeight = { 26, 50 }, memoryMinutes = { 5, 240 },
     expiryWarnMinutes = { 1, 15 }, borderSize = { 1, 8 }, cornerRadius = { 0, 12 }, shadowSize = { 1, 20 },
     x = { -4000, 4000 }, y = { -4000, 4000 },
@@ -2123,6 +2125,216 @@ check("bad colour import skipped", ns.Share.Import("FGF1:ts13:openEdgeColors3:re
 check("bad colour not stored", ns.DB().openEdgeColor, nil)
 check("size import clamped", (function() ns.Share.Import("FGF1:ts17:groupRoleIconSizen99;}"); return S("groupRoleIconSize") end)(), 28)
 Settings.ResetProfile()
+end
+
+-- Layouts: the same parts, arranged three ways; switched live.
+do
+local Layouts, Column = ns.Layouts, ns.Column
+lfg.results, lfg.members, lfg.counts = {}, {}, {}
+result(1, "Grimnar", { member("Grimnar", "WARRIOR"), member("Ilvea", "MAGE") })
+result(3, "Solo", { member("Solo", "MAGE", 21, "Stormwind City", { tank = true, healer = false, dps = true }) })
+result(4, "Healy", { member("Healy", "PRIEST", 20, "Ironforge", { tank = false, healer = true, dps = false }) })
+result(5, "Stabby", { member("Stabby", "ROGUE", 19, "Darnassus", { tank = false, healer = false, dps = true }) })
+W.SetCheckedList({ 22 })
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+check("layout default", Layouts.Current(), "SIDEBAR")
+check("sidebar: activity column shown", f.side:IsShown(), true)
+check("sidebar: no activity button", f.activity:IsShown(), false)
+check("sidebar: no details column", f.detail:IsShown() or f.column:IsShown(), false)
+check("sidebar: list beside the column", f.listWidth, 720 - 190 - 1 - 16)
+check("sidebar: listing on the right", f.listing._points.TOPLEFT[3], 190 + 1 + 8)
+check("an unknown layout counts as the sidebar", (function()
+    ns.DB().layout = "BOGUS"
+    local m = Layouts.Current()
+    ns.DB().layout = nil
+    return m
+end)(), "SIDEBAR")
+
+-- Stacked: live, its own size, the activity list in a popup.
+local k = searches()
+Settings.Set("layout", "STACKED")
+check("switching does not search", searches(), k)
+check("stacked: own size", f:GetWidth() .. "x" .. f:GetHeight(), "480x560")
+check("stacked: activity column gone", f.side:IsShown(), false)
+check("stacked: activity button at the top", f.activity:IsShown() and f.activity._points.TOPLEFT[4], -(24 + 8))
+check("stacked: button names the category and the ticks", f.activity.label:GetText(), "Dungeons (1)")
+check("stacked: list over the full width", f.listWidth, 480 - 16)
+check("stacked: listing below the button", f.listing._points.TOPLEFT[4] < f.activity._points.TOPLEFT[4], true)
+check("stacked: filters below the listing", f.filters._points.TOPLEFT[4] < f.listing._points.TOPLEFT[4], true)
+check("stacked: rows laid out for the width", f.pool.used[2]:GetWidth(), 480 - 16)
+click(f.activity)
+check("popup opens", f.popup:IsShown(), true)
+check("the activity list shows in it", f.side:IsShown(), true)
+check("the list sits in the popup", f.side._points.TOPLEFT[1], f.popup)
+check("popup above the window's parts", f.side:GetFrameStrata(), "DIALOG")
+check("popup title", f.popup.header.title:GetText(), "Activities")
+check("popup has the category selector and switch", Side.Panel().category:IsShown() and Side.Panel().level:IsShown(), true)
+check("popup list: the same items", visible():find("24,22", 1, true) ~= nil, true)
+M.state.time = M.state.time + 5
+k = searches()
+click(sideItem(24))
+check("popup tick searches (same path)", searches(), k + 1)
+check("popup tick searched the ticks", table.concat(lfg.searches[#lfg.searches][7], ","), "22,24")
+check("button counts the ticks", f.activity.label:GetText(), "Dungeons (2)")
+check("popup stays open for more ticks", f.popup:IsShown(), true)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+click(sideItem(24))
+check("second popup tick inside the interval: no search", searches(), k + 1)
+check("and the list is marked outdated", W.Outdated(), true)
+M.state.time = M.state.time + 5
+click(Side.Panel().level)
+check("popup level switch searches", searches(), k + 2)
+click(Side.Panel().level)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+click(f.popup.header.close)
+check("popup X closes it", f.popup:IsShown() or f.side:IsShown(), false)
+click(f.activity)
+click(f.activity)
+check("the button closes it again", f.popup:IsShown(), false)
+-- Group details float as in the sidebar layout.
+local gRow
+for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
+click(gRow)
+check("stacked: details in the floating panel", D.Frame():IsShown() and D.OpenID(), 1)
+check("stacked: detail click does not mark seen", Memory.IsSeen(gRow.entry.key), false)
+-- Sizes per layout: a resize writes the current layout's keys.
+f._rect = { 700, 200, 480, 560 }
+local grip = f.grips.BOTTOMRIGHT
+M.state.cursorX, M.state.cursorY = 1180, 200
+grip:GetScript("OnMouseDown")(grip, "LeftButton")
+M.state.cursorX, M.state.cursorY = 1200, 160
+grip:GetScript("OnUpdate")(grip, 0.1)
+check("dragging: live size", f:GetWidth(), 500)
+grip:GetScript("OnMouseUp")(grip, "LeftButton")
+f._rect = nil
+check("stacked size stored", S("stackedWidth") .. "x" .. S("stackedHeight"), "500x600")
+check("sidebar size untouched", S("width") .. "x" .. S("height"), "720x460")
+check("stacked: window follows its size", f:GetWidth(), 500)
+check("stacked: width range", (Layouts.Ranges())[1], 420)
+
+-- Details: list left, the open group's details in the column, listing below.
+Settings.Set("layout", "DETAILS")
+check("details: own size", f:GetWidth() .. "x" .. f:GetHeight(), "880x480")
+check("details: open group moves into the column", D.OpenID(), 1)
+check("details: floating panel closed", D.Frame():IsShown(), false)
+check("details: embedded shown", f.detail:IsShown(), true)
+check("details: embedded title", f.detail.header.title:GetText(), "The Deadmines")
+check("details: embedded members", f.detail.members[1]:IsShown() and f.detail.members[1].name:GetText(), "Grimnar")
+check("details: column right of the list", f.detail._points.TOPLEFT[3], 880 - Layouts.COLUMN_W)
+check("details: list left of the column", f.listWidth, 880 - Layouts.COLUMN_W - 1 - 16)
+check("details: activity button over the list", f.activity:IsShown(), true)
+check("details: listing in the column", f.listing._points.TOPLEFT[3], 880 - Layouts.COLUMN_W + 8)
+check("details: listing below the details", f.listing._points.TOPLEFT[4] < f.detail._points.TOPLEFT[4], true)
+check("details: listing narrow", f.listing:GetWidth(), Layouts.COLUMN_W - 16)
+check("details: leader view hidden with a group open", f.column:IsShown(), false)
+for i, e in ipairs(D.ButtonExtents(f.detail)) do
+    check("embedded button " .. i .. " inside the column", e.left >= 0 and e.right <= e.width, true)
+end
+check("details: rows laid out for the narrower list", f.pool.used[2]:GetWidth(), 880 - Layouts.COLUMN_W - 1 - 16)
+local tells = #M.tells
+click(f.detail.whisper)
+check("embedded whisper", #M.tells, tells + 1)
+click(f.detail.invite)
+check("embedded invite", M.invited[#M.invited], "Grimnar")
+for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
+click(gRow)
+check("same row again clears the column", D.OpenID(), nil)
+check("embedded hidden", f.detail:IsShown(), false)
+check("not leading: the hint", f.column:IsShown() and f.column.note:GetText(), "Click a group in the list to see its members, comment and actions here.")
+click(gRow)
+click(f.detail.header.close)
+check("embedded X clears it", D.OpenID(), nil)
+-- Leading a group: missing roles and the fitting solo players.
+UnitIsGroupLeader = function() return true end
+GetNumGroupMembers = function() return 2 end
+IsInRaid = function() return false end
+UnitGroupRolesAssigned = function(unit) return unit == "player" and "TANK" or "DAMAGER" end
+M.state.group = true
+W.ListingChanged()
+check("leader column shown", f.column:IsShown(), true)
+check("leader column: missing roles", f.column.title:GetText(), "Missing: 1 Healer, 2 DPS")
+local fitNames = {}
+for _, row in ipairs(Column.Players()) do fitNames[#fitNames + 1] = row.leader end
+table.sort(fitNames)
+check("leader column: players for missing roles", table.concat(fitNames, ","), "Healy,Solo,Stabby")
+check("leader column: count", f.column.note:GetText(), "Players who fit (3)")
+check("Fitting: only missing roles", (function()
+    local out = Column.Fitting(W.Built().players, { TANK = 0, HEALER = 1, DAMAGER = 0 })
+    return #out == 1 and out[1].leader
+end)(), "Healy")
+check("Fitting: none when not leading", #Column.Fitting(W.Built().players, nil), 0)
+local line1 = f.column.lines[1]
+check("leader line: invite button", line1.invite:IsShown(), true)
+click(line1.invite)
+check("one-click invite", M.invited[#M.invited], line1.invite.row.leader)
+check("leader line: role icon", line1.roles[1]._atlas ~= nil, true)
+UnitGroupRolesAssigned = function(unit) return unit == "player" and "TANK" or (unit == "party1" and "HEALER" or "DAMAGER") end
+GetNumGroupMembers = function() return 5 end
+W.ListingChanged()
+check("complete group: no players", #Column.Players(), 0)
+UnitIsGroupLeader, GetNumGroupMembers, IsInRaid, UnitGroupRolesAssigned = nil, nil, nil, nil
+M.state.group = nil
+W.ListingChanged()
+check("leader view gone", f.column.title:GetText(), "Group details")
+-- The popup in the details layout searches the same way.
+click(f.activity)
+check("details: popup", f.popup:IsShown() and f.side:IsShown(), true)
+M.state.time = M.state.time + 5
+k = searches()
+click(sideItem(24))
+check("details: popup tick searches", searches(), k + 1)
+click(sideItem(24))
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+-- Back to the sidebar: popup closed, the column back, the size back.
+click(gRow)
+Settings.Set("layout", nil)
+check("sidebar again: size", f:GetWidth() .. "x" .. f:GetHeight(), "720x460")
+check("sidebar again: popup closed", f.popup:IsShown(), false)
+check("sidebar again: activity column", f.side:IsShown() and f.side._points.TOPLEFT[1], f)
+check("sidebar again: back in the window's strata", f.side:GetFrameStrata(), "MEDIUM")
+check("sidebar again: details float", D.Frame():IsShown() and D.OpenID(), 1)
+check("sidebar again: column hidden", f.detail:IsShown() or f.column:IsShown(), false)
+D.Close()
+-- Every layout builds and lists the rows.
+for _, mode in ipairs(Layouts.ORDER) do
+    Settings.Set("layout", mode)
+    check(mode .. ": builds the rows", #f.pool.used > 0 and f.pool.used[2].kind, "GROUP")
+    check(mode .. ": group roles Tank, Healer, DPS", ns.Rows.Slots({ activityIDs = { 22 }, members = {
+        { name = "d", role = "DAMAGER" }, { name = "h", role = "HEALER" }, { name = "t", role = "TANK" } } })[1].role, "TANK")
+    local pr
+    for _, row in ipairs(f.pool.used) do if row.kind == "PLAYER" then pr = row end end
+    check(mode .. ": player row role column and level", pr ~= nil and (pr.roles[1]:IsShown() or pr.roles[2]:IsShown() or pr.roles[3]:IsShown()) and pr.level:GetText() ~= nil, true)
+    check(mode .. ": one listing button", LP.Frame().post:IsShown() and LP.Frame().remove == nil, true)
+    check(mode .. ": window size from its keys", f:GetWidth(), S((Layouts.SizeKeys(mode))))
+end
+Settings.Set("layout", nil)
+-- Options: the dropdown, the description, the size sliders of the layout.
+ns.Options.Open("window")
+check("layout dropdown on the Window page", rowFor("Layout", "button") ~= nil, true)
+check("layout description", (function()
+    for _, fr in ipairs(M.frames) do
+        if fr.text and fr.text._text and fr.text._text:find("activity list as a column", 1, true) and fr:IsVisible() then return true end
+    end
+    return false
+end)(), true)
+Settings.Set("layout", "STACKED")
+check("description follows the layout", (function()
+    for _, fr in ipairs(M.frames) do
+        if fr.text and fr.text._text and fr.text._text:find("Narrow:", 1, true) and fr:IsVisible() then return true end
+    end
+    return false
+end)(), true)
+check("side width hidden for stacked", rowFor("Width of the side panel", "slider"), nil)
+Settings.Set("layout", nil)
+ns.Options.Toggle()
+-- Import validation of the layout.
+check("layout import: known value kept", ns.Share.Import("FGF1:ts6:layouts7:DETAILS}") and S("layout"), "DETAILS")
+Settings.Set("layout", nil)
+check("layout import: unknown value skipped", ns.Share.Import("FGF1:ts6:layouts5:GRIDS}"), true)
+check("layout import: not stored", ns.DB().layout, nil)
+check("layout sizes clamped on import", ns.Share.Import("FGF1:ts12:stackedWidthn99999;}") and S("stackedWidth"), 900)
+Settings.ResetProfile()
+check("reset to the sidebar", f:GetWidth(), 720)
 end
 
 click(f.header.close)

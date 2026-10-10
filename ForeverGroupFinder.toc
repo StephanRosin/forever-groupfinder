@@ -37,8 +37,10 @@ Controls.lua
 Menu.lua
 Rows.lua
 Detail.lua
+Column.lua
 Side.lua
 ListingPanel.lua
+Layouts.lua
 Window.lua
 Blizzard.lua
 Options\Style.lua

@@ -2,9 +2,11 @@ local ADDON, ns = ...
 local L, Settings, Controls, Activities = ns.L, ns.Settings, ns.Controls, ns.Activities
 local S = Settings.Get
 
--- The window's left column: category selector, search box, the activity
--- list with check boxes coloured by level fit, and at the bottom the switch
--- "Only in my level range". The checked activities are the window's
+-- The activity list: category selector, search box, the activity list with
+-- check boxes coloured by level fit, and at the bottom the switch "Only in
+-- my level range". One panel for every layout: the window's left column
+-- (SIDEBAR) or the content of the activity dropdown (STACKED, DETAILS;
+-- Layouts.lua places it). The checked activities are the window's
 -- (ns.Window.Checked); this file only shows and toggles them. Every click
 -- here is a user action and may search (ns.Window.Search); typing in the
 -- search box only filters the list.
@@ -19,6 +21,7 @@ local FIT_COLOR = { FITS = nil, LOW = Controls.GREY, HIGH = Controls.RED }
 local panel
 local items = {}
 local filterText = ""
+local width              -- set by the layout; the side width until then
 
 -- The activities shown: the category's, filtered by text and (with the
 -- switch on) by level, but my active listing's and the checked ones stay,
@@ -38,7 +41,7 @@ function Side.Visible()
     return out
 end
 
-local function categoryName(id)
+function Side.CategoryName(id)
     for _, c in ipairs(Activities.Categories()) do
         if c.id == id then return c.name end
     end
@@ -93,27 +96,27 @@ end
 -- Lays the list out again (no search).
 function Side.Refresh()
     if not panel then return end
-    panel.category:SetLabel(categoryName(S("category")))
+    panel.category:SetLabel(Side.CategoryName(S("category")))
     panel.levelBox:SetChecked(S("levelRangeOnly"))
     panel.levelText:SetText(L.LEVEL_RANGE_ONLY)
     panel.search.hint:SetText(L.SEARCH_ACTIVITIES)
     panel.empty:SetText(L.NO_ACTIVITIES)
     local list = Side.Visible()
     local checked = ns.Window.Checked()
-    local width = S("sideWidth") - 2 * PAD
+    local inner = (width or S("sideWidth")) - 2 * PAD
     local child = panel.scroll.child
-    child:SetWidth(width)
+    child:SetWidth(inner)
     for i, a in ipairs(list) do
         local item = items[i] or newItem(child)
         items[i] = item
         item.activity = a
         item:ClearAllPoints()
         item:SetPoint("TOPLEFT", child, "TOPLEFT", 0, -(i - 1) * ITEM_H)
-        item:SetWidth(width - 4)
+        item:SetWidth(inner - 4)
         Controls.Restyle(item.name, FIT_COLOR[a.fit])
         Controls.Restyle(item.range)
         item.range:SetText(rangeText(a))
-        item.name:SetWidth(math.max(20, width - 4 - CHECK - 8 - item.range:GetStringWidth() - 4))
+        item.name:SetWidth(math.max(20, inner - 4 - CHECK - 8 - item.range:GetStringWidth() - 4))
         item.name:SetText(a.name)
         local on = checked[a.id] == true
         item.box:SetChecked(on)
@@ -214,8 +217,11 @@ function Side.Create(parent)
     return panel
 end
 
--- The list's visible height for the scroll thumb (the mock and the first
--- layout know no anchored sizes).
-function Side.SetHeight(h)
-    if panel then panel.scroll.viewHeight = math.max(0, h - 2 * PAD - 18 - 4 - 18 - 4 - ITEM_H - 2 - 4 - PAD) end
+-- The panel's size from the layout; the list's visible height for the
+-- scroll thumb (the mock and the first layout know no anchored sizes).
+function Side.SetSize(w, h)
+    width = w
+    if not panel then return end
+    panel:SetSize(w, h)
+    panel.scroll.viewHeight = math.max(0, h - 2 * PAD - 18 - 4 - 18 - 4 - ITEM_H - 2 - 4 - PAD)
 end

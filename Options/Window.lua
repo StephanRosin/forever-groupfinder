@@ -106,20 +106,32 @@ local function windowRows()
     local pos = ns.Position.Rows({ point = "point", x = "x", y = "y" }, ns.Window.Frame,
         function() return "TOP" end, { relPoint = "TOP" })
     pos[1].keys, pos[2].keys = { "x", "point", "relPoint" }, { "y", "point", "relPoint" }
-    return {
+    local function inLayout(mode)
+        return function() return ns.Layouts.Current() == mode end
+    end
+    local rows = {
+        { type = "header", label = "OPT_LAYOUT" },
+        choice("layout", "OPT_LAYOUT", ns.Layouts.ORDER, "LAYOUT_"),
+        { type = "text", label = function() return L["LAYOUT_DESC_" .. ns.Layouts.Current()] end, height = 40 },
         { type = "header", label = "OPT_POSITION" },
         check("locked", "OPT_LOCK"),
         { type = "text", label = "OPT_MOVE_HINT", height = 40 },
         pos[1], pos[2],
-        num("width", "OPT_WIDTH"),
-        num("height", "OPT_HEIGHT"),
-        num("sideWidth", "OPT_SIDE_WIDTH"),
+    }
+    -- Each layout keeps its own size; the sliders of the chosen one show.
+    for _, mode in ipairs(ns.Layouts.ORDER) do
+        local wKey, hKey = ns.Layouts.SizeKeys(mode)
+        rows[#rows + 1] = visibleIf(num(wKey, "OPT_WIDTH"), inLayout(mode))
+        rows[#rows + 1] = visibleIf(num(hKey, "OPT_HEIGHT"), inLayout(mode))
+    end
+    return append(rows, {
+        visibleIf(num("sideWidth", "OPT_SIDE_WIDTH"), inLayout("SIDEBAR")),
         { type = "buttons", buttons = {
             { label = "OPT_RESET_POSITION", width = 200, onClick = function() ns.ResetWindowPlace() end },
         } },
         { type = "header", label = "OPT_SCALE" },
         num("scale", "OPT_SCALE", "%"),
-    }
+    })
 end
 
 -- Appearance: background, border, corners, shadow (as the combat meter).

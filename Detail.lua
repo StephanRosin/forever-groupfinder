@@ -2,10 +2,12 @@ local ADDON, ns = ...
 local L, Settings, Controls, Activities, Rows = ns.L, ns.Settings, ns.Controls, ns.Activities, ns.Rows
 local S = Settings.Get
 
--- The detail panel of a group: docked to the right edge of the window, in
--- its look (header with the activity name, rounded corners, border); its
--- height follows the window. A left click on a group row opens it, the same
--- row again, its X or ESC closes it, another group switches it. It shows the
+-- The details of a group, in one of two hosts with the same content: the
+-- floating panel docked to the window's right edge, in its look (header with
+-- the activity name, rounded corners, border; height follows the window),
+-- or embedded in the DETAILS layout's right column. A left click on a group
+-- row opens it, the same row again, its X or ESC closes it, another group
+-- switches it. It shows the
 -- activities with their levels, leader, age, the full comment, flags,
 -- friends and guild, every member (Tank, Healer, Damage, then the free
 -- places) and the actions: whisper, whisper template, invite, seen, hide,
@@ -15,21 +17,29 @@ ns.Detail = Detail
 
 local NAME = "ForeverGroupFinderDetail"
 local WIDTH, HEADER_H, BUTTON_H = 270, 24, 18
+local TITLE_H = 22          -- the embedded host's title line
 local PAD, GAP = 8, 4
 local LINE_H, MEMBER_H, ICON = 16, 18, 14
 
-local p
+local p            -- the floating panel (SIDEBAR, STACKED)
+local e            -- the embedded host (the DETAILS layout's column)
 local current      -- the row shown (a row table of Window.Built())
 local height = 0
 
+local host   -- the host in use; defined with the display below
+
+function Detail.IsShown()
+    local h = host()
+    return h ~= nil and h:IsShown() and current ~= nil
+end
+
 function Detail.OpenID()
-    if current and p and p:IsShown() then return current.id end
+    if Detail.IsShown() then return current.id end
     return nil
 end
 
 function Detail.Row() return current end
 function Detail.Frame() return p end
-function Detail.IsShown() return p ~= nil and p:IsShown() end
 
 local function leaderOf(row)
     return type(row.leader) == "string" and row.leader ~= "" and row.leader or nil
@@ -77,21 +87,25 @@ function Detail.Lines(row, elapsed)
     return lines
 end
 
--- Pools ---------------------------------------------------------------------------------------
+-- Content: one builder for both hosts -------------------------------------------------------
+--
+-- A host is a frame that carries the content: the floating panel (with its
+-- own header) or the embedded column of the DETAILS layout. Each has
+-- .body (scroll), .texts, .members, .buttons and the six buttons.
 
-local function textLine(i)
-    local fs = p.texts[i]
+local function textLine(host, i)
+    local fs = host.texts[i]
     if not fs then
-        fs = Controls.Text(p.body.child, "comment")
-        p.texts[i] = fs
+        fs = Controls.Text(host.body.child, "comment")
+        host.texts[i] = fs
     end
     return fs
 end
 
-local function memberLine(i)
-    local m = p.members[i]
+local function memberLine(host, i)
+    local m = host.members[i]
     if m then return m end
-    m = CreateFrame("Frame", nil, p.body.child)
+    m = CreateFrame("Frame", nil, host.body.child)
     m:SetHeight(MEMBER_H)
     m.slot = Rows.NewSlot(m)
     m.slot:SetSize(ICON + 2, ICON + 2)
@@ -105,11 +119,9 @@ local function memberLine(i)
     m.area = Controls.Text(m, "small")
     m.area:SetJustifyH("RIGHT")
     m.area:SetPoint("RIGHT", m, "RIGHT", 0, 0)
-    p.members[i] = m
+    host.members[i] = m
     return m
 end
-
--- Display ---------------------------------------------------------------------------------------
 
 local function layoutMember(m, line, width)
     Rows.PaintSlot(m.slot, { free = line.kind == "free", role = line.role, member = line.member })
@@ -136,18 +148,17 @@ local function layoutMember(m, line, width)
     m.area:SetText(type(member.area) == "string" and member.area or "")
 end
 
-local function render()
-    local row = current
-    local width = WIDTH - 2 * PAD - 4
-    local child = p.body.child
+local function render(host)
+    local width = (host.contentWidth or WIDTH) - 2 * PAD - 4
+    local child = host.body.child
     child:SetWidth(width)
-    for _, fs in ipairs(p.texts) do fs:Hide() end
-    for _, m in ipairs(p.members) do m:Hide() end
+    for _, fs in ipairs(host.texts) do fs:Hide() end
+    for _, m in ipairs(host.members) do m:Hide() end
     local y, nt, nm = 0, 0, 0
-    for _, line in ipairs(Detail.Lines(row, ns.Window.Elapsed())) do
+    for _, line in ipairs(Detail.Lines(current, ns.Window.Elapsed())) do
         if line.kind == "member" or line.kind == "free" then
             nm = nm + 1
-            local m = memberLine(nm)
+            local m = memberLine(host, nm)
             m:ClearAllPoints()
             m:SetPoint("TOPLEFT", child, "TOPLEFT", 0, -y)
             layoutMember(m, line, width)
@@ -155,7 +166,7 @@ local function render()
             y = y + MEMBER_H
         else
             nt = nt + 1
-            local fs = textLine(nt)
+            local fs = textLine(host, nt)
             fs.styleName = line.kind == "heading" and "small" or line.style
             Controls.Restyle(fs, line.kind == "heading" and { 0.78, 0.59, 0.12 } or line.color)
             fs:SetWordWrap(line.wrap and true or false)
@@ -168,33 +179,82 @@ local function render()
             y = y + math.max(LINE_H, (line.wrap and fs:GetStringHeight() or 0) + 2)
         end
     end
-    p.body:SetContentHeight(y)
+    host.body:SetContentHeight(y)
 end
 
-local function updateButtons()
+local function updateButtons(host)
     local row = current
     local leader = leaderOf(row)
     local canInvite = not (IsInGroup and IsInGroup()) or (UnitIsGroupLeader and UnitIsGroupLeader("player")) or false
-    p.whisper:SetOff(leader == nil, L.UNKNOWN_PLAYER)
-    p.template:SetOff(leader == nil, L.UNKNOWN_PLAYER)
-    p.ignore:SetOff(leader == nil, L.UNKNOWN_PLAYER)
+    host.whisper:SetOff(leader == nil, L.UNKNOWN_PLAYER)
+    host.template:SetOff(leader == nil, L.UNKNOWN_PLAYER)
+    host.ignore:SetOff(leader == nil, L.UNKNOWN_PLAYER)
     if leader == nil then
-        p.invite:SetOff(true, L.UNKNOWN_PLAYER)
+        host.invite:SetOff(true, L.UNKNOWN_PLAYER)
     else
-        p.invite:SetOff(not canInvite, L.TIP_INVITE_NOT_LEADER)
+        host.invite:SetOff(not canInvite, L.TIP_INVITE_NOT_LEADER)
     end
-    p.seen:SetOn(row.seen == true)
-    for _, b in ipairs(p.buttons) do b:SetLabel(L[b.labelKey]) end
+    host.seen:SetOn(row.seen == true)
+    for _, b in ipairs(host.buttons) do b:SetLabel(L[b.labelKey]) end
+end
+
+-- Two rows of three at the host's foot; a label too long for its button is
+-- cut off with "...", never past the button.
+local function layoutButtons(host, width)
+    host.contentWidth = width
+    local bw = math.floor((width - 2 * PAD - 2 * GAP) / 3)
+    for i, b in ipairs(host.buttons) do
+        local col, line = (i - 1) % 3, math.floor((i - 1) / 3)
+        b:SetWidth(bw)
+        b.label:SetWidth(bw - (b.icon and 24 or 8))
+        b.layoutX = PAD + col * (bw + GAP)
+        b:ClearAllPoints()
+        b:SetPoint("BOTTOMLEFT", host, "BOTTOMLEFT", b.layoutX, PAD + (1 - line) * (BUTTON_H + GAP))
+    end
+end
+
+local function button(host, labelKey, tipKey, onClick, icon)
+    local b = Controls.Button(host, { text = L[labelKey], height = BUTTON_H, icon = icon, onClick = onClick,
+        tip = function() return L[tipKey] end })
+    b.labelKey = labelKey
+    host.buttons[#host.buttons + 1] = b
+    return b
+end
+
+-- The body and the buttons on a host; top: the frame the body hangs below.
+local function buildContent(host, top)
+    host.body = Controls.Scroll(host)
+    host.body:SetPoint("TOPLEFT", top, "BOTTOMLEFT", PAD, -PAD)
+    host.body:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -PAD, PAD + 2 * BUTTON_H + 2 * GAP)
+    host.texts, host.members, host.buttons = {}, {}, {}
+    host.whisper = button(host, "DETAIL_WHISPER", "TIP_DETAIL_WHISPER", function() Detail.Whisper() end)
+    host.template = button(host, "DETAIL_TEMPLATE", "TIP_DETAIL_TEMPLATE", function(self)
+        local row = current
+        if row then ns.Menu.Open(self, function(root) ns.Menu.AddWhisperTemplates(root, row) end) end
+    end, "ChevronDown")
+    host.invite = button(host, "MENU_INVITE", "TIP_DETAIL_INVITE", function() Detail.Invite() end)
+    host.seen = button(host, "DETAIL_SEEN", "TIP_DETAIL_SEEN", function() Detail.MarkSeen() end)
+    host.hide = button(host, "MENU_HIDE", "TIP_DETAIL_HIDE", function() Detail.HideGroup() end)
+    host.ignore = button(host, "DETAIL_IGNORE", "TIP_DETAIL_IGNORE", function() Detail.Ignore() end)
+end
+
+-- Display ---------------------------------------------------------------------------------------
+
+-- The host in use: the column in the DETAILS layout, else the panel.
+function host()
+    if ns.Layouts.EmbedsDetail() then return e end
+    return p
 end
 
 -- Everything again for the current row (no search).
 function Detail.Refresh()
-    if not (p and current and p:IsShown()) then return end
-    Controls.Restyle(p.header.title)
-    p.header.title:SetText(Rows.ActivityText(current.activityIDs))
-    Detail.Layout(height)
-    updateButtons()
-    render()
+    local h = host()
+    if not (h and current and h:IsShown()) then return end
+    Controls.Restyle(h.header.title)
+    h.header.title:SetText(Rows.ActivityText(current.activityIDs))
+    if h == p then Detail.Layout(height) end
+    updateButtons(h)
+    render(h)
 end
 
 -- The window's height; the panel's buttons and list fit into it.
@@ -204,18 +264,20 @@ function Detail.Layout(h)
     p:SetSize(WIDTH, height)
     ns.Window.ApplyLook(p, WIDTH, height)
     Detail.Dock()
-    -- Two rows of three inside the panel; a label too long for its button
-    -- is cut off with "...", never past the button.
-    local bw = math.floor((WIDTH - 2 * PAD - 2 * GAP) / 3)
-    for i, b in ipairs(p.buttons) do
-        local col, line = (i - 1) % 3, math.floor((i - 1) / 3)
-        b:SetWidth(bw)
-        b.label:SetWidth(bw - (b.icon and 24 or 8))
-        b.layoutX = PAD + col * (bw + GAP)
-        b:ClearAllPoints()
-        b:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", b.layoutX, PAD + (1 - line) * (BUTTON_H + GAP))
-    end
+    layoutButtons(p, WIDTH)
     p.body.viewHeight = math.max(0, height - HEADER_H - 2 * PAD - 2 * BUTTON_H - 2 * GAP)
+end
+
+-- The embedded host's size (Layouts.lua anchors it).
+function Detail.LayoutEmbedded(w, h)
+    if not e then return end
+    e:SetSize(w, h)
+    layoutButtons(e, w)
+    e.body.viewHeight = math.max(0, h - TITLE_H - 2 * PAD - 2 * BUTTON_H - 2 * GAP)
+    if current and e:IsShown() then
+        updateButtons(e)
+        render(e)
+    end
 end
 
 -- Docked to the window's right edge; to its left edge when the screen has
@@ -237,12 +299,13 @@ function Detail.Dock()
     end
 end
 
--- Every button's left and right edge inside the panel (for the tests).
-function Detail.ButtonExtents()
+-- Every button's left and right edge inside its host (for the tests).
+function Detail.ButtonExtents(which)
+    local h = which or p
     local out = {}
-    for _, b in ipairs(p and p.buttons or {}) do
+    for _, b in ipairs(h and h.buttons or {}) do
         local x = b.layoutX or 0
-        out[#out + 1] = { left = x, right = x + b:GetWidth(), width = WIDTH }
+        out[#out + 1] = { left = x, right = x + b:GetWidth(), width = h.contentWidth or WIDTH }
     end
     return out
 end
@@ -287,14 +350,6 @@ end
 
 -- Building --------------------------------------------------------------------------------------
 
-local function button(labelKey, tipKey, onClick, icon)
-    local b = Controls.Button(p, { text = L[labelKey], height = BUTTON_H, icon = icon, onClick = onClick,
-        tip = function() return L[tipKey] end })
-    b.labelKey = labelKey
-    p.buttons[#p.buttons + 1] = b
-    return b
-end
-
 local function create()
     local window = ns.Window.Frame()
     p = CreateFrame("Frame", NAME, window)
@@ -314,20 +369,9 @@ local function create()
     h.title = Controls.Text(h, "header")
     h.title:SetPoint("LEFT", h, "LEFT", 10, 0)
     h.title:SetPoint("RIGHT", h.close, "LEFT", -4, 0)
-    p.body = Controls.Scroll(p)
-    p.body:SetPoint("TOPLEFT", h, "BOTTOMLEFT", PAD, -PAD)
-    p.body:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -PAD, PAD + 2 * BUTTON_H + 2 * GAP)
-    p.texts, p.members, p.buttons = {}, {}, {}
-    p.whisper = button("DETAIL_WHISPER", "TIP_DETAIL_WHISPER", function() Detail.Whisper() end)
-    p.template = button("DETAIL_TEMPLATE", "TIP_DETAIL_TEMPLATE", function(self)
-        local row = current
-        if row then ns.Menu.Open(self, function(root) ns.Menu.AddWhisperTemplates(root, row) end) end
-    end, "ChevronDown")
-    p.invite = button("MENU_INVITE", "TIP_DETAIL_INVITE", function() Detail.Invite() end)
-    p.seen = button("DETAIL_SEEN", "TIP_DETAIL_SEEN", function() Detail.MarkSeen() end)
-    p.hide = button("MENU_HIDE", "TIP_DETAIL_HIDE", function() Detail.HideGroup() end)
-    p.ignore = button("DETAIL_IGNORE", "TIP_DETAIL_IGNORE", function() Detail.Ignore() end)
+    buildContent(p, h)
     p:SetScript("OnHide", function()
+        if ns.Layouts.EmbedsDetail() then return end
         local was = current
         current = nil
         if was then ns.Window.RefreshRows() end
@@ -336,20 +380,65 @@ local function create()
     if UISpecialFrames then table.insert(UISpecialFrames, NAME) end
 end
 
+-- The DETAILS layout's column part: a child of the window, placed by
+-- Layouts.lua; a title line (activity name, close cross) over the content.
+function Detail.CreateEmbedded(parent)
+    e = CreateFrame("Frame", NAME .. "Column", parent)
+    local h = CreateFrame("Frame", nil, e)
+    e.header = h
+    h:SetHeight(TITLE_H)
+    h:SetPoint("TOPLEFT", PAD, 0)
+    h:SetPoint("TOPRIGHT", -PAD, 0)
+    h.close = Controls.CloseButton(h, 14, function() Detail.Close() end, function() return L.TIP_CLOSE end)
+    h.close:SetPoint("RIGHT", h, "RIGHT", 0, 0)
+    h.title = Controls.Text(h, "activity")
+    h.title:SetPoint("LEFT", h, "LEFT", 0, 0)
+    h.title:SetPoint("RIGHT", h.close, "LEFT", -4, 0)
+    buildContent(e, h)
+    e.body:ClearAllPoints()
+    e.body:SetPoint("TOPLEFT", h, "BOTTOMLEFT", 0, -GAP)
+    e.body:SetPoint("BOTTOMRIGHT", e, "BOTTOMRIGHT", -PAD, PAD + 2 * BUTTON_H + 2 * GAP)
+    e:Hide()
+    return e
+end
+
+function Detail.Embedded() return e end
+
 -- Public ----------------------------------------------------------------------------------------
 
 function Detail.Open(row)
     if not ns.Window.Frame() then return end
-    if not p then create() end
     current = row
-    p:Show()
-    Detail.Layout(S("height"))
-    Detail.Refresh()
+    if ns.Layouts.EmbedsDetail() then
+        if p then p:Hide() end
+        e:Show()
+        Detail.Refresh()
+    else
+        if not p then create() end
+        p:Show()
+        Detail.Layout(ns.Layouts.Height())
+        Detail.Refresh()
+    end
     ns.Window.RefreshRows()
+    ns.Column.Refresh()
 end
 
 function Detail.Close()
     if p then p:Hide() end
+    if e then e:Hide() end
+    local was = current
+    current = nil
+    if was then ns.Window.RefreshRows() end
+    ns.Column.Refresh()
+end
+
+-- The layout changed: the open group moves to the other host.
+function Detail.Rehost()
+    local row = current
+    if p then p:Hide() end
+    if e then e:Hide() end
+    current = nil
+    if row then Detail.Open(row) else ns.Column.Refresh() end
 end
 
 -- The same group again closes the panel; another one switches it.

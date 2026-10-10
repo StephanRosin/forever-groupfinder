@@ -128,6 +128,7 @@ local ENUMS = {
     category = { [2] = true, [114] = true, [116] = true, [118] = true, [120] = true },
     borderStyle = { NONE = true, FLAT = true, GOLD = true },
     bgMode = { SOLID = true, GRADIENT = true, TEXTURE = true },
+    layout = { SIDEBAR = true, STACKED = true, DETAILS = true },
 }
 for _, name in ipairs(Settings.TEXT_STYLES) do
     ENUMS[name .. "Flag"] = { [""] = true, OUTLINE = true, THICKOUTLINE = true, SHADOW = true }

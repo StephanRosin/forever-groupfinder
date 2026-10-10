@@ -31,6 +31,14 @@ Settings.DEFAULTS = {
     scale = 100,            -- percent
     locked = false,
     sideWidth = 190,        -- the side panel of the window
+    -- The arrangement (Layouts.lua): SIDEBAR (activity column), STACKED
+    -- (narrow, activities in a dropdown) or DETAILS (list and a details
+    -- column). Each has its own size: width / height are the SIDEBAR's.
+    layout = "SIDEBAR",
+    stackedWidth = 480,
+    stackedHeight = 560,
+    detailsWidth = 880,
+    detailsHeight = 480,
 
     -- Search and list
     minInterval = 1,        -- seconds between two searches (Blizzard: none, one in flight)
@@ -123,6 +131,10 @@ Settings.RANGES = {
     height = { 320, 800 },
     scale = { 50, 150 },
     sideWidth = { 150, 280 },
+    stackedWidth = { 420, 900 },
+    stackedHeight = { 360, 1000 },
+    detailsWidth = { 720, 1300 },
+    detailsHeight = { 360, 900 },
     minInterval = { 1, 15 },
     rowHeight = { 16, 36 },
     playerRowHeight = { 26, 50 },
