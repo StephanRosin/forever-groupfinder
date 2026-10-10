@@ -442,8 +442,6 @@ function Detail.CreateEmbedded(parent)
     return e
 end
 
-function Detail.Embedded() return e end
-
 -- Public ----------------------------------------------------------------------------------------
 
 -- The DETAILS layout's column comes and goes with the open group: the

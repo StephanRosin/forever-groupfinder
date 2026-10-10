@@ -5,9 +5,8 @@ local L = ns.L
 -- 2 FunRelaxed, 3 FunSerious, 4 Expert (0 none). Names come from
 -- Blizzard's GROUP_FINDER_GENERAL_PLAYSTYLE1..4 when the client has them
 -- (as its GetGeneralPlaystyleString), else from our locales; the rows use
--- short labels. My choice is remembered per character. A category whose
--- info says showPlaystyleDropdown requires one before posting (as
--- Blizzard's listing does).
+-- short labels. My choice is remembered per character; every listing
+-- needs one before posting.
 local Playstyle = {}
 ns.Playstyle = Playstyle
 

@@ -15,7 +15,6 @@ Undo.SECONDS = 8
 local bar
 local pending   -- { kind = "IGNORE" | "HIDE", value = name | key, until = GetTime() + SECONDS }
 
-function Undo.Pending() return pending end
 function Undo.Frame() return bar end
 
 local function show()

@@ -43,12 +43,6 @@ function Border.Snap(v, minPixels)
     return v
 end
 
--- How far the border reaches out from its box.
-function Border.Extent(look)
-    if look.style == "NONE" then return 0 end
-    return Border.Snap(look.size, 1)
-end
-
 -- Ring ------------------------------------------------------------------------
 
 local function newRing(owner, sublevel)
@@ -287,10 +281,4 @@ function Border.Draw(owner, box, look)
     end
     showRing(p.line, hasLine)
     drawShadow(p.shadow, box, look, size, radius)
-end
-
--- For the tests: the eight ring pieces and whether the line shows.
-function Border.Pieces(owner)
-    local p = parts[owner]
-    return p and ringPieces(p.ring) or {}, p and ringPieces(p.line) or {}
 end

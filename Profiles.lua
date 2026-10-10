@@ -118,9 +118,6 @@ function ns.DeleteProfile(name)
     return true
 end
 
--- Tests only: forget the lazy start.
-function ns.ResetProfileState() ready = false end
-
 -- ---------------------------------------------------------------------------
 -- The dialogs behind the two profile buttons in the options. Written after
 -- Blizzard's own dialogs: `hasEditBox = 1` and `dialog:GetEditBox()`. Their

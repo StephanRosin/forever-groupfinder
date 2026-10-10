@@ -267,7 +267,7 @@ end
 function Finder.CategoryInfo(id)
     local info = C_LFGList.GetLfgCategoryInfo(id)
     if not info then return nil end
-    return { name = plain(info.name), showPlaystyle = plain(info.showPlaystyleDropdown) }
+    return { name = plain(info.name) }
 end
 
 function Finder.ActivityGroupName(groupID)

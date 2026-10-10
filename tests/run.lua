@@ -687,13 +687,6 @@ check("%s is allowed", M.Reveal(("<%s>"):format(M.Secret("Bob"))), "<Bob>")
 check("a formatted secret stays secret", issecretvalue(string.format("%s", M.Secret("Bob"))), true)
 check("secret key found", M.FindSecretKey({ a = { [sv] = 1 } }) ~= nil, true)
 
-local Format, Meter = ns.Format, ns.Meter
-local function revealed(fn, ...)
-    local ok, v = pcall(fn, ...)
-    if not ok then return "ERROR: " .. tostring(v) end
-    return M.Reveal(v)
-end
-
 
 section("Languages")
 local base = ns.Locales.enUS

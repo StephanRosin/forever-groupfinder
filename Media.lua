@@ -71,7 +71,6 @@ function Media.Path(kind, name)
     return path or Media.DEFAULT[kind]
 end
 
-function Media.FontNames() return Media.Names("font") end
 function Media.FontPath(name) return Media.Path("font", name) end
 
 -- A text style (Settings.TextStyle) on a font string. SHADOW is a drop
@@ -109,27 +108,4 @@ function Media.ApplyBackground(tex, mode, color, alpha, textureName)
     local top = CreateColor(c[1], c[2], c[3], alpha)
     local bottom = mode == "GRADIENT" and CreateColor(c[1], c[2], c[3], alpha * 0.35) or top
     tex:SetGradient("VERTICAL", bottom, top)
-end
-
--- Blizzard's font on one of its font strings, remembered before we change
--- it, and put back. SetFontObject alone does not restore: after SetFont the
--- string still names the same font object, and setting that one again
--- changes nothing (seen in game). So file, size, flags and shadow go back
--- explicitly.
-function Media.Snapshot(fs)
-    local file, size, flags = fs:GetFont()
-    local sx, sy = fs:GetShadowOffset()
-    local r, g, b, a = fs:GetShadowColor()
-    local tr, tg, tb, ta = fs:GetTextColor()
-    return { object = fs:GetFontObject(), file = file, size = size, flags = flags or "",
-             shadow = { sx or 0, sy or 0 }, shadowColor = { r or 0, g or 0, b or 0, a or 1 },
-             color = { tr or 1, tg or 1, tb or 1, ta or 1 } }
-end
-
-function Media.Restore(fs, o, withColor)
-    if o.file then fs:SetFont(o.file, o.size, o.flags) end
-    if o.object then fs:SetFontObject(o.object) end
-    fs:SetShadowOffset(o.shadow[1], o.shadow[2])
-    fs:SetShadowColor(o.shadowColor[1], o.shadowColor[2], o.shadowColor[3], o.shadowColor[4])
-    if withColor then fs:SetTextColor(o.color[1], o.color[2], o.color[3], o.color[4]) end
 end
