@@ -244,7 +244,7 @@ function Finder.ActivityInfo(id)
         categoryID = plain(a.categoryID), groupFinderActivityGroupID = plain(a.groupFinderActivityGroupID),
         fullName = plain(a.fullName), shortName = plain(a.shortName),
         minLevelSuggestion = plain(a.minLevelSuggestion), maxLevelSuggestion = plain(a.maxLevelSuggestion),
-        maxNumPlayers = plain(a.maxNumPlayers),
+        maxNumPlayers = plain(a.maxNumPlayers), mapID = plain(a.mapID),
     }
 end
 

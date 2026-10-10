@@ -320,3 +320,4 @@ L.OPT_HIDDEN_HINT = "Les groupes masqués reviennent d'eux-mêmes après la dur�
 L.OPT_HIDDEN_EMPTY = "Aucun groupe n'est masqué."
 L.OPT_HIDDEN_ITEM = "%s - %s (encore %s)"
 L.OPT_UNHIDE_ALL = "Tout réafficher"
+L.OPT_ABBREVIATE = "Noms d'activité courts dans les lignes de joueurs (noms complets dans l'infobulle)"

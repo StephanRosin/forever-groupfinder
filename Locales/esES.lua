@@ -320,3 +320,4 @@ L.OPT_HIDDEN_HINT = "Los grupos ocultos vuelven solos tras el tiempo de memoria.
 L.OPT_HIDDEN_EMPTY = "No hay grupos ocultos."
 L.OPT_HIDDEN_ITEM = "%s - %s (quedan %s)"
 L.OPT_UNHIDE_ALL = "Mostrar todos"
+L.OPT_ABBREVIATE = "Nombres de actividad cortos en las filas de jugadores (completos en la descripción emergente)"

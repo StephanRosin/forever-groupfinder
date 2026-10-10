@@ -48,6 +48,7 @@ function Activities.Info(id)
         id = id, name = name, shortName = short, categoryID = a.categoryID,
         minLevel = a.minLevelSuggestion or 0, maxLevel = a.maxLevelSuggestion or 0,
         maxPlayers = a.maxNumPlayers or 0,
+        mapID = a.mapID,       -- the instance (Abbrev.lua's first key)
         groupID = a.groupFinderActivityGroupID,
         groupName = a.groupFinderActivityGroupID and Finder.ActivityGroupName(a.groupFinderActivityGroupID) or nil,
     }

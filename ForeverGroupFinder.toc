@@ -30,6 +30,7 @@ Border.lua
 Finder.lua
 Roles.lua
 Activities.lua
+Abbrev.lua
 Memory.lua
 Listing.lua
 Results.lua

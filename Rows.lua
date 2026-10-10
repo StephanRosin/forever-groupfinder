@@ -430,6 +430,18 @@ end
 
 -- Players --------------------------------------------------------------------------------
 
+-- A chip's tooltip: the activity's full name and level range.
+function Rows.ShowChipTooltip(chip)
+    local info = Activities.Info(chip.activityID)
+    GameTooltip:SetOwner(chip, "ANCHOR_RIGHT")
+    local name = info and info.name or L.UNKNOWN_ACTIVITY   -- plain: our own cache entry
+    GameTooltip:AddLine(name, Controls.GOLD[1], Controls.GOLD[2], Controls.GOLD[3])
+    if info and info.minLevel > 0 and info.maxLevel > 0 then
+        GameTooltip:AddLine(L.TIP_LEVELS:format(info.minLevel, info.maxLevel), 1, 1, 1)
+    end
+    GameTooltip:Show()
+end
+
 local function newChip(row)
     local chip = CreateFrame("Frame", nil, row)
     chip.bg = chip:CreateTexture(nil, "BACKGROUND")
@@ -438,6 +450,19 @@ local function newChip(row)
     chip.edges = Controls.Outline(chip, S("chipBorderColor"))
     chip.text = Controls.Text(chip, "chip")
     chip.text:SetPoint("CENTER")
+    -- Hover only: the full name and levels; clicks go through to the row.
+    if chip.SetMouseMotionEnabled then
+        chip:SetMouseMotionEnabled(true)
+        if chip.SetMouseClickEnabled then chip:SetMouseClickEnabled(false) end
+    end
+    chip:SetScript("OnEnter", function(self) Rows.ShowChipTooltip(self) end)
+    chip:SetScript("OnLeave", function()
+        if row:IsMouseOver() and row.entry then
+            Rows.ShowTooltip(row, row.entry, ns.Window.Elapsed())
+        else
+            GameTooltip:Hide()
+        end
+    end)
     return chip
 end
 
@@ -504,7 +529,8 @@ local function layoutChips(row, entry, x, top, bottom, w)
         row.chips[i] = chip
         Controls.Restyle(chip.text)
         Controls.PaintOutline(chip.edges, border)
-        chip.text:SetText(Activities.Name(id) or L.UNKNOWN_ACTIVITY)
+        chip.activityID = id
+        chip.text:SetText(ns.Abbrev.Chip(id))
         local cw = math.floor(chip.text:GetStringWidth() + 10 + 0.5)
         local last = i == #ids
         local room = w - used - (line == 2 and not last and MORE_W or 0)

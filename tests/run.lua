@@ -133,6 +133,7 @@ local EXPECTED = {
     chipFont = "Friz Quadrata", chipSize = 10, chipFlag = "SHADOW",
     ageFont = "Friz Quadrata", ageSize = 10, ageFlag = "SHADOW",
     playerRoleIconSize = 0, groupRoleIconSize = 16, classIconSize = 14, classColorNames = true, seenAlpha = 45,
+    abbreviate = true,
     noRoomAlpha = 45,
 }
 local expectedCount = 0
@@ -1048,6 +1049,60 @@ check("cache holds", A.Name(7), "New Place")
 M.Fire("PLAYER_LEVEL_UP")
 check("level up refreshes the cache", A.Name(7), "Renamed")
 
+section("Abbreviations")
+do
+local A = ns.Abbrev
+local function ab(name, mapID, short) return A.For({ name = name, mapID = mapID, shortName = short or name }) end
+-- (1) by the instance's mapID, whatever the language
+check("map: RFC", ab("Sima de Fuego", 389), "RFC")
+check("map: Deadmines", ab("Les Mortemines", 36), "DM")
+check("map: SFK", ab("Burg Schattenfang", 33), "SFK")
+check("map: Stocks", ab("The Stockade", 34), "Stocks")
+check("map: Gnomer", ab("Gnomeregan", 90), "Gnomer")
+check("map: SM Graveyard", ab("Scarlet Monastery - Graveyard", 189), "SM GY")
+check("map: SM Library", ab("Scarlet Monastery - Library", 189), "SM Lib")
+check("map: SM Armory", ab("Scarlet Monastery - Armory", 189), "SM Arm")
+check("map: SM Cathedral", ab("Scarlet Monastery - Cathedral", 189), "SM Cath")
+check("map: LBRS", ab("Lower Blackrock Spire", 229), "LBRS")
+check("map: UBRS", ab("Upper Blackrock Spire", 229), "UBRS")
+check("map: DM East", ab("Dire Maul - East", 429), "DME")
+check("map: DM West", ab("Dire Maul - West", 429), "DMW")
+check("map: DM North", ab("Dire Maul - North", 429), "DMN")
+check("map: Strat Live", ab("Stratholme - Live", 329), "Strat Live")
+check("map: Strat UD", ab("Stratholme - Undead", 329), "Strat UD")
+check("map: Strat without a wing", ab("Stratholme", 329), "Strat")
+check("map: Scholo", ab("Scholomance", 289), "Scholo")
+for mapID, want in pairs({ [409] = "MC", [249] = "Ony", [469] = "BWL", [309] = "ZG", [509] = "AQ20", [531] = "AQ40",
+    [533] = "Naxx", [43] = "WC", [48] = "BFD", [47] = "RFK", [129] = "RFD", [70] = "Ulda", [209] = "ZF",
+    [349] = "Mara", [109] = "ST", [230] = "BRD" }) do
+    check("map " .. mapID, ab("x", mapID), want)
+end
+-- (2) by the English name (no or unknown mapID), case-insensitive
+check("name: Wailing Caverns", ab("Wailing Caverns", nil, "Wailing Caverns"), "WC")
+check("name: case-insensitive", ab("THE DEADMINES"), "DM")
+check("name: unknown mapID falls back", ab("Molten Core", 99999), "MC")
+check("name: SM wing", ab("Scarlet Monastery: Library"), "SM Lib")
+check("name: Dire Maul wing", ab("Dire Maul North"), "DMN")
+for name, want in pairs({ ["Ruins of Lordaeron"] = "RoL", ["Hall of Thanes"] = "Thanes", ["Excavation Site"] = "Excav",
+    ["City of Dalaran"] = "Dala", ["The Drowned City"] = "Drowned", ["Krol'dok Stronghold"] = "Krol'dok",
+    ["Alcaz Island Prison"] = "Alcaz", ["Blackmaw Hold"] = "Blackmaw", ["Shaper's Terrace"] = "Shaper's" }) do
+    check("Forever: " .. name, ab(name), want)
+end
+-- (3) the client's short name when short, else initials
+check("short name used", ab("Some Long Zone Quests", nil, "SLZQ"), "SLZQ")
+check("long short name: initials", ab("Hall of Something Else", nil, "Hall of Something Else"), "HSE")
+check("initials skip of / the", A.Initials("The Hall of Kings"), "HK")
+check("a short full name stays", ab("Duskwood"), "Duskwood")
+check("nil info", A.For(nil), nil)
+-- The setting.
+lfg.activities[22] = lfg.activities[22] or { categoryID = 2, fullName = "The Deadmines", shortName = "DM", minLevelSuggestion = 18, maxLevelSuggestion = 23, maxNumPlayers = 5 }
+check("chip text abbreviated by default", A.Chip(22), "DM")
+Settings.Set("abbreviate", false)
+check("setting off: full name", A.Chip(22), "The Deadmines")
+Settings.Set("abbreviate", nil)
+check("unknown activity", A.Chip(987654), "Unknown activity")
+end
+
 section("Memory")
 local Mem = ns.Memory
 check("Memory exists", Mem ~= nil, true)
@@ -1605,8 +1660,18 @@ check("player chips for the activities that fit", (function()
     local t = {}
     for i = 1, 3 do t[#t + 1] = p1.chips[i] and p1.chips[i]:IsShown() and p1.chips[i].text:GetText() or "-" end
     return table.concat(t, ",")
-end)(), "The Deadmines,Wailing Caverns,-")
-check("the rest counted", p1.more:GetText(), "+1")
+end)(), "DM,WC,SFK")
+check("abbreviated: all fit, nothing counted", p1.more:GetText(), "")
+p1.chips[1]:GetScript("OnEnter")(p1.chips[1])
+check("chip tooltip: full name", GameTooltip._lines and GameTooltip._lines[1] and GameTooltip._lines[1][1], "The Deadmines")
+check("chip tooltip: levels", GameTooltip._lines[2] and GameTooltip._lines[2][1], "Levels 18 to 23")
+p1.chips[1]:GetScript("OnLeave")(p1.chips[1])
+check("row tooltip keeps full names", (function()
+    for _, line in ipairs(ns.Rows.TooltipLines(p1.entry, 0)) do
+        if (line.text or ""):find("The Deadmines", 1, true) then return true end
+    end
+    return false
+end)(), true)
 check("player role column: tank and damage, large", p1.roles[1]:IsShown() and p1.roles[3]:IsShown()
     and not p1.roles[2]:IsShown() and p1.roles[1]._atlas, "groupfinder-icon-role-large-tank")
 check("role icons side by side, the same size", p1.roles[1]._w == p1.roles[3]._w and p1.roles[1]._w >= 18, true)
@@ -2124,6 +2189,7 @@ W.Rebuild()
 do
 lfg.activities[25] = { categoryID = 2, fullName = "Blackfathom Deeps", shortName = "BFD", minLevelSuggestion = 20, maxLevelSuggestion = 30, maxNumPlayers = 5 }
 lfg.activities[26] = { categoryID = 2, fullName = "Gnomeregan", shortName = "Gnome", minLevelSuggestion = 24, maxLevelSuggestion = 34, maxNumPlayers = 5 }
+Settings.Set("abbreviate", false)   -- full names: the flow over two lines
 local chipPool = ns.Rows.NewPool(CreateFrame("Frame", nil, UIParent))
 local function playerWith(ids, comment)
     local row = chipPool:Acquire("PLAYER")

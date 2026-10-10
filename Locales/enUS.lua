@@ -341,3 +341,4 @@ L.OPT_HIDDEN_HINT = "Hidden groups come back by themselves after the memory time
 L.OPT_HIDDEN_EMPTY = "No group is hidden."
 L.OPT_HIDDEN_ITEM = "%s - %s (%s left)"
 L.OPT_UNHIDE_ALL = "Unhide all"
+L.OPT_ABBREVIATE = "Short activity names in player rows (full names in the tooltip)"

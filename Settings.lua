@@ -58,6 +58,7 @@ Settings.DEFAULTS = {
     groupRoleIconSize = 16, -- a member slot in a group row
     classIconSize = 14,
     classColorNames = true, -- else nameColor
+    abbreviate = true,      -- short activity names in the player rows' chips (Abbrev.lua)
     chipBorderColor = { 0.36, 0.29, 0.13 },
     openEdgeColor = { 0.25, 0.75, 0.37 },
     seenAlpha = 45,         -- percent: how visible a seen row stays

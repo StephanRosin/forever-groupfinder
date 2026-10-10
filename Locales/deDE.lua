@@ -320,3 +320,4 @@ L.OPT_HIDDEN_HINT = "Ausgeblendete Gruppen kommen nach der Merkzeit von selbst z
 L.OPT_HIDDEN_EMPTY = "Keine Gruppe ist ausgeblendet."
 L.OPT_HIDDEN_ITEM = "%s - %s (noch %s)"
 L.OPT_UNHIDE_ALL = "Alle wieder zeigen"
+L.OPT_ABBREVIATE = "Kurze Aktivitätsnamen in Spielerzeilen (volle Namen im Tooltip)"
