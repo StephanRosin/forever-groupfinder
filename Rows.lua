@@ -255,10 +255,12 @@ local function newBase(parent)
     row.strike:SetColorTexture(Controls.RED[1], Controls.RED[2], Controls.RED[3], 0.9)
     row:SetScript("OnEnter", function(self)
         self.hover:Show()
+        Rows.ShowInvite(self, true)
         if self.entry then Rows.ShowTooltip(self, self.entry, ns.Window.Elapsed()) end
     end)
     row:SetScript("OnLeave", function(self)
         self.hover:Hide()
+        if not self:IsMouseOver() then Rows.ShowInvite(self, false) end
         GameTooltip:Hide()
     end)
     row:SetScript("OnClick", function(self, mouse)
@@ -273,6 +275,13 @@ local function newBase(parent)
         end
     end)
     return row
+end
+
+-- A player row's Invite shows only while the mouse is over the row (it is
+-- in the right-click menu too); the age stays visible.
+function Rows.ShowInvite(row, on)
+    if not row.invite then return end
+    row.invite:SetShown(on and row.invite.leader ~= nil)
 end
 
 -- Whisper the leader (or the player): a player row's left click; groups
@@ -543,6 +552,8 @@ local function newPlayer(parent)
     row.comment = Controls.Text(row, "comment")
     row.invite = Controls.Button(row, { text = L.INVITE, width = INVITE_W, size = "row",
         onClick = function(self) if self.leader then ns.Finder.Invite(self.leader) end end })
+    row.invite:HookScript("OnLeave", function() if not row:IsMouseOver() then Rows.ShowInvite(row, false) end end)
+    row.invite:Hide()
     return row
 end
 
@@ -655,7 +666,7 @@ local function layoutPlayer(row, entry, width, elapsed)
     row.area:SetText(area)
     -- Chips over the comment.
     local bx = x + PLAYER_LEFT_W
-    local bw = math.max(40, width - bx - INVITE_W - AGE_W - 2 * PAD)
+    local bw = math.max(40, width - bx - AGE_W - 2 * PAD)
     -- The comment after the chips on line 2 while room remains (cut off
     -- with "..."), else only in the tooltip.
     local used2 = layoutChips(row, entry, bx, top, bottom, bw) or 0
@@ -669,7 +680,7 @@ local function layoutPlayer(row, entry, width, elapsed)
     row.invite.leader = type(entry.leader) == "string" and entry.leader or nil
     row.invite:ClearAllPoints()
     row.invite:SetPoint("RIGHT", row, "RIGHT", -PAD - AGE_W, 0)
-    row.invite:SetShown(row.invite.leader ~= nil)
+    Rows.ShowInvite(row, row:IsMouseOver())
     row.age:ClearAllPoints()
     row.age:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
     Rows.SetAge(row, entry, elapsed)

@@ -1756,7 +1756,19 @@ check("player roles: tank shown", p1.roles[1]:IsShown(), true)
 check("player roles: healer hidden", p1.roles[2]:IsShown(), false)
 check("player comment", p1.comment:GetText(), "tank lf")
 check("player age", p1.age:GetText(), "1 min")
-check("player invite button", p1.invite:IsShown(), true)
+check("player invite hidden until hover", p1.invite:IsShown(), false)
+check("the age stays visible", p1.age:IsShown(), true)
+p1._mouseOver = true
+p1:GetScript("OnEnter")(p1)
+check("player invite on hover", p1.invite:IsShown(), true)
+p1._mouseOver = false
+p1:GetScript("OnLeave")(p1)
+check("gone after the hover", p1.invite:IsShown(), false)
+p1:GetScript("OnEnter")(p1)
+check("player menu still offers Invite", (function()
+    ns.Menu.OpenRowMenu(p1, p1.entry)
+    return M.MenuFind(M.LastMenu(), "Invite") ~= nil
+end)(), true)
 click(p1.invite)
 check("invite from the player row", M.invited[#M.invited], "Solo")
 
@@ -2891,10 +2903,10 @@ lfg.reset()
 
 -- The invite label follows a language change (it was fixed at row creation).
 Locale.Set("frFR"); ns.Window.Refresh()
-check("invite label follows the language", (function() for _, r in ipairs(ns.Window.Frame().pool.used) do if r.kind == "PLAYER" and r.invite:IsShown() then return r end end end)().invite.label:GetText(), ns.L.INVITE)
+check("invite label follows the language", (function() for _, r in ipairs(ns.Window.Frame().pool.used) do if r.kind == "PLAYER" and r.invite.leader then return r end end end)().invite.label:GetText(), ns.L.INVITE)
 check("invite label is French", ns.L.INVITE, "Inviter")
 Locale.Set("AUTO"); ns.Window.Refresh()
-check("invite label back to the game language", (function() for _, r in ipairs(ns.Window.Frame().pool.used) do if r.kind == "PLAYER" and r.invite:IsShown() then return r end end end)().invite.label:GetText(), ns.L.INVITE)
+check("invite label back to the game language", (function() for _, r in ipairs(ns.Window.Frame().pool.used) do if r.kind == "PLAYER" and r.invite.leader then return r end end end)().invite.label:GetText(), ns.L.INVITE)
 
 section("Blizzard redirection")
 local B = ns.Blizzard
