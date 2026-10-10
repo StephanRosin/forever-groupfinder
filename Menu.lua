@@ -167,14 +167,9 @@ function Menu.BuildRowMenu(root, row)
         Memory.MarkSeen(row.key)
         ns.Window.RefreshRows()
     end)
-    root:CreateButton(L.MENU_HIDE, function()
-        Memory.Hide(row.key)
-        ns.Window.Rebuild()
-    end)
-    local ignore = root:CreateButton(L.MENU_IGNORE, function()
-        Memory.Ignore(leader)
-        ns.Window.Rebuild()
-    end)
+    -- Both offer "Undo" for a few seconds (Undo.lua).
+    root:CreateButton(L.MENU_HIDE, function() ns.Undo.Hide(row) end)
+    local ignore = root:CreateButton(L.MENU_IGNORE, function() ns.Undo.Ignore(leader) end)
     if not hasName then
         for _, item in ipairs({ whisper, templates, invite, ignore }) do
             if item.SetEnabled then item:SetEnabled(false) end

@@ -153,6 +153,7 @@ function Window.Rebuild()
     built = Results.Build(results, context(true))
     Window.RenderList()
     ns.Column.Refresh()   -- the leader's fitting players come from the list
+    if f then Window.LayoutFilters() end   -- the Ignored / Hidden counters
 end
 
 local function onResults()
@@ -315,6 +316,21 @@ function Window.LayoutFilters()
     end
     for _, key in ipairs(FILTER_KEYS) do chips[key]:SetOn(S(key)) end
     chips.language:SetOn(n > 0)
+    -- The counters, while there are any and while they fit.
+    local width = bar:GetWidth()
+    for _, entry in ipairs({ { chips.ignored, #ns.Memory.IgnoreList(), L.CHIP_IGNORED },
+        { chips.hidden, #ns.Memory.HiddenList(), L.CHIP_HIDDEN } }) do
+        local c, count = entry[1], entry[2]
+        c:SetLabel(entry[3]:format(count))
+        local w = c:Fit()
+        local show = count > 0 and x + w <= width
+        c:SetShown(show)
+        if show then
+            c:ClearAllPoints()
+            c:SetPoint("LEFT", bar, "LEFT", x, 0)
+            x = x + w + 4
+        end
+    end
 end
 
 local function createFilters(parent)
@@ -327,6 +343,12 @@ local function createFilters(parent)
     end
     bar.chips.language = Controls.Chip(bar, { text = "", icon = "ChevronDown",
         onClick = function(self) openLanguageMenu(self) end, tip = function() return L.TIP_LANGUAGES end })
+    -- The way back to ignored leaders and hidden groups: their lists in the
+    -- options (only shown while there are any).
+    bar.chips.ignored = Controls.Chip(bar, { text = "", onClick = function() ns.Options.Open("list", "OPT_IGNORE") end,
+        tip = function() return L.TIP_CHIP_IGNORED end })
+    bar.chips.hidden = Controls.Chip(bar, { text = "", onClick = function() ns.Options.Open("list", "OPT_HIDDEN") end,
+        tip = function() return L.TIP_CHIP_HIDDEN end })
     bar.text = Controls.EditBox(bar, L.FILTER_TEXT, 40)
     bar.text:SetWidth(110)
     bar.text:SetHeight(16)
@@ -478,6 +500,7 @@ function Window.Tick()
     if not f then return end
     Window.UpdateHeader()
     ns.Listing.Tick()
+    ns.Undo.Tick()
     ns.ListingPanel.UpdateClock()
     local elapsed = Window.Elapsed()
     for _, row in ipairs(f.pool.used) do
@@ -540,6 +563,7 @@ local function create()
     f.list.empty = Controls.Text(f.list, "comment")
     f.list.empty:SetPoint("TOPLEFT", 4, -6)
     f.pool = Rows.NewPool(f.list.child)
+    f.undo = ns.Undo.Create(f.list)
     ns.Resize.Attach(f, resizeSpec)
     local acc = 0
     f:SetScript("OnUpdate", function(_, elapsed)
@@ -554,6 +578,7 @@ local function create()
         ns.Menu.CloseOwn()
         Layouts.ClosePopup(f)
         ns.Detail.Close()
+        ns.Undo.Clear()
         if f.moving then
             f:StopMovingOrSizing()
             f.moving = nil

@@ -104,3 +104,34 @@ function Memory.IgnoreList()
     table.sort(list)
     return list
 end
+
+-- Hidden groups ----------------------------------------------------------------------------
+
+function Memory.Unhide(key)
+    if type(key) == "string" then store().hidden[key] = nil end
+end
+
+function Memory.UnhideAll()
+    store().hidden = {}
+end
+
+-- The fresh hidden groups, soonest to expire last: { key, leader,
+-- activityIDs, remaining (seconds) }. The leader and activities come from
+-- the key ("Name|1,2").
+function Memory.HiddenList()
+    Memory.Prune()
+    local now, limit = Memory.now(), ns.Settings.Get("memoryMinutes") * 60
+    local list = {}
+    for key, at in pairs(store().hidden) do
+        local leader, ids = key:match("^(.*)|([%d,]*)$")
+        local activityIDs = {}
+        for id in (ids or ""):gmatch("%d+") do activityIDs[#activityIDs + 1] = tonumber(id) end
+        list[#list + 1] = { key = key, leader = leader or key, activityIDs = activityIDs,
+            remaining = math.max(0, limit - (now - at)) }
+    end
+    table.sort(list, function(a, b)
+        if a.remaining ~= b.remaining then return a.remaining > b.remaining end
+        return a.key < b.key
+    end)
+    return list
+end

@@ -2185,6 +2185,117 @@ check("size import clamped", (function() ns.Share.Import("FGF1:ts17:groupRoleIco
 Settings.ResetProfile()
 end
 
+-- Undo for hide / ignore; the counters lead to the lists in the options.
+do
+local U = ns.Undo
+U.Clear()
+local mem = ns.AccountDB().memory
+mem.hidden, mem.seen, mem.ignore = {}, {}, {}
+lfg.results, lfg.members, lfg.counts = {}, {}, {}
+result(1, "Grimnar", { member("Grimnar", "WARRIOR"), member("Ilvea", "MAGE") })
+result(2, "Thal", { member("Thal", "PRIEST"), member("Ra", "ROGUE") })
+W.SetCheckedList({ 22 })
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+local k = searches()
+local function rowOf(id)
+    for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == id then return row end end
+end
+check("no counters without entries", f.filters.chips.ignored:IsShown() or f.filters.chips.hidden:IsShown(), false)
+-- Hide from the details.
+click(rowOf(1))
+click(D.Frame().hide)
+check("hidden from the details", #W.Built().groups, 1)
+check("undo bar shown", f.undo:IsShown(), true)
+check("undo bar text", f.undo.text:GetText(), "Group hidden")
+check("undo button", f.undo.button.label:GetText(), "Undo")
+check("hidden counter", f.filters.chips.hidden:IsShown() and f.filters.chips.hidden.label:GetText(), "Hidden (1)")
+click(f.undo.button)
+check("undo brings the group back", #W.Built().groups, 2)
+check("undo bar gone", f.undo:IsShown(), false)
+check("hidden counter gone", f.filters.chips.hidden:IsShown(), false)
+-- Ignore from the menu; the bar goes after a few seconds.
+click(rowOf(2), "RightButton")
+M.MenuClick(M.MenuFind(M.LastMenu(), "Ignore the leader"))
+check("ignored from the menu", Memory.IsIgnored("Thal"), true)
+check("undo bar names the leader", f.undo:IsShown() and f.undo.text:GetText(), "Thal ignored")
+check("ignored counter", f.filters.chips.ignored:IsShown() and f.filters.chips.ignored.label:GetText(), "Ignored (1)")
+M.state.time = M.state.time + 3
+W.Tick()
+check("bar still there after 3 s", f.undo:IsShown(), true)
+M.state.time = M.state.time + 6
+W.Tick()
+check("bar gone after 8 s", f.undo:IsShown(), false)
+check("still ignored after the bar", Memory.IsIgnored("Thal"), true)
+click(f.undo.button)
+check("a late undo does nothing", Memory.IsIgnored("Thal"), true)
+-- Ignore from the details, undone.
+click(rowOf(1))
+click(D.Frame().ignore)
+check("ignored from the details", Memory.IsIgnored("Grimnar"), true)
+check("details closed", D.IsShown(), false)
+click(f.undo.button)
+check("undo unignores", Memory.IsIgnored("Grimnar"), false)
+check("none of it searched", searches(), k)
+-- The counter opens the ignore list in the options.
+click(f.filters.chips.ignored)
+check("counter opens the options", ns.Options.IsShown(), true)
+check("on the list page", (function()
+    local pg = M.byName["ForeverGroupFinderPagelist"]
+    return pg ~= nil and pg:IsShown()
+end)(), true)
+local ignoreHeader
+for _, row in ipairs(M.byName["ForeverGroupFinderPagelist"].rows) do
+    if row.labelKey == "OPT_IGNORE" then ignoreHeader = row end
+end
+check("scrolled to the ignore list", ns.Options.ScrollOffset() > 0 and ns.Options.ScrollOffset(), ignoreHeader.stackY)
+check("ignored leader listed", itemFor("Thal") ~= nil, true)
+check("hint mentions unignore", (function()
+    for _, fr in ipairs(M.frames) do
+        if fr.text and fr.text._text and fr.text._text:find("/fgf unignore", 1, true) and fr:IsVisible() then return true end
+    end
+    return false
+end)(), true)
+local thal = itemFor("Thal")
+thal.button:GetScript("OnClick")(thal.button)
+check("removed in the options", Memory.IsIgnored("Thal"), false)
+check("back in the list", #W.Built().groups, 2)
+-- Hidden groups in the options: one by one, or all.
+U.Hide(W.Built().groups[1])
+U.Hide(W.Built().groups[1])
+check("two hidden", #Memory.HiddenList(), 2)
+check("hidden list entry", Memory.HiddenList()[1].leader ~= nil and #Memory.HiddenList()[1].activityIDs, 1)
+check("remaining time", Memory.HiddenList()[1].remaining <= S("memoryMinutes") * 60, true)
+ns.Options.Toggle()
+click(f.filters.chips.hidden)
+local hiddenHeader
+for _, row in ipairs(M.byName["ForeverGroupFinderPagelist"].rows) do
+    if row.labelKey == "OPT_HIDDEN" then hiddenHeader = row end
+end
+check("counter opens the hidden groups", ns.Options.ScrollOffset(), hiddenHeader.stackY)
+local itemText = "Grimnar - The Deadmines (30 min left)"
+check("hidden group listed with activity and time", itemFor(itemText) ~= nil, true)
+local g = itemFor(itemText)
+g.button:GetScript("OnClick")(g.button)
+check("one unhidden", #Memory.HiddenList(), 1)
+check("its group back", #W.Built().groups, 1)
+local unhide
+for _, fr in ipairs(M.frames) do
+    if fr.text and fr.text._text == "Unhide all" and fr:IsVisible() then unhide = fr end
+end
+check("unhide all button", unhide ~= nil, true)
+unhide:GetScript("OnClick")(unhide)
+check("all unhidden", #Memory.HiddenList(), 0)
+check("all groups back", #W.Built().groups, 2)
+check("empty hint", (function()
+    for _, fr in ipairs(M.frames) do
+        if fr.text and fr.text._text == "No group is hidden." and fr:IsVisible() then return true end
+    end
+    return false
+end)(), true)
+ns.Options.Toggle()
+U.Clear()
+end
+
 -- The header as Forever Quest Log's (Tracker.lua): 32 high, shine and line,
 -- grip and title, the age as a grey note, flat 22 px icon buttons from the
 -- right edge, 5 in and 1 apart.

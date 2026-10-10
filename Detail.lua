@@ -342,17 +342,17 @@ function Detail.MarkSeen()
 end
 
 function Detail.HideGroup()
-    if not current then return end
-    ns.Memory.Hide(current.key)
+    local row = current
+    if not row then return end
     Detail.Close()
-    ns.Window.Rebuild()
+    ns.Undo.Hide(row)
 end
 
 function Detail.Ignore()
     local leader = current and leaderOf(current)
     if not leader then return end
     Detail.Close()
-    ns.Memory.SetIgnored(leader, true)
+    ns.Undo.Ignore(leader)
 end
 
 -- Building --------------------------------------------------------------------------------------

@@ -309,7 +309,7 @@ local function listFilterRows()
         if cachedAt ~= Options.generation then cache, cachedAt = ns.Memory.IgnoreList(), Options.generation end
         return cache
     end
-    return append(rows, listRows(ignored, Options.LIST_SLOTS, function(i)
+    append(rows, listRows(ignored, Options.LIST_SLOTS, function(i)
         return {
             type = "item", label = function() return ignored()[i] or "" end, button = "OPT_REMOVE",
             onClick = function()
@@ -318,6 +318,43 @@ local function listFilterRows()
             end,
         }
     end, "OPT_IGNORE_EMPTY"))
+    -- Hidden groups (they come back by themselves after the memory time).
+    local hiddenCache, hiddenAt
+    local function hidden()
+        if hiddenAt ~= Options.generation then hiddenCache, hiddenAt = ns.Memory.HiddenList(), Options.generation end
+        return hiddenCache
+    end
+    local function unhidden()
+        if ns.Window.IsShown() then ns.Window.Rebuild() end
+        Options.Refresh()
+    end
+    append(rows, {
+        { type = "header", label = "OPT_HIDDEN" },
+        { type = "text", label = "OPT_HIDDEN_HINT", height = 40 },
+        visibleIf({ type = "buttons", buttons = {
+            { label = "OPT_UNHIDE_ALL", width = 200, onClick = function()
+                ns.Memory.UnhideAll()
+                unhidden()
+            end },
+        } }, function() return #hidden() > 0 end),
+    })
+    return append(rows, listRows(hidden, Options.LIST_SLOTS, function(i)
+        return {
+            type = "item", button = "OPT_REMOVE",
+            label = function()
+                local h = hidden()[i]
+                if not h then return "" end
+                local names = {}
+                for _, id in ipairs(h.activityIDs) do names[#names + 1] = ns.Activities.Name(id) or L.UNKNOWN_ACTIVITY end
+                return L.OPT_HIDDEN_ITEM:format(h.leader, table.concat(names, ", "), ns.Controls.Age(h.remaining) or "")
+            end,
+            onClick = function()
+                local h = hidden()[i]
+                if h then ns.Memory.Unhide(h.key) end
+                unhidden()
+            end,
+        }
+    end, "OPT_HIDDEN_EMPTY"))
 end
 
 -- Templates: my listing's warning, the saved listings (delete), the whisper
@@ -594,6 +631,7 @@ local function buildRows(page, spec)
     page.allRows = {}
     for _, opt in ipairs(spec) do
         local row, height = widgetFor(page, opt)
+        row.labelKey = type(opt.label) == "string" and opt.label or nil
         stack.add(row, height)
         row.stackHeight, row.visibleIf = height or row:GetHeight(), opt.visible
         page.allRows[#page.allRows + 1] = row
@@ -615,6 +653,7 @@ local function stackVisible(page)
             row:SetPoint("TOPLEFT", page, "TOPLEFT", 0, -y)
             row:SetPoint("TOPRIGHT", page, "TOPRIGHT", 0, -y)
             rows[#rows + 1] = row
+            row.stackY = y
             y = y + row.stackHeight
         end
     end
@@ -907,11 +946,31 @@ function Options.Refresh()
 end
 ns.RefreshOptions = Options.Refresh
 
-function Options.Open(pageID)
+-- section: a header's label key on that page to scroll to (the filter
+-- bar's "Ignored (n)" opens the ignore list this way).
+function Options.Open(pageID, section)
     ensureWindow()
     frame:Show()
     Options.ShowPage(pageID or current or "general")
+    if section then Options.ScrollTo(section) end
 end
+
+function Options.ScrollTo(section)
+    local page = current and pages[current]
+    if not page then return end
+    for _, row in ipairs(page.rows or {}) do
+        if row.isSection and row.labelKey == section then
+            local view = frame.scroll:GetHeight() or 0
+            local y = row.stackY or 0
+            if view > 0 then y = math.min(y, math.max(0, page.height - view)) end
+            frame.scroll:SetVerticalScroll(y)
+            updateScrollbar()
+            return y
+        end
+    end
+end
+
+function Options.ScrollOffset() return frame and frame.scroll:GetVerticalScroll() or 0 end
 
 function Options.Toggle()
     if Options.IsShown() then frame:Hide() else Options.Open() end
