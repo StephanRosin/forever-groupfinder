@@ -6,16 +6,18 @@ local S = Settings.Get
 -- built once by Window.lua (all children of the window, never reparented):
 -- the activity list (Side.lua), my listing (ListingPanel.lua), the filter
 -- chips, the result list (Rows.lua), the group details (Detail.lua) and
--- the leader column (Column.lua). A layout only places them:
+-- the leader line (Column.lua). A layout only places them:
 --
 --   SIDEBAR  the activity list as a column on the left; listing, filters
 --            and list on the right; details float beside the window.
 --   STACKED  narrow: an activity button at the top opens the activity list
 --            in a popup; listing, filters, list below; details float.
---   DETAILS  activity button, filters and list on the left; a fixed column
---            on the right with my listing at the top and below it the open
---            group's details (or, leading a group, the missing roles and
---            fitting players).
+--   DETAILS  as STACKED, wide; while a group is open a column on the right
+--            shows its details (the list gives up the room, the window
+--            keeps its width).
+--
+-- In every layout, while I lead a group, a line above the filters lists
+-- the solo players who fit a missing role (Column.lua).
 --
 -- Each layout has its own size settings, so switching keeps every size.
 local Layouts = {}
@@ -155,24 +157,19 @@ local function vline(t, f, x, top)
     t:Show()
 end
 
--- The DETAILS column: my listing at the top (level with the activity
--- button on the left), a rule, then the open group's details (or the
--- leader view) down to the bottom; the details' buttons sit at its foot.
+-- The DETAILS column, only while a group is open: the details from the
+-- header down to the bottom; their buttons sit at its foot.
 local function placeColumn(f, width, height, top)
     local cw = Layouts.COLUMN_W
     local cx = width - cw
     vline(f.columnLine, f, cx - 1, top)
-    local lw = cw - 2 * PAD
-    local listingH = ns.ListingPanel.Layout(lw)
-    at(f.listing, f, cx + PAD, top + PAD, lw, listingH)
-    local ruleY = top + PAD + listingH + GAP
-    hline(f.rule, f, cx, ruleY, cw)
-    local lower = math.max(0, height - ruleY - 1)
-    at(f.detail, f, cx, ruleY + 1 + PAD, cw, math.max(0, lower - PAD))
-    f.detail:SetShown(ns.Detail.Row() ~= nil)
-    ns.Detail.LayoutEmbedded(cw, math.max(0, lower - PAD))
-    at(f.column, f, cx, ruleY + 1, cw, lower)
-    ns.Column.Layout(cw, lower)
+    at(f.detail, f, cx, top + PAD, cw, height - top - PAD)
+    ns.Detail.LayoutEmbedded(cw, height - top - PAD)
+end
+
+-- True while the DETAILS layout shows its column (a group is open).
+function Layouts.ColumnShown()
+    return Layouts.Current() == "DETAILS" and ns.Detail.Row() ~= nil
 end
 
 -- Places every part for the window's size; f.listWidth is the list's
@@ -194,7 +191,14 @@ function Layouts.Arrange(f, width, height, top)
         x0, areaW = sw + 1, width - sw - 1
     else
         f.divider:Hide()
-        if mode == "DETAILS" then areaW = width - Layouts.COLUMN_W - 1 end
+    end
+    -- The details column takes its room from the list, not from the window.
+    if Layouts.ColumnShown() then
+        areaW = width - Layouts.COLUMN_W - 1
+        placeColumn(f, width, height, top)
+    else
+        f.columnLine:Hide()
+        f.detail:Hide()
     end
     local inner = areaW - 2 * PAD
     local y = top + PAD
@@ -206,17 +210,18 @@ function Layouts.Arrange(f, width, height, top)
         placeSideInPopup(f, height)
         y = y + BUTTON_H + GAP
     end
-    if mode == "DETAILS" then
-        placeColumn(f, width, height, top)
+    local listingH = ns.ListingPanel.Layout(inner)
+    at(f.listing, f, x0 + PAD, y, inner, listingH)
+    y = y + listingH + GAP
+    hline(f.rule, f, x0, y, areaW)
+    y = y + GAP
+    -- Leading a group: the solo players who fit, one line above the filters.
+    local leaderH = ns.Column.Layout(inner)
+    if leaderH > 0 then
+        at(f.column, f, x0 + PAD, y, inner, leaderH)
+        y = y + leaderH + GAP
     else
-        f.columnLine:Hide()
-        f.detail:Hide()
         f.column:Hide()
-        local listingH = ns.ListingPanel.Layout(inner)
-        at(f.listing, f, x0 + PAD, y, inner, listingH)
-        y = y + listingH + GAP
-        hline(f.rule, f, x0, y, areaW)
-        y = y + GAP
     end
     at(f.filters, f, x0 + PAD, y, inner)
     ns.Window.LayoutFilters()

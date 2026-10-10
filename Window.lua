@@ -8,7 +8,7 @@ local S = Settings.Get
 -- its parts: the activity
 -- list (Side.lua), my listing (ListingPanel.lua), the filter chips, the
 -- result list (Rows.lua: groups first, players below), the group details
--- (Detail.lua) and the leader column (Column.lua). Layouts.lua places the
+-- (Detail.lua) and the leader line (Column.lua). Layouts.lua places the
 -- parts for the chosen layout; this file builds them once and fills them.
 --
 -- Searching: C_LFGList.Search works only from a click or a key press. So

@@ -402,12 +402,21 @@ function Detail.Embedded() return e end
 
 -- Public ----------------------------------------------------------------------------------------
 
+-- The DETAILS layout's column comes and goes with the open group: the
+-- window arranges again and the list is laid out for its new width.
+local function relayout()
+    if not (ns.Layouts.EmbedsDetail() and ns.Window.Frame()) then return end
+    ns.Window.Arrange()
+    ns.Window.RenderList()
+end
+
 function Detail.Open(row)
     if not ns.Window.Frame() then return end
     current = row
     if ns.Layouts.EmbedsDetail() then
         if p then p:Hide() end
         e:Show()
+        relayout()
         Detail.Refresh()
     else
         if not p then create() end
@@ -416,7 +425,6 @@ function Detail.Open(row)
         Detail.Refresh()
     end
     ns.Window.RefreshRows()
-    ns.Column.Refresh()
 end
 
 function Detail.Close()
@@ -424,8 +432,10 @@ function Detail.Close()
     if e then e:Hide() end
     local was = current
     current = nil
-    if was then ns.Window.RefreshRows() end
-    ns.Column.Refresh()
+    if was then
+        relayout()
+        ns.Window.RefreshRows()
+    end
 end
 
 -- The layout changed: the open group moves to the other host.
@@ -434,7 +444,7 @@ function Detail.Rehost()
     if p then p:Hide() end
     if e then e:Hide() end
     current = nil
-    if row then Detail.Open(row) else ns.Column.Refresh() end
+    if row then Detail.Open(row) end
 end
 
 -- The same group again closes the panel; another one switches it.

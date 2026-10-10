@@ -2592,7 +2592,8 @@ check("sidebar size untouched", S("width") .. "x" .. S("height"), "720x460")
 check("stacked: window follows its size", f:GetWidth(), 500)
 check("stacked: width range", (Layouts.Ranges())[1], 420)
 
--- Details: list left, the open group's details in the column, listing below.
+-- Details: listing, filters and list over the full width; a column with
+-- the open group's details only while one is open.
 Settings.Set("layout", "DETAILS")
 check("details: own size", f:GetWidth() .. "x" .. f:GetHeight(), "880x480")
 check("details: open group moves into the column", D.OpenID(), 1)
@@ -2606,19 +2607,16 @@ check("details: embedded no-room note", f.detail.header.note:GetText(), "No room
 D.Row().noRoom = false
 D.Refresh()
 check("details: embedded members", f.detail.members[1]:IsShown() and f.detail.members[1].name:GetText(), "Grimnar")
-check("details: column right of the list", f.detail._points.TOPLEFT[3], 880 - Layouts.COLUMN_W)
+check("details: column at the right edge", f.detail._points.TOPLEFT[3], 880 - Layouts.COLUMN_W)
+check("details: column from the header down", f.detail._points.TOPLEFT[4], -(ns.Header.HEIGHT + 8))
+check("details: column to the bottom", -f.detail._points.TOPLEFT[4] + f.detail:GetHeight(), 480)
 check("details: list left of the column", f.listWidth, 880 - Layouts.COLUMN_W - 1 - 16)
-check("details: activity button over the list", f.activity:IsShown(), true)
-check("details: listing in the column", f.listing._points.TOPLEFT[3], 880 - Layouts.COLUMN_W + 8)
-check("details: listing at the top of the column", f.listing._points.TOPLEFT[4], -(ns.Header.HEIGHT + 8))
-check("details: listing level with the activity button", f.listing._points.TOPLEFT[4], f.activity._points.TOPLEFT[4])
-check("details: rule under the listing", f.rule._points.TOPLEFT[4] < f.listing._points.TOPLEFT[4] - f.listing:GetHeight() + 1, true)
-check("details: details below the rule", f.detail._points.TOPLEFT[4] < f.rule._points.TOPLEFT[4], true)
-check("details: details fill to the bottom", -f.detail._points.TOPLEFT[4] + f.detail:GetHeight(), 480)
-check("details: leader view below the rule", f.column._points.TOPLEFT[4] < f.rule._points.TOPLEFT[4], true)
+check("details: activity button at the top left", f.activity:IsShown() and f.activity._points.TOPLEFT[3], 8)
+check("details: listing in the main area", f.listing._points.TOPLEFT[3], 8)
+check("details: listing below the activity button", f.listing._points.TOPLEFT[4] < f.activity._points.TOPLEFT[4], true)
+check("details: listing as wide as the list", f.listing:GetWidth(), f.listWidth)
+check("details: filters below the listing", f.filters._points.TOPLEFT[4] < f.listing._points.TOPLEFT[4], true)
 check("details: detail buttons at the details' foot", f.detail.whisper._points.BOTTOMLEFT[1], f.detail)
-check("details: listing narrow", f.listing:GetWidth(), Layouts.COLUMN_W - 16)
-check("details: leader view hidden with a group open", f.column:IsShown(), false)
 for i, e in ipairs(D.ButtonExtents(f.detail)) do
     check("embedded button " .. i .. " inside the column", e.left >= 0 and e.right <= e.width, true)
 end
@@ -2630,44 +2628,56 @@ check("embedded: no invite", f.detail.invite, nil)
 check("embedded: five buttons", #D.ButtonExtents(f.detail), 5)
 for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
 click(gRow)
-check("same row again clears the column", D.OpenID(), nil)
-check("embedded hidden", f.detail:IsShown(), false)
-check("not leading: the hint", f.column:IsShown() and f.column.note:GetText(), "Click a group in the list to see its members, comment and actions here.")
+check("same row again closes the column", D.OpenID() == nil and f.detail:IsShown(), false)
+check("no column: the list takes the full width", f.listWidth, 880 - 16)
+check("no column: rows laid out for it", f.pool.used[2]:GetWidth(), 880 - 16)
+check("no column: listing full width", f.listing:GetWidth(), 880 - 16)
+check("the window keeps its width", f:GetWidth(), 880)
+for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
 click(gRow)
+check("selecting shows the column again", f.detail:IsShown() and f.listWidth, 880 - Layouts.COLUMN_W - 1 - 16)
 click(f.detail.header.close)
-check("embedded X clears it", D.OpenID(), nil)
--- Leading a group: missing roles and the fitting solo players.
+check("embedded X closes the column", D.OpenID() == nil and f.listWidth, 880 - 16)
+-- Leading a group: a line with the fitting solo players above the filters.
+check("not leading: no leader line", f.column:IsShown(), false)
 UnitIsGroupLeader = function() return true end
 GetNumGroupMembers = function() return 2 end
 IsInRaid = function() return false end
 UnitGroupRolesAssigned = function(unit) return unit == "player" and "TANK" or "DAMAGER" end
 M.state.group = true
 W.ListingChanged()
-check("leader column shown", f.column:IsShown(), true)
-check("leader column: missing roles", f.column.title:GetText(), "Missing: 1 Healer, 2 DPS")
+check("leader line shown", f.column:IsShown(), true)
+check("leader line in the main area", f.column._points.TOPLEFT[3], 8)
+check("leader line above the filters", f.column._points.TOPLEFT[4] > f.filters._points.TOPLEFT[4]
+    and f.column._points.TOPLEFT[4] < f.listing._points.TOPLEFT[4], true)
+check("missing roles in my listing", LP.Frame().leader:GetText(), "Missing: 1 Healer, 2 DPS")
 local fitNames = {}
 for _, row in ipairs(Column.Players()) do fitNames[#fitNames + 1] = row.leader end
 table.sort(fitNames)
-check("leader column: players for missing roles", table.concat(fitNames, ","), "Healy,Solo,Stabby")
-check("leader column: count", f.column.note:GetText(), "Players who fit (3)")
+check("leader line: players for missing roles", table.concat(fitNames, ","), "Healy,Solo,Stabby")
+check("leader line: count", f.column.title:GetText(), "Players who fit (3):")
 check("Fitting: only missing roles", (function()
     local out = Column.Fitting(W.Built().players, { TANK = 0, HEALER = 1, DAMAGER = 0 })
     return #out == 1 and out[1].leader
 end)(), "Healy")
 check("Fitting: none when not leading", #Column.Fitting(W.Built().players, nil), 0)
-local line1 = f.column.lines[1]
-check("leader line: invite button", line1.invite:IsShown(), true)
-click(line1.invite)
-check("one-click invite", M.invited[#M.invited], line1.invite.row.leader)
-check("leader line: role icon", line1.roles[1]._atlas ~= nil, true)
+local chip1 = f.column.chips[1]
+check("leader line: a chip per player", chip1:IsShown() and chip1.label:GetText() == chip1.row.leader, true)
+check("leader line: role icon", chip1.role._atlas ~= nil, true)
+click(chip1)
+check("one-click invite", M.invited[#M.invited], chip1.row.leader)
+Settings.Set("layout", "SIDEBAR")
+check("sidebar: the leader line too", f.column:IsShown() and f.column._points.TOPLEFT[3], 190 + 1 + 8)
+Settings.Set("layout", "DETAILS")
 UnitGroupRolesAssigned = function(unit) return unit == "player" and "TANK" or (unit == "party1" and "HEALER" or "DAMAGER") end
 GetNumGroupMembers = function() return 5 end
 W.ListingChanged()
 check("complete group: no players", #Column.Players(), 0)
+check("complete group: no line", f.column:IsShown(), false)
 UnitIsGroupLeader, GetNumGroupMembers, IsInRaid, UnitGroupRolesAssigned = nil, nil, nil, nil
 M.state.group = nil
 W.ListingChanged()
-check("leader view gone", f.column.title:GetText(), "Group details")
+check("leader line gone", f.column:IsShown(), false)
 -- The popup in the details layout searches the same way.
 click(f.activity)
 check("details: popup", f.popup:IsShown() and f.side:IsShown(), true)
