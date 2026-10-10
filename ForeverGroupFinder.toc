@@ -1,11 +1,12 @@
 ## Interface: 16001
 ## Title: Forever Group Finder
-## Notes: A group finder in the style of the Forever addons: search and list groups and players, filters, saved listings, one window.
-## Notes-deDE: Eine Gruppensuche im Stil der Forever-Addons: Gruppen und Spieler suchen und anbieten, Filter, gespeicherte Anzeigen, ein Fenster.
-## Notes-esES: Un buscador de grupos al estilo de los addons Forever: busca y ofrece grupos y jugadores, filtros, anuncios guardados, una sola ventana.
-## Notes-esMX: Un buscador de grupos al estilo de los addons Forever: busca y ofrece grupos y jugadores, filtros, anuncios guardados, una sola ventana.
-## Notes-frFR: Une recherche de groupes dans le style des addons Forever : chercher et proposer des groupes et des joueurs, filtres, annonces enregistrées, une seule fenêtre.
+## Notes: A group finder in the style of the Forever addons: search and list groups and players, filters, one window.
+## Notes-deDE: Eine Gruppensuche im Stil der Forever-Addons: Gruppen und Spieler suchen und anbieten, Filter, ein Fenster.
+## Notes-esES: Un buscador de grupos al estilo de los addons Forever: busca y ofrece grupos y jugadores, filtros, una sola ventana.
+## Notes-esMX: Un buscador de grupos al estilo de los addons Forever: busca y ofrece grupos y jugadores, filtros, una sola ventana.
+## Notes-frFR: Une recherche de groupes dans le style des addons Forever : chercher et proposer des groupes et des joueurs, filtres, une seule fenêtre.
 ## Version: 1.0.0
+## X-Curse-Project-ID: 1737995
 ## IconTexture: Interface\AddOns\ForeverGroupFinder\Media\MinimapIcon.tga
 ## AddonCompartmentFunc: ForeverGroupFinder_OnAddonCompartmentClick
 ## AddonCompartmentFuncOnEnter: ForeverGroupFinder_OnAddonCompartmentEnter
