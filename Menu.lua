@@ -161,7 +161,8 @@ function Menu.BuildRowMenu(root, row)
     end)
     local templates = root:CreateButton(L.MENU_WHISPER_TEMPLATE)
     Menu.AddWhisperTemplates(templates, row)
-    local invite = root:CreateButton(L.MENU_INVITE, function() Finder.Invite(leader) end)
+    -- Invite only for a solo player: a group is joined by whispering its leader.
+    local invite = row.kind ~= "GROUP" and root:CreateButton(L.MENU_INVITE, function() Finder.Invite(leader) end) or nil
     root:CreateDivider()
     root:CreateButton(L.MENU_MARK_SEEN, function()
         Memory.MarkSeen(row.key)
@@ -171,7 +172,7 @@ function Menu.BuildRowMenu(root, row)
     root:CreateButton(L.MENU_HIDE, function() ns.Undo.Hide(row) end)
     local ignore = root:CreateButton(L.MENU_IGNORE, function() ns.Undo.Ignore(leader) end)
     if not hasName then
-        for _, item in ipairs({ whisper, templates, invite, ignore }) do
+        for _, item in pairs({ whisper, templates, invite, ignore }) do
             if item.SetEnabled then item:SetEnabled(false) end
         end
     end

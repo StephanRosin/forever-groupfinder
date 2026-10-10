@@ -10,7 +10,7 @@ local S = Settings.Get
 -- switches it. It shows the
 -- activities with their levels, leader, age, the full comment, flags,
 -- friends and guild, every member (Tank, Healer, Damage, then the free
--- places) and the actions: whisper, whisper template, invite, seen, hide,
+-- places) and the actions: whisper, whisper template, seen, hide,
 -- ignore. RESULT_UPDATED and new result sets update it in place.
 local Detail = {}
 ns.Detail = Detail
@@ -186,31 +186,29 @@ end
 local function updateButtons(host)
     local row = current
     local leader = leaderOf(row)
-    local canInvite = not (IsInGroup and IsInGroup()) or (UnitIsGroupLeader and UnitIsGroupLeader("player")) or false
     host.whisper:SetOff(leader == nil, L.UNKNOWN_PLAYER)
     host.template:SetOff(leader == nil, L.UNKNOWN_PLAYER)
     host.ignore:SetOff(leader == nil, L.UNKNOWN_PLAYER)
-    if leader == nil then
-        host.invite:SetOff(true, L.UNKNOWN_PLAYER)
-    else
-        host.invite:SetOff(not canInvite, L.TIP_INVITE_NOT_LEADER)
-    end
     host.seen:SetOn(row.seen == true)
     for _, b in ipairs(host.buttons) do b:SetLabel(L[b.labelKey]) end
 end
 
--- Two rows of three at the host's foot; a label too long for its button is
--- cut off with "...", never past the button.
+-- Two rows at the host's foot: Whisper, Template / Seen, Hide, Ignore (no
+-- Invite: a group is joined by whispering its leader). A label too long
+-- for its button is cut off with "...", never past the button.
 local function layoutButtons(host, width)
     host.contentWidth = width
-    local bw = math.floor((width - 2 * PAD - 2 * GAP) / 3)
-    for i, b in ipairs(host.buttons) do
-        local col, line = (i - 1) % 3, math.floor((i - 1) / 3)
-        b:SetWidth(bw)
-        b.label:SetWidth(bw - (b.icon and 24 or 8))
-        b.layoutX = PAD + col * (bw + GAP)
-        b:ClearAllPoints()
-        b:SetPoint("BOTTOMLEFT", host, "BOTTOMLEFT", b.layoutX, PAD + (1 - line) * (BUTTON_H + GAP))
+    local rows = { { host.whisper, host.template }, { host.seen, host.hide, host.ignore } }
+    for line, list in ipairs(rows) do
+        local n = #list
+        local bw = math.floor((width - 2 * PAD - (n - 1) * GAP) / n)
+        for col, b in ipairs(list) do
+            b:SetWidth(bw)
+            b.label:SetWidth(bw - (b.icon and 24 or 8))
+            b.layoutX = PAD + (col - 1) * (bw + GAP)
+            b:ClearAllPoints()
+            b:SetPoint("BOTTOMLEFT", host, "BOTTOMLEFT", b.layoutX, PAD + (2 - line) * (BUTTON_H + GAP))
+        end
     end
 end
 
@@ -233,7 +231,6 @@ local function buildContent(host, top)
         local row = current
         if row then ns.Menu.Open(self, function(root) ns.Menu.AddWhisperTemplates(root, row) end) end
     end, "ChevronDown")
-    host.invite = button(host, "MENU_INVITE", "TIP_DETAIL_INVITE", function() Detail.Invite() end)
     host.seen = button(host, "DETAIL_SEEN", "TIP_DETAIL_SEEN", function() Detail.MarkSeen() end)
     host.hide = button(host, "MENU_HIDE", "TIP_DETAIL_HIDE", function() Detail.HideGroup() end)
     host.ignore = button(host, "DETAIL_IGNORE", "TIP_DETAIL_IGNORE", function() Detail.Ignore() end)
@@ -330,11 +327,6 @@ function Detail.Whisper()
     if not leader then return end
     ns.Finder.Whisper(leader)
     seen()
-end
-
-function Detail.Invite()
-    local leader = current and leaderOf(current)
-    if leader then ns.Finder.Invite(leader) end
 end
 
 function Detail.MarkSeen()

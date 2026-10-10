@@ -233,8 +233,8 @@ end
 local function chip(i)
     local c = p.chips[i]
     if c then return c end
-    c = Controls.Chip(p, { text = "", tip = function() return L.TIP_ACTIVITY_CHIP end,
-        onClick = function(self) if self.activityID then ns.Side.Toggle(self.activityID) end end })   -- plain: our chip's id
+    -- Display only: the activities are chosen in the activity list.
+    c = Controls.Chip(p, { text = "", tip = function() return L.TIP_ACTIVITY_CHIP end })
     c:SetOn(true)
     p.chips[i] = c
     return c

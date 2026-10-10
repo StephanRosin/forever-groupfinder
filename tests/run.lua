@@ -1587,6 +1587,17 @@ click(Side.Items()[1])
 check("second tick inside the interval: no search", searches(), before + 1)
 check("still ticked", W.Checked()[24], true)
 check("my listing shows both", LP.Frame().chips[1]:IsShown() and LP.Frame().chips[2]:IsShown(), true)
+check("listing chips are display only", (function()
+    local n = searches()
+    click(LP.Frame().chips[1])
+    return W.Checked()[24] == true and W.Checked()[22] == true and searches() == n
+end)(), true)
+check("listing chip tooltip points to the activity list", (function()
+    LP.Frame().chips[1]:GetScript("OnEnter")(LP.Frame().chips[1])
+    local t = GameTooltip._text
+    LP.Frame().chips[1]:GetScript("OnLeave")(LP.Frame().chips[1])
+    return t
+end)(), "Change the activities in the activity list.")
 check("refresh shows the age", f.header.note:GetText(), "0 s ago")
 M.state.time = M.state.time + 4
 click(Side.Items()[1])
@@ -1800,7 +1811,12 @@ for i, e in ipairs(D.ButtonExtents()) do
     check("detail button " .. i .. " inside the panel", e.left >= 0 and e.right <= e.width, true)
     check("detail button " .. i .. " label fits", D.Frame().buttons[i].label._w <= D.Frame().buttons[i]:GetWidth(), true)
 end
-check("six detail buttons", #D.ButtonExtents(), 6)
+check("five detail buttons (no invite for a group)", #D.ButtonExtents(), 5)
+check("no invite button on the details", D.Frame().invite, nil)
+check("row 1: whisper, template", D.Frame().whisper._points.BOTTOMLEFT[4] == D.Frame().template._points.BOTTOMLEFT[4]
+    and D.Frame().whisper._points.BOTTOMLEFT[4] > D.Frame().seen._points.BOTTOMLEFT[4], true)
+check("row 2: seen, hide, ignore", D.Frame().seen._points.BOTTOMLEFT[4] == D.Frame().ignore._points.BOTTOMLEFT[4], true)
+check("row 1 buttons share the width", D.Frame().whisper:GetWidth() > D.Frame().seen:GetWidth(), true)
 check("docked right with room", D.Frame().side, "RIGHT")
 f._rect = { 1500, 300, 720, 460 }
 D.Dock()
@@ -1834,8 +1850,6 @@ check("whispered row is seen", Memory.IsSeen(groupRow.entry.key), true)
 check("seen row dimmed", groupRow.activity:GetAlpha(), 0.45)
 check("seen row keeps its frame at full alpha", groupRow:GetAlpha(), 1)
 check("seen row keeps the green edge", groupRow.edge:IsShown() and groupRow.edge:GetAlpha(), 1)
-click(pd.invite)
-check("detail invites", M.invited[#M.invited], "Grimnar")
 click(pd.template)
 check("detail template menu", M.LastMenu().items[1] and M.LastMenu().items[1].text ~= nil, true)
 -- live update and delisting
@@ -1914,8 +1928,6 @@ used = f.pool.used
 for _, row in ipairs(used) do if row.entry and row.entry.id == 1 then groupRow = row end end
 UnitIsGroupLeader = function() return false end
 M.state.group = true
-click(groupRow)
-check("invite greyed in a group I do not lead", D.Frame().invite.off, true)
 UnitIsGroupLeader, M.state.group = nil, nil
 D.Close()
 Memory.MarkSeen(groupRow.entry.key)
@@ -1924,7 +1936,7 @@ W.RefreshRows()
 -- Right click menu.
 click(groupRow, "RightButton")
 local menu = M.LastMenu()
-check("menu entries", M.MenuTexts(menu), "Grimnar,Whisper,Whisper template,Invite,-,Mark as seen,Hide,Ignore the leader")
+check("group menu: no invite", M.MenuTexts(menu), "Grimnar,Whisper,Whisper template,-,Mark as seen,Hide,Ignore the leader")
 M.MenuClick(M.MenuFind(menu, "Whisper"))
 check("menu whisper", M.tells[#M.tells].name, "Grimnar")
 UnitClass = function() return "Warrior", "WARRIOR" end
@@ -1935,8 +1947,14 @@ check("whisper templates expanded", tmpl.items[1] and tmpl.items[1].text, "Hi! S
 M.MenuClick(tmpl.items[1])
 check("template whisper text", M.tells[#M.tells].text, "Hi! Still looking for Tank? I'm a level 20 Warrior.")
 UnitClass = nil
-M.MenuClick(M.MenuFind(menu, "Invite"))
-check("menu invite", M.invited[#M.invited], "Grimnar")
+do
+local playerEntry = W.Built().players[1]
+ns.Menu.OpenRowMenu(f.pool.used[2], playerEntry)
+local pMenu = M.LastMenu()
+check("player menu keeps invite", M.MenuFind(pMenu, "Invite") ~= nil, true)
+M.MenuClick(M.MenuFind(pMenu, "Invite"))
+check("player menu invite", M.invited[#M.invited], playerEntry.leader)
+end
 local key1 = groupRow.entry.key
 M.MenuClick(M.MenuFind(menu, "Hide"))
 check("hidden in memory", Memory.IsHidden(key1), true)
@@ -1955,7 +1973,9 @@ check("back after unhide/unignore", #W.Built().groups, 2)
 -- Our own menu when the client has no MenuUtil.
 local menuUtil = MenuUtil
 MenuUtil = nil
-local own = ns.Menu.OpenRowMenu(f.pool.used[2], f.pool.used[2].entry)
+local own
+for _, row in ipairs(f.pool.used) do if row.kind == "PLAYER" then own = row end end
+own = ns.Menu.OpenRowMenu(own, own.entry)
 check("own menu shown", own ~= nil and own:IsShown(), true)
 local inviteLine
 for _, line in ipairs(own.lines) do if line:IsShown() and line.text:GetText() == "Invite" then inviteLine = line end end
@@ -2599,8 +2619,8 @@ check("details: rows laid out for the narrower list", f.pool.used[2]:GetWidth(),
 local tells = #M.tells
 click(f.detail.whisper)
 check("embedded whisper", #M.tells, tells + 1)
-click(f.detail.invite)
-check("embedded invite", M.invited[#M.invited], "Grimnar")
+check("embedded: no invite", f.detail.invite, nil)
+check("embedded: five buttons", #D.ButtonExtents(f.detail), 5)
 for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
 click(gRow)
 check("same row again clears the column", D.OpenID(), nil)
