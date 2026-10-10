@@ -30,6 +30,7 @@ Border.lua
 Finder.lua
 Activities.lua
 Memory.lua
+Listing.lua
 Results.lua
 Window.lua
 Options\Style.lua

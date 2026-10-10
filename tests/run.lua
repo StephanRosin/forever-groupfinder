@@ -1065,7 +1065,189 @@ GetSpecializationRole = function() return nil end
 check("specialization without a role falls through", R.MyRole(), "DAMAGER")
 GetSpecialization, GetSpecializationRole, UnitGroupRolesAssigned = nil, nil, nil
 
+section("Listing")
+local Li = ns.Listing
+local lfg = M.lfg
+check("Listing exists", Li ~= nil, true)
+lfg.reset()
+lfg.cats = { 2 }
+lfg.activities = {
+    [11] = { categoryID = 2, fullName = "Ragefire Chasm", shortName = "RFC", minLevelSuggestion = 13, maxLevelSuggestion = 18, maxNumPlayers = 5 },
+    [12] = { categoryID = 2, fullName = "Molten Core", shortName = "MC", minLevelSuggestion = 60, maxLevelSuggestion = 60, maxNumPlayers = 40 },
+    [13] = { categoryID = 2, fullName = "Zul'Gurub", shortName = "ZG", minLevelSuggestion = 60, maxLevelSuggestion = 60, maxNumPlayers = 20 },
+    [14] = { categoryID = 2, fullName = "Ruins", shortName = "AQ20", minLevelSuggestion = 60, maxLevelSuggestion = 60, maxNumPlayers = 10 },
+    [15] = { categoryID = 2, fullName = "Odd", shortName = "Odd", minLevelSuggestion = 1, maxLevelSuggestion = 60, maxNumPlayers = 15 },
+}
+check("state without a listing", Li.State().active, false)
+check("no remaining without a listing", Li.State().remaining, nil)
+check("post without activities does nothing", Li.Post({}, nil), false)
+check("post blocked without a click", Li.Post({ 11 }, { tank = true }), false)
+check("blocked post recorded", lfg.blocked[1], "CreateListing")
+lfg.blocked = {}
+check("post creates", M.lfg.click(Li.Post, { 11 }, { tank = true, healer = false, dps = false }), true)
+check("create call", lfg.creates[1].activityIDs[1], 11)
+check("roles set after the listing", lfg.roles ~= nil and lfg.roles.tank, true)
+check("state active", Li.State().active, true)
+check("state roles", Li.State().roles.tank, true)
+lfg.active.comment = "LF tank"
+check("existing comment read", Li.Comment(), "LF tank")
+M.lfg.click(Li.Post, { 11, 14 }, nil)
+check("second post updates", #lfg.updates, 1)
+check("update keeps creates at one", #lfg.creates, 1)
+check("update carries no comment", lfg.updates[1].comment, nil)
+lfg.secret = true
+check("secret comment reads as empty", Li.Comment(), "")
+lfg.secret = false
+
+-- countdown and the single warning
+local warnings = 0
+Li.OnExpiryWarning(function() warnings = warnings + 1 end)
+lfg.active.duration = 600
+M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+check("remaining from duration", Li.State().remaining, 600)
+M.state.time = M.state.time + 100
+check("remaining counts down locally", Li.State().remaining, 500)
+check("no warning above the limit", warnings, 0)
+M.state.time = M.state.time + 201
+Li.Tick()
+check("warns below expiryWarnMinutes", warnings, 1)
+Li.Tick(); Li.State()
+check("warns only once", warnings, 1)
+M.state.time = M.state.time + 10000
+check("remaining never negative", Li.State().remaining, 0)
+lfg.active.duration = 3600
+M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+M.state.time = M.state.time + 3400
+Li.Tick()
+check("extended listing warns again", warnings, 2)
+Settings.Set("expiryWarnMinutes", 1)
+lfg.active.duration = 3600
+M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+M.state.time = M.state.time + 3400
+Li.Tick()
+check("warn limit follows the setting", warnings, 2)
+Settings.Set("expiryWarnMinutes", 5)
+
+Li.Remove()
+check("remove calls Finder", lfg.removed, 1)
+check("state inactive after remove", Li.State().active, false)
+
+-- templates
+check("no templates at first", #Li.Templates(), 0)
+check("empty name rejected", Li.SaveTemplate("", { 11 }, {}, ""), false)
+check("save", Li.SaveTemplate("Tank RFC", { 11 }, { tank = true }, "LF healer"), true)
+check("persisted in the profile", ns.DB().templates[1].name, "Tank RFC")
+check("template shape roles", ns.DB().templates[1].roles.healer, false)
+check("template shape dps", ns.DB().templates[1].roles.dps, false)
+check("template comment kept", ns.DB().templates[1].comment, "LF healer")
+Li.SaveTemplate("Tank RFC", { 11, 14 }, { tank = true, dps = true }, "")
+check("same name overwrites", #Li.Templates(), 1)
+check("overwritten activities", #Li.Templates()[1].activityIDs, 2)
+Li.SaveTemplate("Heal MC", { 12 }, { healer = true }, "")
+check("two templates", #Li.Templates(), 2)
+local applied = Li.ApplyTemplate("Heal MC")
+check("apply activities", applied.activityIDs[1], 12)
+check("apply roles", applied.roles.healer, true)
+check("apply comment", applied.comment, "")
+check("apply unknown", Li.ApplyTemplate("Nope"), nil)
+check("apply gives a copy", (function() applied.activityIDs[1] = 99; return Li.Templates()[2].activityIDs[1] end)(), 12)
+check("delete", Li.DeleteTemplate("Tank RFC"), true)
+check("delete unknown", Li.DeleteTemplate("Tank RFC"), false)
+check("one template left", #Li.Templates(), 1)
+Li.DeleteTemplate("Heal MC")
+check("empty again stores nothing", ns.DB().templates, nil)
+
+-- missing roles
+UnitIsGroupLeader = function() return false end
+check("not leading: no missing", Li.Missing(11), nil)
+UnitIsGroupLeader = function() return true end
+local assigned, members, raid = {}, 1, false
+GetNumGroupMembers = function() return members end
+IsInRaid = function() return raid end
+UnitGroupRolesAssigned = function(u) return assigned[u] or "NONE" end
+local function missing(id) local m = Li.Missing(id); return m.TANK .. "/" .. m.HEALER .. "/" .. m.DAMAGER end
+check("5-man, only me", missing(11), "1/1/3")
+members, assigned = 3, { player = "TANK", party1 = "HEALER", party2 = "DAMAGER" }
+check("5-man with tank, healer, dps", missing(11), "0/0/2")
+members, assigned = 1, {}
+check("10-man empty roles", missing(14), "2/3/5")
+check("20-man", missing(13), "2/5/13")
+check("40-man", missing(12), "4/10/26")
+raid, members = true, 4
+assigned = { raid1 = "TANK", raid2 = "TANK", raid3 = "HEALER", raid4 = "DAMAGER" }
+check("raid counts assigned roles", missing(12), "2/9/25")
+assigned = { raid1 = "TANK", raid2 = "TANK", raid3 = "TANK", raid4 = "TANK" }
+check("surplus never negative", missing(14), "0/3/5")
+raid, members = false, 2
+assigned = {}
+check("other size: dps is max minus members", missing(15), "0/0/13")
+check("unknown activity", Li.Missing(999), nil)
+UnitIsGroupLeader, GetNumGroupMembers, IsInRaid, UnitGroupRolesAssigned = nil, nil, nil, nil
+
+-- whisper expansion
+lfg.level = 42
+UnitClass = function() return "Magier", "MAGE" end
+Settings.Set("roleOverride", "HEALER")
+check("expansion", Li.Expand("Hi! {role}, {level} {class} for {activity}", 11), "Hi! Healer, 42 Magier for Ragefire Chasm")
+check("expansion twice", Li.Expand("{level}{level}", 11), "4242")
+check("unknown placeholder kept", Li.Expand("{foo} {role}", 11), "{foo} Healer")
+lfg.active = { activityIDs = { 12 } }
+check("activity from my listing", Li.Expand("{activity}"), "Molten Core")
+lfg.active = nil
+check("no activity expands empty", Li.Expand("[{activity}]"), "[]")
+check("default whisper template expands", Li.Expand(Settings.Get("whisperTemplates")[1], 11),
+    "Hi! Still looking for Healer? I'm a level 42 Magier.")
+Settings.Set("roleOverride", "AUTO")
+UnitClass = nil
+
+-- comment editor
+local textSet, setCalls = nil, 0
+local box = { SetText = function(self, t) setCalls = setCalls + 1; textSet = t end }
+LFGListingComment = { EditBox = box }
+local shown, loaded = 0, {}
+LFGVanilla_ShowFrame = function(tab) shown = shown + 1; loaded.tab = tab end
+C_AddOns = { LoadAddOn = function(name) loaded.name = name; return true end }
+lfg.authenticated = {}
+check("CanComment false without authenticator", Li.CanComment(2), false)
+check("editor unavailable without authenticator", Li.OpenCommentEditor("text", 2), "UNAVAILABLE")
+check("Blizzard's box untouched without authenticator", setCalls, 0)
+check("Blizzard finder not opened without authenticator", shown, 0)
+lfg.authenticated[2] = true
+check("CanComment true", Li.CanComment(2), true)
+check("CanComment defaults to the category setting", Li.CanComment(), true)
+check("editor prefills", Li.OpenCommentEditor("LF healer", 2), "PREFILLED")
+check("prefill text", textSet, "LF healer")
+check("addon loaded", loaded.name, "Blizzard_GroupFinder_VanillaStyle")
+check("finder shown on tab 1", loaded.tab, 1)
+setCalls = 0
+check("empty text opens without writing", Li.OpenCommentEditor("", 2), "OPENED")
+check("nothing written for empty text", setCalls, 0)
+box.SetText = function() error("Call is illegal when disabled by security settings") end
+local r1, r2 = Li.OpenCommentEditor("LF healer", 2)
+check("illegal write falls back to copy", r1, "COPY")
+check("copy text returned", r2, "LF healer")
+LFGListingComment = nil
+check("missing box falls back to copy", (Li.OpenCommentEditor("x", 2)), "COPY")
+LFGVanilla_ShowFrame = nil
+check("no Blizzard finder", Li.OpenCommentEditor("x", 2), "UNAVAILABLE")
+LFGVanilla_ShowFrame, C_AddOns = nil, nil
+lfg.reset()
+
 section("Source rules")
+-- Listing.lua may name exactly two Blizzard things: the comment box it prefills
+-- (inside a pcall) and the global that shows the finder.
+local function touchesBlizzardFinder(code, file)
+    if file == "Listing.lua" then
+        code = code:gsub("LFGListingComment", ""):gsub("LFGVanilla_ShowFrame", "")
+    end
+    return code:find("LFGParentFrame", 1, true) or code:find("GroupFinder[%w_]*Frame") or code:find("LFGListing", 1, true)
+end
+check("lint: LFGListingComment allowed in Listing.lua", touchesBlizzardFinder("local b = LFGListingComment.EditBox", "Listing.lua"), nil)
+check("lint: LFGVanilla_ShowFrame allowed in Listing.lua", touchesBlizzardFinder("LFGVanilla_ShowFrame(1)", "Listing.lua"), nil)
+check("lint: LFGListingComment caught elsewhere", touchesBlizzardFinder("LFGListingComment.EditBox", "Window.lua") ~= nil, true)
+check("lint: other LFGListing frames caught in Listing.lua", touchesBlizzardFinder("LFGListingFrame:Hide()", "Listing.lua") ~= nil, true)
+check("lint: LFGParentFrame caught in Listing.lua", touchesBlizzardFinder("LFGParentFrame:Hide()", "Listing.lua") ~= nil, true)
+check("Listing.lua never calls SetText directly", (read("Listing.lua"):gsub("%-%-[^\n]*", "")):find("[:%.]SetText%s*%(") , nil)
 for _, f in ipairs(tocFiles()) do
     local code = read(f):gsub("%-%-%[%[.-%]%]", ""):gsub("%-%-[^\n]*", "")
     check("only Finder.lua calls C_LFGList (" .. f .. ")", f == "Finder.lua" or code:find("C_LFGList", 1, true) == nil, true)
@@ -1077,8 +1259,7 @@ for _, f in ipairs(tocFiles()) do
     if f == "Options/Panel.lua" then rest = rest:gsub("HideUIPanel and SettingsPanel", ""):gsub("pcall%(HideUIPanel, SettingsPanel%)", "") end
     check("no HideUIPanel in " .. f, rest:find("HideUIPanel", 1, true), nil)
     check("no SetParent in " .. f, rest:find("SetParent", 1, true), nil)
-    check("no LFG or GroupFinder frame touched in " .. f, rest:find("LFGParentFrame", 1, true)
-        or rest:find("GroupFinder[%w_]*Frame") or rest:find("LFGListing", 1, true), nil)
+    check("no LFG or GroupFinder frame touched in " .. f, touchesBlizzardFinder(rest, f), nil)
     check("no loadstring in " .. f, code:find("loadstring", 1, true), nil)
 end
 
