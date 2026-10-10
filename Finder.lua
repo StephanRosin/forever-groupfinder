@@ -94,7 +94,7 @@ local function readMember(m)
         wanted = { tank = plain(roles.tank), healer = plain(roles.healer), dps = plain(roles.dps) }
     end
     return {
-        name = plain(m.name), level = plain(m.level), classFilename = plain(m.classFilename),
+        name = plain(m.name), level = plain(m.level), classFile = plain(m.classFilename),
         role = plain(m.assignedRole), lfgRoles = wanted, area = plain(m.areaName), isLeader = plain(m.isLeader),
     }
 end
