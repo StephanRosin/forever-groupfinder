@@ -1833,9 +1833,35 @@ for i, e in ipairs(D.ButtonExtents()) do
 end
 check("five detail buttons (no invite for a group)", #D.ButtonExtents(), 5)
 check("no invite button on the details", D.Frame().invite, nil)
-check("row 1: whisper, template", D.Frame().whisper._points.BOTTOMLEFT[4] == D.Frame().template._points.BOTTOMLEFT[4]
-    and D.Frame().whisper._points.BOTTOMLEFT[4] > D.Frame().seen._points.BOTTOMLEFT[4], true)
-check("row 2: seen, hide, ignore", D.Frame().seen._points.BOTTOMLEFT[4] == D.Frame().ignore._points.BOTTOMLEFT[4], true)
+check("row 1: whisper, template", D.Frame().whisper._points.TOPLEFT[4] == D.Frame().template._points.TOPLEFT[4]
+    and D.Frame().whisper._points.TOPLEFT[4] > D.Frame().seen._points.TOPLEFT[4], true)
+check("row 2: seen, hide, ignore", D.Frame().seen._points.TOPLEFT[4] == D.Frame().ignore._points.TOPLEFT[4], true)
+do
+local pd0 = D.Frame()
+local bodyBottom = pd0.bodyTop + pd0.body:GetHeight()
+check("buttons right under the content", -pd0.whisper._points.TOPLEFT[4], bodyBottom + 4)
+check("a short group leaves no gap above the buttons", pd0.body:GetHeight(), pd0.body.contentHeight)
+check("single activity: no 'Activities' heading", (function()
+    for _, line in ipairs(D.Lines(D.Row(), 0)) do if line.kind == "heading" and line.text == "Activities" then return false end end
+    return true
+end)(), true)
+check("two activities keep the heading", (function()
+    for _, line in ipairs(D.Lines({ activityIDs = { 22, 24 }, members = {} }, 0)) do
+        if line.kind == "heading" and line.text == "Activities" then return true end
+    end
+    return false
+end)(), true)
+check("long content scrolls, buttons at the foot", (function()
+    local saved = pd0.hostHeight
+    D.Layout(150)
+    D.Refresh()
+    local inside = -pd0.whisper._points.TOPLEFT[4] + 2 * 22 + 4 + 8 <= 150 + 1
+        and pd0.body:GetHeight() < pd0.body.contentHeight
+    D.Layout(saved)
+    D.Refresh()
+    return inside
+end)(), true)
+end
 check("row 1 buttons share the width", D.Frame().whisper:GetWidth() > D.Frame().seen:GetWidth(), true)
 check("docked right with room", D.Frame().side, "RIGHT")
 f._rect = { 1500, 300, 720, 460 }
@@ -1859,7 +1885,7 @@ local function detailTexts()
     end
     return table.concat(t, "|")
 end
-check("detail lines", detailTexts(), "Activities|The Deadmines (18-23)|Leader: Grimnar|Listed 1 min ago|Comment|c1"
+check("detail lines", detailTexts(), "The Deadmines (18-23)|Leader: Grimnar|Listed 1 min ago|Comment|c1"
     .. "|Members (2)|M:Grimnar:DAMAGER|M:Ilvea:DAMAGER|F:TANK|F:HEALER")
 check("member lines rendered", D.Frame().members[1]:IsShown() and D.Frame().members[1].name:GetText(), "Grimnar")
 check("free line rendered", D.Frame().members[3].name:GetText(), "Free: Tank")
@@ -2797,7 +2823,7 @@ check("details: listing in the main area", f.listing._points.TOPLEFT[3], 8)
 check("details: listing below the activity button", f.listing._points.TOPLEFT[4] < f.activity._points.TOPLEFT[4], true)
 check("details: listing as wide as the list", f.listing:GetWidth(), f.listWidth)
 check("details: filters below the listing", f.filters._points.TOPLEFT[4] < f.listing._points.TOPLEFT[4], true)
-check("details: detail buttons at the details' foot", f.detail.whisper._points.BOTTOMLEFT[1], f.detail)
+check("details: detail buttons under the content", f.detail.whisper._points.TOPLEFT[1], f.detail)
 for i, e in ipairs(D.ButtonExtents(f.detail)) do
     check("embedded button " .. i .. " inside the column", e.left >= 0 and e.right <= e.width, true)
 end

@@ -57,7 +57,9 @@ function Detail.Lines(row, elapsed)
     end
     local function heading(t) lines[#lines + 1] = { kind = "heading", text = t } end
     if row.delisted == true then text(L.DELISTED, Controls.RED, "name") end
-    heading(L.DETAIL_ACTIVITIES)
+    -- One activity: the title already names it (its levels follow).
+    local ids = type(row.activityIDs) == "table" and row.activityIDs or {}   -- plain: Finder converted the row
+    if #ids ~= 1 then heading(L.DETAIL_ACTIVITIES) end
     for _, id in ipairs(type(row.activityIDs) == "table" and row.activityIDs or {}) do   -- plain: Finder converted the row
         local info = Activities.Info(id)
         local name = Activities.Name(id) or L.UNKNOWN_ACTIVITY
@@ -205,7 +207,18 @@ local function render(host)
             y = y + math.max(LINE_H, (line.wrap and fs:GetStringHeight() or 0) + 2)
         end
     end
+    -- The body is as tall as its content (the buttons follow right under
+    -- it); only content taller than the host scrolls, buttons at the foot.
+    local maxBody = math.max(0, (host.hostHeight or 0) - (host.bodyTop or 0) - PAD - 2 * buttonH() - 2 * GAP)
+    local bodyH = math.min(y, maxBody)
+    host.body:SetHeight(bodyH)
+    host.body.viewHeight = bodyH
     host.body:SetContentHeight(y)
+    local top = (host.bodyTop or 0) + bodyH + GAP
+    for _, b in ipairs(host.buttons) do
+        b:ClearAllPoints()
+        b:SetPoint("TOPLEFT", host, "TOPLEFT", b.layoutX or PAD, -(top + (b.line - 1) * (buttonH() + GAP)))
+    end
 end
 
 local function updateButtons(host)
@@ -231,11 +244,9 @@ local function layoutButtons(host, width)
             b:SetWidth(bw)
             b.label:SetWidth(bw - (b.icon and 24 or 8))
             b.layoutX = PAD + (col - 1) * (bw + GAP)
-            b:ClearAllPoints()
-            b:SetPoint("BOTTOMLEFT", host, "BOTTOMLEFT", b.layoutX, PAD + (2 - line) * (buttonH() + GAP))
+            b.line = line
         end
     end
-    host.body:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -PAD, PAD + 2 * buttonH() + 2 * GAP)
 end
 
 local function button(host, labelKey, tipKey, onClick, icon)
@@ -250,7 +261,7 @@ end
 local function buildContent(host, top)
     host.body = Controls.Scroll(host)
     host.body:SetPoint("TOPLEFT", top, "BOTTOMLEFT", PAD, -PAD)
-    host.body:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -PAD, PAD + 2 * buttonH() + 2 * GAP)
+    host.body:SetPoint("TOPRIGHT", top, "BOTTOMRIGHT", -PAD, -PAD)
     host.texts, host.members, host.buttons = {}, {}, {}
     host.whisper = button(host, "DETAIL_WHISPER", "TIP_DETAIL_WHISPER", function() Detail.Whisper() end)
     host.template = button(host, "DETAIL_TEMPLATE", "TIP_DETAIL_TEMPLATE", function(self)
@@ -295,7 +306,7 @@ function Detail.Layout(h)
     ns.Window.ApplyLook(p, WIDTH, height)
     Detail.Dock()
     layoutButtons(p, WIDTH)
-    p.body.viewHeight = math.max(0, height - HEADER_H - 2 * PAD - 2 * buttonH() - 2 * GAP)
+    p.hostHeight, p.bodyTop = height, HEADER_H + PAD
 end
 
 -- The embedded host's size (Layouts.lua anchors it).
@@ -303,7 +314,7 @@ function Detail.LayoutEmbedded(w, h)
     if not e then return end
     e:SetSize(w, h)
     layoutButtons(e, w)
-    e.body.viewHeight = math.max(0, h - TITLE_H - 2 * PAD - 2 * buttonH() - 2 * GAP)
+    e.hostHeight, e.bodyTop = h, TITLE_H + GAP
     if current and e:IsShown() then
         updateButtons(e)
         render(e)
@@ -417,7 +428,7 @@ function Detail.CreateEmbedded(parent)
     buildContent(e, h)
     e.body:ClearAllPoints()
     e.body:SetPoint("TOPLEFT", h, "BOTTOMLEFT", 0, -GAP)
-    e.body:SetPoint("BOTTOMRIGHT", e, "BOTTOMRIGHT", -PAD, PAD + 2 * buttonH() + 2 * GAP)
+    e.body:SetPoint("TOPRIGHT", h, "BOTTOMRIGHT", 0, -GAP)
     e:Hide()
     return e
 end
