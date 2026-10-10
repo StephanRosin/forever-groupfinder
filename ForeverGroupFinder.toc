@@ -35,6 +35,7 @@ Results.lua
 Controls.lua
 Menu.lua
 Rows.lua
+Detail.lua
 Side.lua
 ListingPanel.lua
 Window.lua

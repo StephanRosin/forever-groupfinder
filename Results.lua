@@ -75,6 +75,7 @@ local function buildRow(r, myRole)
         area = player and first.area or nil,
         roles = player and first.lfgRoles or nil,
         delisted = r.isDelisted,
+        voice = r.voiceMode, newPlayerFriendly = r.newPlayerFriendly,
         key = key,
     }
 end

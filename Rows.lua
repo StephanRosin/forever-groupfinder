@@ -11,10 +11,11 @@ local Rows = {}
 ns.Rows = Rows
 
 local EDGE_W = 3
-local SQUARE, SQUARE_GAP, MAX_SQUARES = 12, 2, 5
+local SQUARE, SQUARE_GAP, MAX_SQUARES = 16, 2, 5
 local AGE_W = 46
 local PAD = 6
-local PLAYER_LEFT_W = 160
+local PLAYER_LEFT_W = 150
+local LEVEL_W = 24
 local INVITE_W = 46
 local CHIP_GAP = 3
 local ICON = 14
@@ -23,13 +24,53 @@ local TAG_COLOR = { 0.5, 0.82, 1 }
 local SEEN_ALPHA, DELISTED_ALPHA = 0.45, 0.5
 local CLASS_SHEET = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes"
 local PIN_ATLAS = "Waypoint-MapPin-Untracked"
-local ROLE_ATLAS = { tank = "groupfinder-icon-role-micro-tank", healer = "groupfinder-icon-role-micro-heal",
-    dps = "groupfinder-icon-role-micro-dps" }
+-- Blizzard's own finder icons (Blizzard_LFGVanilla_Browse.lua).
+local ROLE_ATLAS = { TANK = "groupfinder-icon-role-large-tank", HEALER = "groupfinder-icon-role-large-heal",
+    DAMAGER = "groupfinder-icon-role-large-dps" }
 local ROLE_ORDER = { "tank", "healer", "dps" }
+local ROLE_OF = { tank = "TANK", healer = "HEALER", dps = "DAMAGER" }
+-- Members and free slots: tanks, then healers, then damage, then unknown.
+Rows.ROLES = { "TANK", "HEALER", "DAMAGER" }
+local ROLE_RANK = { TANK = 1, HEALER = 2, DAMAGER = 3 }
 local ROLE_LABEL = { tank = "ROLE_TANK", healer = "ROLE_HEALER", dps = "ROLE_DAMAGER",
     TANK = "ROLE_TANK", HEALER = "ROLE_HEALER", DAMAGER = "ROLE_DAMAGER" }
+Rows.ROLE_LABEL = ROLE_LABEL
 
 Rows.DIVIDER_H = DIVIDER_H
+
+function Rows.RoleAtlas(role) return ROLE_ATLAS[role] end
+
+-- The slots of a group: { member = m, role = } for every member, ordered
+-- Tank, Healer, Damage (unknown roles last, the list order kept), then
+-- { free = true, role = } per free place from the counts' *_REMAINING in
+-- the same order. Without counts the free places up to the activity's size
+-- have no role.
+function Rows.Slots(entry)
+    local members = type(entry.members) == "table" and entry.members or {}   -- plain: Finder converted the row
+    local slots = {}
+    for i, m in ipairs(members) do
+        local role = type(m.role) == "string" and ROLE_RANK[m.role] and m.role or nil   -- plain: Finder converted the member
+        slots[#slots + 1] = { member = m, role = role, index = i }
+    end
+    table.sort(slots, function(a, b)
+        local ra, rb = ROLE_RANK[a.role] or 4, ROLE_RANK[b.role] or 4
+        if ra ~= rb then return ra < rb end
+        return a.index < b.index
+    end)
+    local counts = type(entry.counts) == "table" and entry.counts or {}
+    local known = false
+    for _, role in ipairs(Rows.ROLES) do
+        local n = counts[role .. "_REMAINING"]
+        if type(n) == "number" then
+            known = true
+            for _ = 1, n do slots[#slots + 1] = { free = true, role = role } end
+        end
+    end
+    if not known then
+        for _ = #members + 1, Rows.MaxPlayers(entry.activityIDs) do slots[#slots + 1] = { free = true } end
+    end
+    return slots
+end
 
 -- Colours and names -------------------------------------------------------------------
 
@@ -77,6 +118,7 @@ local function setClassIcon(tex, classFile)
     end
     tex:Show()
 end
+Rows.SetClassIcon = setClassIcon
 
 -- "Deadmines, +1": the first activity and how many more.
 function Rows.ActivityText(ids)
@@ -139,7 +181,7 @@ function Rows.TooltipLines(row, elapsed)
     local age = Controls.Age(ageOf(row, elapsed))
     if age then add(L.TIP_AGE:format(age), Controls.DIM) end   -- plain: our formatted text
     if row.delisted == true then add(L.DELISTED, Controls.RED) end
-    add(L.TIP_ROW_CLICKS, Controls.ACCENT, nil, true)
+    add(row.kind == "GROUP" and L.TIP_GROUP_CLICKS or L.TIP_ROW_CLICKS, Controls.ACCENT, nil, true)
     return lines
 end
 
@@ -199,6 +241,8 @@ local function newBase(parent)
         if not entry then return end
         if mouse == "RightButton" then
             ns.Menu.OpenRowMenu(self, entry)
+        elseif entry.kind == "GROUP" then
+            ns.Detail.Toggle(entry)
         else
             Rows.Whisper(entry)
         end
@@ -206,7 +250,8 @@ local function newBase(parent)
     return row
 end
 
--- Left click: whisper the leader (or the player) and remember the row as seen.
+-- Whisper the leader (or the player) and remember the row as seen. A player
+-- row's left click; groups open the detail panel instead.
 function Rows.Whisper(entry)
     if type(entry.leader) ~= "string" then return end
     ns.Finder.Whisper(entry.leader)
@@ -256,8 +301,34 @@ local function newSquare(row)
     sq.fill = sq:CreateTexture(nil, "ARTWORK")
     sq.fill:SetPoint("TOPLEFT", 1, -1)
     sq.fill:SetPoint("BOTTOMRIGHT", -1, 1)
+    sq.role = sq:CreateTexture(nil, "OVERLAY")
+    sq.role:SetPoint("TOPLEFT", 1, -1)
+    sq.role:SetPoint("BOTTOMRIGHT", -1, 1)
     sq.edges = Controls.Outline(sq, { 0, 0, 0, 1 })
     return sq
+end
+Rows.NewSlot = newSquare
+
+-- One slot: a member's role icon on his class colour, or a free place
+-- (dim outline, the wanted role's icon faded).
+function Rows.PaintSlot(sq, slot)
+    sq.free = slot.free == true
+    if slot.role then   -- plain: our own value
+        sq.role:SetAtlas(ROLE_ATLAS[slot.role])
+        sq.role:SetAlpha(sq.free and 0.35 or 1)
+        sq.role:Show()
+    else
+        sq.role:Hide()
+    end
+    if sq.free then
+        sq.fill:Hide()
+        Controls.PaintOutline(sq.edges, { 0.4, 0.4, 0.4, 0.8 })
+    else
+        local r, g, b = Rows.ClassColor(slot.member and slot.member.classFile)
+        sq.fill:SetColorTexture(r, g, b, 0.85)
+        sq.fill:Show()
+        Controls.PaintOutline(sq.edges, { 0, 0, 0, 1 })
+    end
 end
 
 local function newGroup(parent)
@@ -268,36 +339,24 @@ local function newGroup(parent)
     row.more = Controls.Text(row, "small")
     row.tag = Controls.Text(row, "small")
     row.comment = Controls.Text(row, "comment")
+    row.selected = Controls.Outline(row, Controls.GOLD, "OVERLAY")
     return row
 end
 
 local function layoutSquares(row, entry, x)
-    local members = type(entry.members) == "table" and entry.members or {}
-    local count = #members
-    local max = Rows.MaxPlayers(entry.activityIDs)
-    local slots = math.min(MAX_SQUARES, math.max(count, max))
+    local slots = Rows.Slots(entry)
     for i = 1, MAX_SQUARES do
         local sq = row.squares[i]
         sq:ClearAllPoints()
         sq:SetPoint("LEFT", row, "LEFT", x + (i - 1) * (SQUARE + SQUARE_GAP), 0)
-        local m = members[i]
-        if i <= slots and m then
-            local r, g, b = Rows.ClassColor(m.classFile)
-            sq.fill:SetColorTexture(r, g, b, 1)
-            sq.fill:Show()
-            Controls.PaintOutline(sq.edges, { 0, 0, 0, 1 })
-            sq.free = false
-            sq:Show()
-        elseif i <= slots then
-            sq.fill:Hide()
-            Controls.PaintOutline(sq.edges, { 0.4, 0.4, 0.4, 0.8 })
-            sq.free = true
+        if slots[i] then
+            Rows.PaintSlot(sq, slots[i])
             sq:Show()
         else
             sq:Hide()
         end
     end
-    local extra = count - MAX_SQUARES
+    local extra = #slots - MAX_SQUARES
     row.more:ClearAllPoints()
     row.more:SetPoint("LEFT", row, "LEFT", x + MAX_SQUARES * (SQUARE + SQUARE_GAP), 0)
     row.more:SetText(extra > 0 and L.MORE_MEMBERS:format(extra) or "")
@@ -339,6 +398,9 @@ local function layoutGroup(row, entry, width, elapsed)
     row.strike:SetPoint("LEFT", row.activity, "LEFT", 0, 0)
     row.strike:SetPoint("RIGHT", row, "RIGHT", -AGE_W - PAD, 0)
     row.strike:SetShown(entry.delisted == true)
+    local open = ns.Detail and ns.Detail.OpenID()
+    Controls.PaintOutline(row.selected, Controls.GOLD)
+    for _, t in ipairs(row.selected) do t:SetShown(open ~= nil and open == entry.id) end
     markers(row, entry)
     return h
 end
@@ -358,16 +420,13 @@ end
 
 local function newPlayer(parent)
     local row = newBase(parent)
+    row.roles = {}
+    for i in ipairs(ROLE_ORDER) do row.roles[i] = row:CreateTexture(nil, "ARTWORK") end
+    row.level = Controls.Text(row, "name")
+    row.level:SetJustifyH("CENTER")
     row.class = row:CreateTexture(nil, "ARTWORK")
     row.class:SetSize(ICON, ICON)
     row.name = Controls.Text(row, "name")
-    row.level = Controls.Text(row, "small")
-    row.roles = {}
-    for i, key in ipairs(ROLE_ORDER) do
-        row.roles[i] = row:CreateTexture(nil, "ARTWORK")
-        row.roles[i]:SetSize(12, 12)
-        row.roles[i]:SetAtlas(ROLE_ATLAS[key])
-    end
     row.pin = row:CreateTexture(nil, "ARTWORK")
     row.pin:SetSize(12, 12)
     row.pin:SetAtlas(PIN_ATLAS)
@@ -378,6 +437,34 @@ local function newPlayer(parent)
     row.invite = Controls.Button(row, { text = L.INVITE, width = INVITE_W, height = 16,
         onClick = function(self) if self.leader then ns.Finder.Invite(self.leader) end end })
     return row
+end
+
+-- The role column's icon size and width for a row height: one role fills
+-- the height, two or three sit side by side, smaller.
+function Rows.RoleColumn(h, n)
+    local big = math.max(12, h - 6)
+    local size = n <= 1 and big or (n == 2 and math.floor(big * 0.75) or math.floor(big * 0.6))
+    return size, math.floor(big * 1.8)
+end
+
+local function layoutRoles(row, entry, x, h)
+    local wanted = {}
+    for i, key in ipairs(ROLE_ORDER) do
+        if type(entry.roles) == "table" and entry.roles[key] == true then wanted[#wanted + 1] = i end
+    end
+    local size, colW = Rows.RoleColumn(h, #wanted)
+    local start = x + math.floor((colW - #wanted * size - (#wanted - 1)) / 2)
+    for _, tex in ipairs(row.roles) do tex:Hide() end
+    for k, i in ipairs(wanted) do
+        local tex = row.roles[i]
+        tex:SetAtlas(ROLE_ATLAS[ROLE_OF[ROLE_ORDER[i]]])
+        tex:SetSize(size, size)
+        tex:ClearAllPoints()
+        tex:SetPoint("LEFT", row, "LEFT", start + (k - 1) * (size + 1), 0)
+        tex:Show()
+    end
+    row.shownRoles = #wanted
+    return colW
 end
 
 local function layoutChips(row, entry, x, y, w)
@@ -409,32 +496,30 @@ end
 local function layoutPlayer(row, entry, width, elapsed)
     local h = S("playerRowHeight")
     row:SetSize(width, h)
-    for _, fs in ipairs({ row.name, row.level, row.area, row.more, row.comment, row.age }) do Controls.Restyle(fs) end
+    for _, fs in ipairs({ row.name, row.area, row.more, row.comment, row.age }) do Controls.Restyle(fs) end
+    local levelStyle = Settings.TextStyle("name")
+    levelStyle.size = levelStyle.size + 3
+    ns.Media.ApplyText(row.level, levelStyle)
     local first = type(entry.members) == "table" and entry.members[1] or {}
     local top, bottom = -3, -math.floor(h / 2) - 1
+    -- Role column, the level beside it.
     local x = EDGE_W + PAD
+    x = x + layoutRoles(row, entry, x, h)
+    row.level:ClearAllPoints()
+    row.level:SetPoint("LEFT", row, "LEFT", x, 0)
+    row.level:SetWidth(LEVEL_W)
+    row.level:SetText(type(first.level) == "number" and tostring(first.level) or "")
+    x = x + LEVEL_W + PAD
+    -- Name (class icon, class colour) over the location.
     setClassIcon(row.class, first.classFile)
     row.class:ClearAllPoints()
     row.class:SetPoint("TOPLEFT", row, "TOPLEFT", x, top)
     local nx = x + ICON + 4
     row.name:ClearAllPoints()
     row.name:SetPoint("TOPLEFT", row, "TOPLEFT", nx, top)
+    row.name:SetWidth(PLAYER_LEFT_W - ICON - 4)
     row.name:SetText(type(entry.leader) == "string" and entry.leader or L.UNKNOWN_PLAYER)
     row.name:SetTextColor(Rows.ClassColor(first.classFile))
-    local nameW = math.min(row.name:GetStringWidth(), PLAYER_LEFT_W - ICON - 60)
-    row.name:SetWidth(nameW)
-    row.level:ClearAllPoints()
-    row.level:SetPoint("LEFT", row.name, "RIGHT", 4, 0)
-    row.level:SetText(type(first.level) == "number" and tostring(first.level) or "")
-    local rx = nx + nameW + 4 + row.level:GetStringWidth() + 4
-    for i, key in ipairs(ROLE_ORDER) do
-        local tex = row.roles[i]
-        local wanted = type(entry.roles) == "table" and entry.roles[key] == true
-        tex:ClearAllPoints()
-        tex:SetPoint("TOPLEFT", row, "TOPLEFT", rx, top)
-        tex:SetShown(wanted)
-        if wanted then rx = rx + 13 end
-    end
     row.pin:ClearAllPoints()
     row.pin:SetPoint("TOPLEFT", row, "TOPLEFT", x + 1, bottom)
     row.area:ClearAllPoints()
@@ -442,6 +527,7 @@ local function layoutPlayer(row, entry, width, elapsed)
     row.area:SetWidth(PLAYER_LEFT_W - ICON - 4)
     local area = type(entry.area) == "string" and entry.area ~= "" and entry.area or L.UNKNOWN_AREA
     row.area:SetText(area)
+    -- Chips over the comment.
     local bx = x + PLAYER_LEFT_W
     local bw = math.max(40, width - bx - INVITE_W - AGE_W - 2 * PAD)
     layoutChips(row, entry, bx, top, bw)

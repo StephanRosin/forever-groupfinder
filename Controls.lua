@@ -179,6 +179,48 @@ function Controls.IconButton(parent, icon, size, onClick, tip)
     return b
 end
 
+-- The quest log's gold glow and line on a header (h.shine, h.line).
+function Controls.HeaderGlow(h)
+    h.shine = h:CreateTexture(nil, "BACKGROUND", nil, 1)
+    h.shine:SetAllPoints()
+    h.shine:SetColorTexture(1, 1, 1, 1)
+    h.shine:SetGradient("VERTICAL", CreateColor(1, 0.79, 0.19, 0), CreateColor(1, 0.79, 0.19, 0.10))
+    h.line = h:CreateTexture(nil, "ARTWORK")
+    h.line:SetHeight(1)
+    h.line:SetPoint("BOTTOMLEFT")
+    h.line:SetPoint("BOTTOMRIGHT")
+    h.line:SetColorTexture(0.78, 0.59, 0.13, 0.45)
+end
+
+-- A drawn cross (no close icon in Media), as the options window has.
+function Controls.CloseButton(parent, size, onClick, tip)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(size, size)
+    b.lines = {}
+    for i, angle in ipairs({ math.pi / 4, -math.pi / 4 }) do
+        local t = b:CreateTexture(nil, "ARTWORK")
+        t:SetSize(size - 4, 2)
+        t:SetPoint("CENTER")
+        if t.SetRotation then t:SetRotation(angle) end
+        b.lines[i] = t
+    end
+    local function paint(c) for _, t in ipairs(b.lines) do t:SetColorTexture(c[1], c[2], c[3], 1) end end
+    paint({ 0.73, 0.64, 0.48 })
+    b.tip = tip
+    b:SetScript("OnEnter", function(self)
+        paint({ 1, 0.88, 0.54 })
+        local t = self.tip
+        if type(t) == "function" then t = t(self) end
+        Controls.Tooltip(self, t, "ANCHOR_LEFT")
+    end)
+    b:SetScript("OnLeave", function()
+        paint({ 0.73, 0.64, 0.48 })
+        hideTooltip()
+    end)
+    b:SetScript("OnClick", onClick)
+    return b
+end
+
 -- Check boxes ------------------------------------------------------------------------
 
 -- A square with a check mark; the whole row is the click target (the caller's).

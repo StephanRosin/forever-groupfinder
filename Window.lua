@@ -136,6 +136,7 @@ local function onResults()
     if Window.IsShown() then
         Window.Rebuild()
         Window.UpdateHeader()
+        ns.Detail.OnResults()
     end
 end
 
@@ -159,6 +160,7 @@ local function onResultUpdated(id)
                     row.delisted = true
                 end
                 Window.RelayoutRow(row)
+                ns.Detail.OnUpdated(row)
                 return
             end
         end
@@ -331,31 +333,6 @@ function Window.UpdateHeader()
     h.title:SetPoint("LEFT", h, "LEFT", locked and 10 or 24, 0)
 end
 
-local function closeCross(parent)
-    local b = CreateFrame("Button", nil, parent)
-    b:SetSize(BUTTON, BUTTON)
-    b.lines = {}
-    for i, angle in ipairs({ math.pi / 4, -math.pi / 4 }) do
-        local t = b:CreateTexture(nil, "ARTWORK")
-        t:SetSize(ICON, 2)
-        t:SetPoint("CENTER")
-        if t.SetRotation then t:SetRotation(angle) end
-        b.lines[i] = t
-    end
-    local function paint(c) for _, t in ipairs(b.lines) do t:SetColorTexture(c[1], c[2], c[3], 1) end end
-    paint({ 0.73, 0.64, 0.48 })
-    b:SetScript("OnEnter", function(self)
-        paint({ 1, 0.88, 0.54 })
-        Controls.Tooltip(self, L.TIP_CLOSE, "ANCHOR_LEFT")
-    end)
-    b:SetScript("OnLeave", function()
-        paint({ 0.73, 0.64, 0.48 })
-        GameTooltip:Hide()
-    end)
-    b:SetScript("OnClick", function() Window.Hide() end)
-    return b
-end
-
 local function savePosition()
     local x, y = ns.Position.Read(f, "TOP")
     if x then Settings.SetMany({ point = "TOP", relPoint = "TOP", x = x, y = y }) end
@@ -369,15 +346,7 @@ local function createHeader()
     h:SetPoint("TOPRIGHT")
     h:EnableMouse(true)
     -- The quest log's gold glow and line.
-    h.shine = h:CreateTexture(nil, "BACKGROUND", nil, 1)
-    h.shine:SetAllPoints()
-    h.shine:SetColorTexture(1, 1, 1, 1)
-    h.shine:SetGradient("VERTICAL", CreateColor(1, 0.79, 0.19, 0), CreateColor(1, 0.79, 0.19, 0.10))
-    h.line = h:CreateTexture(nil, "ARTWORK")
-    h.line:SetHeight(1)
-    h.line:SetPoint("BOTTOMLEFT")
-    h.line:SetPoint("BOTTOMRIGHT")
-    h.line:SetColorTexture(0.78, 0.59, 0.13, 0.45)
+    Controls.HeaderGlow(h)
     h.grip = h:CreateTexture(nil, "OVERLAY")
     h.grip:SetSize(12, 12)
     h.grip:SetPoint("LEFT", 8, 0)
@@ -385,7 +354,7 @@ local function createHeader()
     h.grip:SetVertexColor(Controls.ACCENT[1], Controls.ACCENT[2], Controls.ACCENT[3])
     h.title = Controls.Text(h, "header")
     h.title:SetText(L.WINDOW_TITLE)
-    h.close = closeCross(h)
+    h.close = Controls.CloseButton(h, BUTTON, function() Window.Hide() end, function() return L.TIP_CLOSE end)
     h.close:SetPoint("RIGHT", h, "RIGHT", -4, 0)
     h.lock = Controls.IconButton(h, "Lock", BUTTON, function() ns.ToggleLock() end,
         function() return S("locked") and L.TIP_UNLOCK_WINDOW or L.TIP_LOCK_WINDOW end)
@@ -418,11 +387,13 @@ local function place(point, relPoint, x, y)
     f:SetPoint(point, UIParent, relPoint, x / scale, y / scale)
 end
 
-local function applyLook()
-    Media.ApplyBackground(f.bg, S("bgMode"), S("bgColor"), S("bgAlpha") / 100, S("bgTexture"))
-    local radius = ns.Corners.Clamp(S("cornerRadius"), S("width"), S("height"))
-    ns.Corners.Fit(f.clip, f, radius, { f.bg, f.header.shine })
-    ns.Border.Draw(f, f, {
+-- The window's look on a frame with .bg, .clip and a header glow (the
+-- detail panel wears it too).
+function Window.ApplyLook(frame, width, height)
+    Media.ApplyBackground(frame.bg, S("bgMode"), S("bgColor"), S("bgAlpha") / 100, S("bgTexture"))
+    local radius = ns.Corners.Clamp(S("cornerRadius"), width, height)
+    ns.Corners.Fit(frame.clip, frame, radius, { frame.bg, frame.header.shine })
+    ns.Border.Draw(frame, frame, {
         style = S("borderStyle"), size = S("borderSize"), color = S("borderColor"), radius = radius,
         shadow = S("shadowEnabled"), shadowSize = S("shadowSize"), shadowAlpha = S("shadowAlpha") / 100,
     })
@@ -463,7 +434,8 @@ local function layout(width, height)
     f.header.title:SetText(L.WINDOW_TITLE)
     f.filters.text.hint:SetText(L.FILTER_TEXT)
     for _, grip in pairs(f.grips) do grip:SetShown(not S("locked")) end
-    applyLook()
+    Window.ApplyLook(f, width, height)
+    ns.Detail.Layout(height)
     Window.UpdateHeader()
     Window.LayoutRight()
 end
@@ -476,6 +448,7 @@ function Window.Refresh()
     ns.Side.Refresh()
     ns.ListingPanel.Refresh()
     Window.Rebuild()
+    ns.Detail.Refresh()
 end
 
 -- Called when the checked activities or my listing changed.
@@ -558,6 +531,7 @@ local function create()
     end)
     f:SetScript("OnHide", function()
         ns.Menu.CloseOwn()
+        ns.Detail.Close()
         if f.moving then
             f:StopMovingOrSizing()
             f.moving = nil
@@ -587,6 +561,7 @@ function Window.Show(search)
 end
 
 function Window.Hide()
+    ns.Detail.Close()
     if f then f:Hide() end
 end
 

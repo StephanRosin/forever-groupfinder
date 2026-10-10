@@ -1542,11 +1542,13 @@ check("group row kind", used[2].kind, "GROUP")
 check("group activity name", used[2].activity:GetText(), "The Deadmines")
 check("guild tag", used[2].entry.id == 1 and used[2].tag:GetText() or used[3].tag:GetText(), "Guild")
 local g1 = used[2]
-check("free slots dashed up to five", (function()
-    local free = 0
-    for _, sq in ipairs(g1.squares) do if sq:IsShown() and sq.free then free = free + 1 end end
-    return free
-end)(), 5 - #g1.entry.members)
+check("free slots from the counts (tank, healer)", (function()
+    local free = {}
+    for _, sq in ipairs(g1.squares) do if sq:IsShown() and sq.free then free[#free + 1] = sq.role._atlas end end
+    return table.concat(free, ",")
+end)(), "groupfinder-icon-role-large-tank,groupfinder-icon-role-large-heal")
+check("member slot shows the role on the class colour", g1.squares[1].role._atlas == "groupfinder-icon-role-large-dps"
+    and g1.squares[1].fill:IsShown(), true)
 check("green edge when there is room for my role", g1.edge:IsShown(), true)
 local p1 = used[5]
 check("player row kind", p1.kind, "PLAYER")
@@ -1558,8 +1560,13 @@ check("player chips for the activities that fit", (function()
     local t = {}
     for i = 1, 3 do t[#t + 1] = p1.chips[i] and p1.chips[i]:IsShown() and p1.chips[i].text:GetText() or "-" end
     return table.concat(t, ",")
-end)(), "The Deadmines,Wailing Caverns,-")
-check("the rest counted", p1.more:GetText(), "+1")
+end)(), "The Deadmines,-,-")
+check("the rest counted", p1.more:GetText(), "+2")
+check("player role column: tank and damage, large", p1.roles[1]:IsShown() and p1.roles[3]:IsShown()
+    and not p1.roles[2]:IsShown() and p1.roles[1]._atlas, "groupfinder-icon-role-large-tank")
+check("role icons side by side, the same size", p1.roles[1]._w == p1.roles[3]._w and p1.roles[1]._w >= 18, true)
+check("one role fills the row height", (ns.Rows.RoleColumn(34, 1)), 28)
+check("level beside the roles, larger", p1.level._font[2] > S("nameSize"), true)
 check("player roles: tank shown", p1.roles[1]:IsShown(), true)
 check("player roles: healer hidden", p1.roles[2]:IsShown(), false)
 check("player comment", p1.comment:GetText(), "tank lf")
@@ -1612,11 +1619,124 @@ check("player tooltip: wanted roles", (function()
     return false
 end)(), true)
 
--- Left click whispers and marks seen; the row dims in place.
+-- Left click on a group opens the detail panel (no whisper).
+local D = ns.Detail
+local tells = #M.tells
 click(groupRow)
-check("left click whispers the leader", M.tells[#M.tells].name, "Grimnar")
+check("group left click does not whisper", #M.tells, tells)
+check("detail panel open", D.IsShown(), true)
+check("detail shows this group", D.OpenID(), 1)
+check("detail docked to the window", D.Frame()._points.TOPLEFT[1], f)
+check("detail title", D.Frame().header.title:GetText(), "The Deadmines")
+check("selected row outlined", groupRow.selected[1]:IsShown(), true)
+check("detail ESC-closable", (function()
+    for _, n in ipairs(UISpecialFrames) do if n == "ForeverGroupFinderDetail" then return true end end
+    return false
+end)(), true)
+local function detailTexts()
+    local t = {}
+    for _, line in ipairs(D.Lines(D.Row(), 0)) do
+        if line.kind == "member" then t[#t + 1] = "M:" .. line.member.name .. ":" .. tostring(line.role)
+        elseif line.kind == "free" then t[#t + 1] = "F:" .. tostring(line.role)
+        else t[#t + 1] = line.text end
+    end
+    return table.concat(t, "|")
+end
+check("detail lines", detailTexts(), "Activities|The Deadmines (18-23)|Leader: Grimnar|Listed 1 min ago|Comment|c1"
+    .. "|Members (2)|M:Grimnar:DAMAGER|M:Ilvea:DAMAGER|F:TANK|F:HEALER")
+check("member lines rendered", D.Frame().members[1]:IsShown() and D.Frame().members[1].name:GetText(), "Grimnar")
+check("free line rendered", D.Frame().members[3].name:GetText(), "Free: Tank")
+local pd = D.Frame()
+click(pd.whisper)
+check("detail whispers the leader", M.tells[#M.tells].name, "Grimnar")
 check("whispered row is seen", Memory.IsSeen(groupRow.entry.key), true)
 check("seen row dimmed", groupRow:GetAlpha(), 0.45)
+click(pd.invite)
+check("detail invites", M.invited[#M.invited], "Grimnar")
+click(pd.template)
+check("detail template menu", M.LastMenu().items[1] and M.LastMenu().items[1].text ~= nil, true)
+-- live update and delisting
+lfg.results[1].comment = "need tank now"
+M.Fire("LFG_LIST_SEARCH_RESULT_UPDATED", 1)
+check("detail updates live", detailTexts():find("need tank now", 1, true) ~= nil, true)
+local saved1, savedM1 = lfg.results[1], lfg.members[1]
+lfg.results[1] = nil
+M.Fire("LFG_LIST_SEARCH_RESULT_UPDATED", 1)
+check("detail shows delisted", detailTexts():sub(1, 16), "No longer listed")
+lfg.results[1], lfg.members[1] = saved1, savedM1
+lfg.results[1].comment = "c1"
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+check("new result set: same group, fresh row", D.OpenID() == 1 and D.Row().delisted, false)
+used = f.pool.used
+for _, row in ipairs(used) do if row.entry and row.entry.id == 1 then groupRow = row end end
+local otherRow
+for _, row in ipairs(used) do if row.entry and row.entry.id == 2 then otherRow = row end end
+click(otherRow)
+check("another group switches the panel", D.OpenID(), 2)
+click(otherRow)
+check("the same row again closes it", D.IsShown(), false)
+click(groupRow)
+click(pd.header.close)
+check("X closes it", D.IsShown(), false)
+click(groupRow)
+W.Hide()
+check("closing the window closes it", D.IsShown(), false)
+lfg.click(W.Toggle)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+used = f.pool.used
+for _, row in ipairs(used) do if row.entry and row.entry.id == 1 then groupRow = row end end
+local playerRow
+for _, row in ipairs(used) do if row.kind == "PLAYER" then playerRow = row end end
+tells = #M.tells
+click(playerRow)
+check("player left click still whispers", M.tells[#M.tells].name == "Solo" and #M.tells, tells + 1)
+check("player click opens no panel", D.IsShown(), false)
+-- Slots: Tank, Healer, Damage, unknown; free places in the same order.
+local function slotText(entry)
+    local t = {}
+    for _, sl in ipairs(ns.Rows.Slots(entry)) do
+        t[#t + 1] = (sl.free and "free:" or (sl.member.name .. ":")) .. tostring(sl.role)
+    end
+    return table.concat(t, ",")
+end
+check("slots ordered by role", slotText({ activityIDs = { 22 }, members = {
+    { name = "D", role = "DAMAGER" }, { name = "X" }, { name = "H", role = "HEALER" }, { name = "T", role = "TANK" } },
+    counts = { TANK_REMAINING = 0, HEALER_REMAINING = 1, DAMAGER_REMAINING = 2 } }),
+    "T:TANK,H:HEALER,D:DAMAGER,X:nil,free:HEALER,free:DAMAGER,free:DAMAGER")
+check("without counts free places up to the size", slotText({ activityIDs = { 22 }, members = { { name = "A", role = "TANK" } } }),
+    "A:TANK,free:nil,free:nil,free:nil,free:nil")
+local flagged = D.Lines({ activityIDs = { 22 }, leader = "L", voice = 1, newPlayerFriendly = true, friend = 2, guild = 0,
+    members = {}, counts = {} }, 0)
+local flagText = {}
+for _, line in ipairs(flagged) do flagText[#flagText + 1] = line.text or "" end
+flagText = table.concat(flagText, "|")
+check("detail: voice flag", flagText:find("Voice chat", 1, true) ~= nil, true)
+check("detail: new players flag", flagText:find("New players welcome", 1, true) ~= nil, true)
+check("detail: friends and guild", flagText:find("Friends: 2, guild: 0", 1, true) ~= nil, true)
+-- Hide and Ignore from the panel close it.
+click(groupRow)
+click(D.Frame().hide)
+check("detail hide: hidden", Memory.IsHidden(ns.Memory.Key({ leaderName = "Grimnar", activityIDs = { 22 } })), true)
+check("detail hide: panel closed", D.IsShown(), false)
+ns.AccountDB().memory.hidden = {}
+W.Rebuild()
+used = f.pool.used
+for _, row in ipairs(used) do if row.entry and row.entry.id == 1 then groupRow = row end end
+click(groupRow)
+click(D.Frame().ignore)
+check("detail ignore", Memory.IsIgnored("Grimnar"), true)
+check("detail ignore: panel closed", D.IsShown(), false)
+Memory.SetIgnored("Grimnar", false)
+used = f.pool.used
+for _, row in ipairs(used) do if row.entry and row.entry.id == 1 then groupRow = row end end
+UnitIsGroupLeader = function() return false end
+M.state.group = true
+click(groupRow)
+check("invite greyed in a group I do not lead", D.Frame().invite.off, true)
+UnitIsGroupLeader, M.state.group = nil, nil
+D.Close()
+Memory.MarkSeen(groupRow.entry.key)
+W.RefreshRows()
 
 -- Right click menu.
 click(groupRow, "RightButton")

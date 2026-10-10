@@ -132,6 +132,22 @@ end
 
 -- The row menu ------------------------------------------------------------------------
 
+-- The whisper templates, expanded for the row's first activity; each one
+-- whispers the leader and marks the row seen.
+function Menu.AddWhisperTemplates(parent, row)
+    local leader = row.leader
+    local firstActivity = type(row.activityIDs) == "table" and row.activityIDs[1] or nil   -- plain: Finder converted the row
+    for _, text in ipairs(ns.Settings.Get("whisperTemplates")) do
+        local expanded = ns.Listing.Expand(text, firstActivity)
+        local item = parent:CreateButton(expanded, function()
+            ns.Finder.Whisper(leader, expanded)
+            ns.Memory.MarkSeen(row.key)
+            ns.Window.RefreshRows()
+        end)
+        if type(leader) ~= "string" and item.SetEnabled then item:SetEnabled(false) end
+    end
+end
+
 -- row: a row from Results.Build. Every entry acts on its leader / key.
 function Menu.BuildRowMenu(root, row)
     local Finder, Memory, Listing = ns.Finder, ns.Memory, ns.Listing
@@ -144,15 +160,7 @@ function Menu.BuildRowMenu(root, row)
         ns.Window.RefreshRows()
     end)
     local templates = root:CreateButton(L.MENU_WHISPER_TEMPLATE)
-    local firstActivity = type(row.activityIDs) == "table" and row.activityIDs[1] or nil
-    for _, text in ipairs(ns.Settings.Get("whisperTemplates")) do
-        local expanded = Listing.Expand(text, firstActivity)
-        templates:CreateButton(expanded, function()
-            Finder.Whisper(leader, expanded)
-            Memory.MarkSeen(row.key)
-            ns.Window.RefreshRows()
-        end)
-    end
+    Menu.AddWhisperTemplates(templates, row)
     local invite = root:CreateButton(L.MENU_INVITE, function() Finder.Invite(leader) end)
     root:CreateDivider()
     root:CreateButton(L.MENU_MARK_SEEN, function()
