@@ -10,8 +10,8 @@
 
 ## Global Constraints
 
-- Spec: `docs/specs/2026-10-10-forever-group-finder-design.md` (read it; its "Facts" section is binding). Research notes: `/tmp/claude-1000/-home-stephan/96fc229b-bef5-4488-9eb6-9c3ff28d825f/scratchpad/lfg-research.md` (copy into `.superpowers/sdd/2026-10-10-plan-forever-group-finder/research.md` at setup). Blizzard source of the finder: `~/Dokumente/wow-ui-source/1.60.1.70338/Blizzard_GroupFinder_VanillaStyle/` and `Blizzard_LFGUtil` (read for behaviour; Blizzard code may be studied, our addons are our own code).
-- Framework source to port: `~/Dokumente/ForeverCombatMeter` (our own code): `Locale.lua`, `Locales/*.lua`, `Core.lua`, `Profiles.lua`, `Settings.lua`, `Share.lua`, `Media.lua`, `Border.lua`, `Corners.lua`, `Position.lua`, `Resize.lua`, `Options/*`, `Commands.lua` (shape), `Media/*.tga`, `install`, `tools/package`, `tools/release`, `tests/run`, `tests/run.lua` (harness + secret lint), `tests/wowmock.lua`, `README.md` shape, `docs/curseforge/` shape. Remove everything meter-specific (Meter, Threat, Windows, Detail, Report, Format, Blizzard meter CVar, meter settings).
+- Spec: `docs/specs/2026-10-10-forever-group-finder-design.md` (read it; its "Facts" section is binding). Research notes: kept outside the repo.superpowers/sdd/2026-10-10-plan-forever-group-finder/research.md` at setup). Blizzard source of the finder: `the Blizzard UI source (1.60.1) Blizzard_GroupFinder_VanillaStyle/` and `Blizzard_LFGUtil` (read for behaviour; Blizzard code may be studied, our addons are our own code).
+- Framework source to port: `the Forever Combat Meter repo` (our own code): `Locale.lua`, `Locales/*.lua`, `Core.lua`, `Profiles.lua`, `Settings.lua`, `Share.lua`, `Media.lua`, `Border.lua`, `Corners.lua`, `Position.lua`, `Resize.lua`, `Options/*`, `Commands.lua` (shape), `Media/*.tga`, `install`, `tools/package`, `tools/release`, `tests/run`, `tests/run.lua` (harness + secret lint), `tests/wowmock.lua`, `README.md` shape, `docs/curseforge/` shape. Remove everything meter-specific (Meter, Threat, Windows, Detail, Report, Format, Blizzard meter CVar, meter settings).
 - Names: folder/TOC `ForeverGroupFinder`, title "Forever Group Finder", `## Interface: 16001`, `## Version: 1.0.0`, SavedVariables `ForeverGroupFinderProfiles` (account), SavedVariablesPerCharacter `ForeverGroupFinderChar`, globals/frames prefixed `ForeverGroupFinder`, slash `/fgf` and `/forevergroupfinder`, share prefix `FGF1:`, compartment funcs `ForeverGroupFinder_OnAddonCompartmentClick/Enter/Leave`.
 - Languages enUS, deDE, esES, frFR, same keys and placeholders in all four (tested); game language by default; language dropdown in the options nav (as in the combat meter).
 - Only values that differ from the defaults are stored.
@@ -23,7 +23,7 @@
   Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
   Claude-Session: https://claude.ai/code/session_01PSwcrtAz5yXQ5Kj9VjMsMo
   ```
-- Repo `~/Dokumente/ForeverGroupFinder` (git user already configured), work on branch `finder-1.0`. No remote yet — do not push.
+- Repo this repo (git user already configured), work on branch `finder-1.0`. No remote yet — do not push.
 
 ## File Structure
 
@@ -151,6 +151,6 @@ smallFont = "Friz Quadrata", smallSize = 10 [7, 16], smallFlag = "SHADOW", small
 
 Install (`./install "<WoW>/_classic_beta_/Interface/AddOns"`), user `/reload`s and checks: opening via key/micro button/minimap/`/fgf`, activity list + level switch, search on interaction, groups/players with location, filters, memory, templates, posting (comment via Blizzard's tab if authenticated), leader line, options, profiles, combat (no errors, no blocked actions). Fix findings with tests.
 
-### Task 9: Docs, CurseForge text, Vault
+### Task 9: Docs, CurseForge text
 
-`README.md` (features, commands, install, tests, release), `docs/curseforge/description.md` + `logo.svg`/`logo.png` (Forever style), Vault page `10-Projekte/WoW-Addons/ForeverGroupFinder.md` (typ app, version, files table, pitfalls incl. the probe results), row in `WoW-Addons.md`, memory pointer `forever-group-finder.md` + MEMORY.md line. GitHub repo + CurseForge project id come from the user; release 1.0.0 only after the user's go.
+`README.md` (features, commands, install, tests, release), `docs/curseforge/description.md` + logo (Forever style), project documentation. Release 1.0.0 after the in-game go.

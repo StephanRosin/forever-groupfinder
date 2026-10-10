@@ -30,7 +30,7 @@ structure of the other Forever addons (Forever Quest Log, Forever Combat Meter).
 - The listing comment is read by the engine from Blizzard's own EditBox (`StoreSecureReference("LFGListingComment",
   editBox)`); whether an addon can fill it (and whether `CreateListing` from our button works) is **unverified** →
   first implementation task is an in-game probe.
-- Forever pitfalls (vault `Forever-API.md`): never `hooksecurefunc` frame methods (Forever makes them nil for
+- Forever pitfalls (known from the other Forever addons): never `hooksecurefunc` frame methods (Forever makes them nil for
   Blizzard's code); hooking global functions is fine. Secret values: no `==`/`~= nil`, truthiness, arithmetic,
   concatenation or table keys on them — `issecretvalue` first.
 
@@ -73,7 +73,7 @@ structure of the other Forever addons (Forever Quest Log, Forever Combat Meter).
 
 ## Architecture
 
-New repo `~/Dokumente/ForeverGroupFinder` → GitHub `StephanRosin/forever-group-finder` (public), TOC
+GitHub `StephanRosin/forever-groupfinder` (public), TOC
 `## Interface: 16001`, SavedVariables `ForeverGroupFinderProfiles` (account) and `ForeverGroupFinderChar`.
 
 - **Framework** ported from Forever Combat Meter (same files and conventions): `Locale.lua` + `Locales/*`, `Core.lua`,
@@ -115,5 +115,4 @@ Auto-search by timer (blocked), applications (not in Forever), Raider.IO-style s
 
 ## Release
 
-1.0.0 on CurseForge (project id from Stephan) after in-game approval; vault page `ForeverGroupFinder.md`, overview
-row in `WoW-Addons.md`, memory pointer.
+1.0.0 on CurseForge after in-game approval.
