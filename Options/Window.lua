@@ -176,6 +176,8 @@ end
 -- the i-th entry while there is one, a hint when the list is empty, a
 -- line when it is longer than the slots.
 Options.LIST_SLOTS = 40
+-- Counts the refreshes: a list read during one refresh is read once.
+Options.generation = 0
 local function listRows(list, slots, slotRow, emptyLabel)
     local rows = {
         visibleIf({ type = "text", label = emptyLabel }, function() return #list() == 0 end),
@@ -252,19 +254,22 @@ local function listFilterRows()
             set = function(text)
                 local name = trim(text)
                 if name == "" then return end
-                ns.Memory.Ignore(name)
-                if ns.Window.IsShown() then ns.Window.Rebuild() end
+                ns.Memory.SetIgnored(name, true)
                 Options.Refresh()
             end,
         },
     })
-    local function ignored() return ns.Memory.IgnoreList() end
+    -- Built once per refresh, not once per slot.
+    local cache, cachedAt
+    local function ignored()
+        if cachedAt ~= Options.generation then cache, cachedAt = ns.Memory.IgnoreList(), Options.generation end
+        return cache
+    end
     return append(rows, listRows(ignored, Options.LIST_SLOTS, function(i)
         return {
             type = "item", label = function() return ignored()[i] or "" end, button = "OPT_REMOVE",
             onClick = function()
-                ns.Memory.Unignore(ignored()[i])
-                if ns.Window.IsShown() then ns.Window.Rebuild() end
+                ns.Memory.SetIgnored(ignored()[i], false)
                 Options.Refresh()
             end,
         }
@@ -822,6 +827,7 @@ end
 
 function Options.ShowPage(id)
     ensureWindow()
+    Options.generation = Options.generation + 1
     local page = pageFor(id)
     if not page then return end
     Widgets.CloseList()
@@ -844,6 +850,7 @@ end
 -- Fetches every value on the visible page again.
 function Options.Refresh()
     if not frame or not current then return end
+    Options.generation = Options.generation + 1
     local page = pages[current]
     if not page then return end
     stackVisible(page)

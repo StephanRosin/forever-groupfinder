@@ -99,6 +99,15 @@ function Window.Search()
     return ok, reason
 end
 
+-- A search Blizzard's own finder issues in this click (its "find a group"
+-- handler): no second search; its results arrive as ours do.
+function Window.AdoptSearch()
+    Finder.ExpectSearch()
+    status = "searching"
+    Window.UpdateHeader()
+    Window.RenderList()
+end
+
 -- Results ----------------------------------------------------------------------------------
 
 local function context(withFilters)
@@ -563,12 +572,18 @@ end
 function Window.IsShown() return f ~= nil and f:IsShown() end
 
 -- Opens the window. From a click or a key press only: it searches.
-function Window.Show()
+-- search: "adopt" (Blizzard searches in this click) or false (no search:
+-- opened from an event) instead of searching.
+function Window.Show(search)
     if not f then create() end
     if next(checked) == nil then Window.ResetChecked() end
     f:Show()
     Window.Refresh()
-    Window.Search()
+    if search == "adopt" then
+        Window.AdoptSearch()
+    elseif search ~= false then
+        Window.Search()
+    end
 end
 
 function Window.Hide()

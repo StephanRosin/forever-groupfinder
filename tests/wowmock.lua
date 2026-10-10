@@ -168,9 +168,16 @@ function CreateFrame(kind, name, parent, template)
 end
 
 -- Delivers an event to every frame that registered it, in creation order.
+-- M.fireFirst (a frame) gets it before the others: the client does not
+-- promise an order between addons and Blizzard's frames.
 function M.Fire(event, ...)
+    local first = M.fireFirst
+    if first then
+        local handler = first._events[event] and first:GetScript("OnEvent")
+        if handler then handler(first, event, ...) end
+    end
     for _, f in ipairs(M.frames) do
-        local handler = f._events[event] and f:GetScript("OnEvent")
+        local handler = f ~= first and f._events[event] and f:GetScript("OnEvent")
         if handler then handler(f, event, ...) end
     end
 end
@@ -575,6 +582,48 @@ function M.LoadBlizzardFinder()
             LFGVanilla_ShowFrame(tab)
         end
     end
+    -- LFGBrowseFrame answers LFG_LIST_SHOW_SEARCH as Blizzard_LFGVanilla_Browse.lua
+    -- does: ShowFrame(2), the event's activities of the first one's category
+    -- into its dropdowns, then LFGBrowse_DoSearch (one C_LFGList.Search
+    -- unless its last search is still running).
+    local browse = CreateFrame("Frame", "LFGBrowseFrame", p)
+    browse.category, browse.selected, browse.searching = 2, {}, false
+    browse:RegisterEvent("LFG_LIST_SHOW_SEARCH")
+    browse:RegisterEvent("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    browse:RegisterEvent("LFG_LIST_SEARCH_FAILED")
+    browse:SetScript("OnEvent", function(self, event, ids)
+        if event ~= "LFG_LIST_SHOW_SEARCH" then
+            self.searching = false
+            return
+        end
+        local secure = M.state.secure
+        M.state.secure = true
+        LFGVanilla_ShowFrame(2)
+        if ids then
+            local first
+            self.selected = {}
+            for _, id in ipairs(ids) do
+                local a = M.lfg.activities[id]
+                if a then
+                    first = first or a.categoryID
+                    if a.categoryID == first then self.selected[#self.selected + 1] = id end
+                end
+            end
+            self.category = first or self.category
+        end
+        if not self.searching then
+            local acts = self.selected
+            if #acts == 0 then
+                acts = {}
+                for id, a in pairs(M.lfg.activities) do if a.categoryID == self.category then acts[#acts + 1] = id end end
+                table.sort(acts)
+            end
+            C_LFGList.Search(self.category, 0, 0, nil, false, nil, acts)
+            self.searching = true
+        end
+        M.state.secure = secure
+    end)
+    M.blizzard.browse = browse
     return p
 end
 

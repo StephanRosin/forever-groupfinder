@@ -34,8 +34,7 @@ end
 local function ignore(args)
     local who = playerArg(args, L.MSG_IGNORE_USAGE)
     if who == nil then return end
-    ns.Memory.Ignore(who)
-    if ns.Window.IsShown() then ns.Window.Rebuild() end
+    ns.Memory.SetIgnored(who, true)
     ns.Print(L.MSG_IGNORED, who)
 end
 
@@ -46,8 +45,7 @@ local function unignore(args)
         ns.Print(L.MSG_NOT_IGNORED, who)
         return
     end
-    ns.Memory.Unignore(who)
-    if ns.Window.IsShown() then ns.Window.Rebuild() end
+    ns.Memory.SetIgnored(who, false)
     ns.Print(L.MSG_UNIGNORED, who)
 end
 

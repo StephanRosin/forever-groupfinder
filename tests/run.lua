@@ -1918,19 +1918,74 @@ check("combat: second press closes both", W.IsShown() or parent:IsShown(), false
 M.state.combat = false
 M.Fire("PLAYER_REGEN_ENABLED")
 check("combat: nothing waits", ns.PendingAfterCombat(), 0)
--- LFG_LIST_SHOW_SEARCH (a "find a group" link, inside its click).
-nextSearch()
+-- LFG_LIST_SHOW_SEARCH (a "find a group" link, inside its click): Blizzard's
+-- browse frame answers it too and searches; one request, one search, with
+-- the event's activities, whichever handler runs first.
+local browse = M.blizzard.browse
+local function lastSearch()
+    local q = lfg.searches[#lfg.searches]
+    return q[1] .. ":" .. table.concat(q[7] or {}, ",")
+end
+for _, order in ipairs({ "ours first", "Blizzard's first" }) do
+    W.Hide()
+    Settings.SetMany({ category = nil, levelRangeOnly = nil })
+    W.ResetChecked()
+    M.fireFirst = order == "Blizzard's first" and browse or nil
+    nextSearch()
+    n = searches()
+    lfg.click(M.Fire, "LFG_LIST_SHOW_SEARCH", { 31, 21 }, true)
+    check(order .. ": show search opens ours", W.IsShown(), true)
+    check(order .. ": exactly one search", searches(), n + 1)
+    check(order .. ": it searched the event's activities", lastSearch(), "114:31")
+    check(order .. ": our category", S("category"), 114)
+    check(order .. ": our activities", table.concat(W.CheckedList(), ","), "31")
+    check(order .. ": all levels", S("levelRangeOnly"), false)
+    check(order .. ": the window waits for that search", W.Status(), "searching")
+    check(order .. ": Blizzard's window closed", parent:IsShown(), false)
+    M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    check(order .. ": its results are ours", W.Status(), "idle")
+    -- Again while our window is open.
+    M.state.time = M.state.time + 100
+    n = searches()
+    lfg.click(M.Fire, "LFG_LIST_SHOW_SEARCH", { 21 }, false)
+    check(order .. ": open: exactly one search", searches(), n + 1)
+    check(order .. ": open: its activities", lastSearch(), "2:21")
+    check(order .. ": open: our category", S("category") .. ":" .. table.concat(W.CheckedList(), ","), "2:21")
+    check(order .. ": open: searching", W.Status(), "searching")
+    M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+end
+M.fireFirst = nil
+-- Without Blizzard's finder nobody searches: an event never searches.
+local answers = B.Answers
+B.Answers = function() return false end
+local browseEvents = browse._events
+browse._events = {}
+W.Hide()
 n = searches()
-lfg.click(M.Fire, "LFG_LIST_SHOW_SEARCH", { 31 }, true)
-check("show search opens ours", W.IsShown(), true)
-check("show search: its category", S("category"), 114)
-check("show search: its activities", table.concat(W.CheckedList(), ","), "31")
-check("show search: all levels", S("levelRangeOnly"), false)
-check("show search searches", searches(), n + 1)
-check("show search: the activity searched", lfg.searches[#lfg.searches][7] and lfg.searches[#lfg.searches][7][1], 31)
-nextSearch()
-lfg.click(M.Fire, "LFG_LIST_SHOW_SEARCH", nil, false)
-check("show search while open searches again", searches(), n + 2)
+M.Fire("LFG_LIST_SHOW_SEARCH", { 31 }, false)   -- outside a click: must not even try
+B.Answers, browse._events = answers, browseEvents
+check("no Blizzard finder: ours opens", W.IsShown(), true)
+check("no Blizzard finder: no search", searches(), n)
+check("no Blizzard finder: no search tried", #lfg.blocked, 0)
+check("no Blizzard finder: not waiting for one", W.Status() ~= "searching", true)
+Settings.SetMany({ category = nil, levelRangeOnly = nil })
+W.ResetChecked()
+-- A close queued in combat does not close the comment editor opened later.
+W.Hide()
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+M.state.combat = true
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+check("combat: a close waits", ns.PendingAfterCombat(), 1)
+lfg.authenticated[2] = true
+M.SecurePress(LFGVanilla_ToggleFrame, 1)      -- both closed by the key
+lfg.click(ns.Listing.OpenCommentEditor, "", 2)
+check("comment editor drops the waiting close", ns.PendingAfterCombat(), 0)
+M.state.combat = false
+M.Fire("PLAYER_REGEN_ENABLED")
+check("comment editor stays open after combat", parent:IsShown(), true)
+lfg.authenticated[2] = nil
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+check("closed by the key", parent:IsShown(), false)
 W.Hide()
 nextSearch()
 n = searches()

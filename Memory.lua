@@ -88,6 +88,12 @@ function Memory.Unignore(name)
     if type(name) == "string" then store().ignore[name] = nil end
 end
 
+-- Ignore or unignore, and the open window follows (commands, options).
+function Memory.SetIgnored(name, on)
+    if on then Memory.Ignore(name) else Memory.Unignore(name) end
+    if ns.Window and ns.Window.IsShown() then ns.Window.Rebuild() end
+end
+
 function Memory.IsIgnored(name)
     return type(name) == "string" and store().ignore[name] == true
 end

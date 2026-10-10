@@ -63,6 +63,13 @@ function Finder.LastSearchAge()
     return GetTime() - lastSearch
 end
 
+-- Blizzard's finder issues a search in this click (Blizzard.lua): count it
+-- as ours (pending, the interval) without a second C_LFGList.Search.
+function Finder.ExpectSearch()
+    lastSearch = GetTime()
+    pending, pendingSince = true, lastSearch
+end
+
 -- Call from a click or key press only: the client blocks Search otherwise.
 -- opts = { categoryID, activityIDs (may be empty), languages (set of locale -> true, or nil) }
 function Finder.Search(opts)

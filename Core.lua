@@ -41,6 +41,10 @@ ns.On("PLAYER_REGEN_ENABLED", function()
     for _, fn in pairs(pending) do fn() end
 end)
 
+function ns.CancelAfterCombat(key)
+    afterCombat[key] = nil
+end
+
 function ns.PendingAfterCombat()
     local n = 0
     for _ in pairs(afterCombat) do n = n + 1 end
