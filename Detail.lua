@@ -111,7 +111,7 @@ local function memberLine(host, i)
     m:SetHeight(MEMBER_H)
     m.slot = Rows.NewSlot(m)
     m.slot:SetSize(ICON + 2, ICON + 2)
-    m.slot:SetPoint("LEFT", 0, 0)
+    m.slot:SetPoint("TOPLEFT", 0, -1)
     m.class = m:CreateTexture(nil, "ARTWORK")
     m.class:SetSize(ICON, ICON)
     m.class:SetPoint("LEFT", m.slot, "RIGHT", 4, 0)
@@ -120,36 +120,58 @@ local function memberLine(host, i)
     m.level = Controls.Text(m, "small")
     m.area = Controls.Text(m, "small")
     m.area:SetJustifyH("RIGHT")
-    m.area:SetPoint("RIGHT", m, "RIGHT", 0, 0)
     host.members[i] = m
     return m
 end
 
+-- One member: role slot, class icon, the name in class colour (as wide as
+-- it needs; cut only when the line is too short), the level, and the area
+-- right-aligned after it, or on a second, dim line when it does not fit.
+-- Returns the line's height.
 local function layoutMember(m, line, width)
     Rows.PaintSlot(m.slot, { free = line.kind == "free", role = line.role, member = line.member })
     for _, fs in ipairs({ m.name, m.level, m.area }) do Controls.Restyle(fs) end
     m:SetWidth(width)
+    local lead = ICON + 2 + 4 + ICON + 4
+    m.area:ClearAllPoints()
     if line.kind == "free" then
         m.class:Hide()
         m.name:SetText(line.role and L.DETAIL_FREE:format(L[Rows.ROLE_LABEL[line.role]]) or L.DETAIL_FREE_ANY)   -- plain: our own value
         Controls.Color(m.name, Controls.DIM)
-        -- The line is recycled: a member's name width (capped at 110) would cut this text.
-        m.name:SetWidth(math.max(10, width - (ICON + 2 + 4 + ICON + 4)))
+        m.name:SetWidth(math.max(10, width - lead))
         m.level:SetText("")
         m.area:SetText("")
-        return
+        m:SetHeight(MEMBER_H)
+        return MEMBER_H
     end
     local member = line.member
     Rows.SetClassIcon(m.class, member.classFile)
+    m.class:Show()
+    m.level:SetText(type(member.level) == "number" and tostring(member.level) or "")
+    local levelW = m.level:GetStringWidth()
     m.name:SetText(type(member.name) == "string" and member.name or L.UNKNOWN_PLAYER)   -- plain: Finder converted the member
     m.name:SetTextColor(Rows.ClassColor(member.classFile))
-    m.name:SetWidth(math.min(m.name:GetStringWidth(), 110))
+    local nameW = math.min(m.name:GetStringWidth() + 2, width - lead - 4 - levelW)
+    m.name:SetWidth(math.max(10, nameW))
     m.level:ClearAllPoints()
     m.level:SetPoint("LEFT", m.name, "RIGHT", 4, 0)
-    m.level:SetText(type(member.level) == "number" and tostring(member.level) or "")
-    local areaW = width - (ICON + 2 + 4 + ICON + 4) - m.name:GetWidth() - 4 - m.level:GetStringWidth() - 6
-    m.area:SetWidth(math.max(10, areaW))
     m.area:SetText(type(member.area) == "string" and member.area or "")
+    local room = width - lead - m.name:GetWidth() - 4 - levelW - 8
+    if m.area:GetStringWidth() <= room then
+        m.area:SetWidth(math.max(10, room))
+        m.area:SetJustifyH("RIGHT")
+        m.area:SetPoint("RIGHT", m, "TOPRIGHT", 0, -MEMBER_H / 2)
+        Controls.Restyle(m.area)
+        m:SetHeight(MEMBER_H)
+        return MEMBER_H
+    end
+    -- Not enough room beside the name: the area on its own dim line.
+    m.area:SetWidth(math.max(10, width - lead))
+    m.area:SetJustifyH("LEFT")
+    m.area:SetPoint("TOPLEFT", m, "TOPLEFT", lead, -MEMBER_H + 2)
+    Controls.Restyle(m.area, Controls.DIM)
+    m:SetHeight(2 * MEMBER_H - 4)
+    return 2 * MEMBER_H - 4
 end
 
 local function render(host)
@@ -165,9 +187,9 @@ local function render(host)
             local m = memberLine(host, nm)
             m:ClearAllPoints()
             m:SetPoint("TOPLEFT", child, "TOPLEFT", 0, -y)
-            layoutMember(m, line, width)
+            local mh = layoutMember(m, line, width)
             m:Show()
-            y = y + MEMBER_H
+            y = y + mh
         else
             nt = nt + 1
             local fs = textLine(host, nt)

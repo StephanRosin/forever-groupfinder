@@ -652,20 +652,24 @@ local function layoutPlayer(row, entry, width, elapsed)
     row.class:ClearAllPoints()
     row.class:SetPoint("TOPLEFT", row, "TOPLEFT", x, top)
     local nx = x + ICON + 4
+    row.name:SetText(type(entry.leader) == "string" and entry.leader or L.UNKNOWN_PLAYER)
+    local area = type(entry.area) == "string" and entry.area ~= "" and entry.area or L.UNKNOWN_AREA
+    row.area:SetText(area)
+    -- The name / area column is as wide as they need (measured), at least
+    -- PLAYER_LEFT_W and at most 45 % of the row; cut only beyond that.
+    local need = math.max(row.name:GetStringWidth(), row.area:GetStringWidth()) + ICON + 4 + 4
+    local leftW = math.floor(math.max(PLAYER_LEFT_W, math.min(need, (width - x - AGE_W) * 0.45)))
     row.name:ClearAllPoints()
     row.name:SetPoint("TOPLEFT", row, "TOPLEFT", nx, top)
-    row.name:SetWidth(PLAYER_LEFT_W - ICON - 4)
-    row.name:SetText(type(entry.leader) == "string" and entry.leader or L.UNKNOWN_PLAYER)
+    row.name:SetWidth(leftW - ICON - 4)
     if S("classColorNames") then row.name:SetTextColor(Rows.ClassColor(first.classFile)) end
     row.pin:ClearAllPoints()
     row.pin:SetPoint("TOPLEFT", row, "TOPLEFT", x + 1, bottom)
     row.area:ClearAllPoints()
     row.area:SetPoint("TOPLEFT", row, "TOPLEFT", nx, bottom)
-    row.area:SetWidth(PLAYER_LEFT_W - ICON - 4)
-    local area = type(entry.area) == "string" and entry.area ~= "" and entry.area or L.UNKNOWN_AREA
-    row.area:SetText(area)
+    row.area:SetWidth(leftW - ICON - 4)
     -- Chips over the comment.
-    local bx = x + PLAYER_LEFT_W
+    local bx = x + leftW
     local bw = math.max(40, width - bx - AGE_W - 2 * PAD)
     -- The comment after the chips on line 2 while room remains (cut off
     -- with "..."), else only in the tooltip.

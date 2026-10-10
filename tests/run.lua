@@ -2420,6 +2420,30 @@ lfg.results[41] = nil
 M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
 end
 
+-- Names take the room they need: player rows and detail members.
+do
+lfg.results, lfg.members, lfg.counts = {}, {}, {}
+result(1, "Otheaa Moonchaser", { member("Otheaa Moonchaser", "DRUID", 20, "The Barrens"),
+    member("Bo", "MAGE", 20, "Thousand Needles, Shimmering Flats") })
+result(3, "Gwendolyn Goldhammer", { member("Gwendolyn Goldhammer", "PALADIN", 21, "Stormwind City") })
+W.SetCheckedList({ 22 })
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+local pr, gr
+for _, row in ipairs(f.pool.used) do
+    if row.kind == "PLAYER" then pr = row elseif row.kind == "GROUP" then gr = row end
+end
+check("long player name not cut", pr.name:GetWidth() >= pr.name:GetStringWidth(), true)
+check("chips start after the name", pr.chips[1]._points.TOPLEFT[1] == pr and pr.chips[1]._points.TOPLEFT[3]
+    >= pr.name._points.TOPLEFT[3] + pr.name:GetStringWidth(), true)
+click(gr)
+local pm = D.Frame().members
+check("long member name not cut", pm[1].name:GetWidth() >= pm[1].name:GetStringWidth(), true)
+check("short area beside the name", pm[1]:GetHeight(), 18)
+check("long area on its own line", pm[2]:GetHeight() > 18 and pm[2].area._points.TOPLEFT ~= nil, true)
+check("second line dim", pm[2].area._textColor[1], ns.Controls.DIM[1])
+D.Close()
+end
+
 -- Button and chip sizes from the settings; nothing leaves its container at
 -- the smallest and the largest sizes, in every layout.
 do
