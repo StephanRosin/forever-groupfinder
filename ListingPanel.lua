@@ -183,10 +183,13 @@ local function chip(i)
     return c
 end
 
+-- Chosen: full colour, gold ring. Not chosen: grey at 55 % with a thin grey
+-- ring, so both read as toggles.
+local OFF_ALPHA, OFF_RING = 0.55, { 0.45, 0.45, 0.45, 0.8 }
 local function paintRole(b)
     b.icon:SetDesaturated(not b.on)
-    b.icon:SetAlpha(b.on and 1 or 0.4)
-    Controls.PaintOutline(b.ring, b.on and Controls.GOLD or { 0, 0, 0, 0 })
+    b.icon:SetAlpha(b.on and 1 or OFF_ALPHA)
+    Controls.PaintOutline(b.ring, b.on and Controls.GOLD or OFF_RING)
 end
 
 -- Fills the texts and buttons (no layout).
@@ -350,8 +353,7 @@ end
 
 -- Building -------------------------------------------------------------------------------------
 
--- A large role icon (Blizzard's role atlas, as in the rows): chosen = full
--- colour with a gold ring, not chosen = grey and faint.
+-- A large role icon (Blizzard's role atlas, as in the rows); see paintRole.
 local function roleToggle(k)
     local b = CreateFrame("Button", nil, p)
     b:SetSize(ROLE_SIZE, ROLE_SIZE)
