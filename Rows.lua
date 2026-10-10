@@ -299,7 +299,9 @@ end
 Rows.Dimmable = dimmable
 
 local function markers(row, entry)
-    local open = entry.freeForMe == true and S("markOpenSlot") and entry.kind == "GROUP"
+    -- The edge tells rows with room apart; with "Only groups with room for
+    -- me" on every row has room, so it says nothing and stays off.
+    local open = entry.freeForMe == true and S("markOpenSlot") and entry.kind == "GROUP" and not S("filterMyRole")
     local c = S("openEdgeColor")
     row.edge:SetColorTexture(c[1], c[2], c[3], 1)
     row.open:SetColorTexture(c[1], c[2], c[3], 0.08)

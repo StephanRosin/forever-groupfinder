@@ -1719,7 +1719,12 @@ check("free slots from the counts (tank, healer)", (function()
 end)(), "groupfinder-icon-role-large-tank,groupfinder-icon-role-large-heal")
 check("member slot shows the role on the class colour", g1.squares[1].role._atlas == "groupfinder-icon-role-large-dps"
     and g1.squares[1].fill:IsShown(), true)
-check("green edge when there is room for my role", g1.edge:IsShown(), true)
+check("room filter on: no green edge (every row has room)", g1.edge:IsShown(), false)
+Settings.Set("filterMyRole", false)   -- the edge tells rows apart only with the filter off
+used = f.pool.used
+built = W.Built()
+g1 = used[2]
+check("filter off: green edge when there is room for my role", g1.edge:IsShown(), true)
 local p1 = used[5]
 check("player row kind", p1.kind, "PLAYER")
 check("player name", p1.name:GetText(), "Solo")
@@ -1995,6 +2000,7 @@ check("own menu invites", #M.invited, invites + 1)
 check("own menu closes", own:IsShown(), false)
 MenuUtil = menuUtil
 
+Settings.Set("filterMyRole", nil)
 -- Filter chips toggle their settings.
 local chips = f.filters.chips
 check("no role chip in the filter bar", chips.filterMyRole, nil)
