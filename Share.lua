@@ -129,6 +129,7 @@ local ENUMS = {
     borderStyle = { NONE = true, FLAT = true, GOLD = true },
     bgMode = { SOLID = true, GRADIENT = true, TEXTURE = true },
     layout = { SIDEBAR = true, STACKED = true, DETAILS = true },
+    playerSort = { ROLE = true, LEVEL = true, NEWEST = true },
 }
 for _, name in ipairs(Settings.TEXT_STYLES) do
     ENUMS[name .. "Flag"] = { [""] = true, OUTLINE = true, THICKOUTLINE = true, SHADOW = true }

@@ -239,7 +239,7 @@ function Window.RenderList()
             or L.DIVIDER_GROUPS:format(#built.groups) })
         for _, row in ipairs(built.groups) do place("GROUP", row) end
         if S("showPlayers") then
-            place("DIVIDER", { text = L.DIVIDER_PLAYERS:format(#built.players) })
+            place("DIVIDER", { text = L.DIVIDER_PLAYERS:format(#built.players), sort = true })
             for _, row in ipairs(built.players) do place("PLAYER", row) end
         end
     end

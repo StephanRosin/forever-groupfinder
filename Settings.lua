@@ -45,6 +45,7 @@ Settings.DEFAULTS = {
     levelRangeOnly = true,
     category = 2,
     sortFriendsFirst = true,
+    playerSort = "ROLE",    -- ROLE (then level), LEVEL or NEWEST
     filterMyRole = true,    -- "Only room for me": groups without room for my roles are hidden
     filterLevelFits = false,
     hideSeen = false,

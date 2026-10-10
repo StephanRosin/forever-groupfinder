@@ -130,6 +130,47 @@ local function matchesActivities(row, checked, categoryID, categoryOf)
     return false
 end
 
+-- Players: by role (Tank, Healer, DPS; several roles count as the first
+-- of them; none last), then level, highest first; or by level only; or
+-- newest first. Ties: level, then age, then id. Friends and guild first
+-- with friendsFirst.
+local ROLE_RANK = { tank = 1, healer = 2, dps = 3 }
+Results.PLAYER_SORTS = { "ROLE", "LEVEL", "NEWEST" }
+
+local function roleRank(row)
+    local roles = type(row.roles) == "table" and row.roles or {}   -- plain: Finder converted the row
+    local best = 4
+    for key, rank in pairs(ROLE_RANK) do
+        if roles[key] == true and rank < best then best = rank end
+    end
+    return best
+end
+
+local function levelOf(row)
+    local m = type(row.members) == "table" and row.members[1] or nil   -- plain: Finder converted the row
+    return m and type(m.level) == "number" and m.level or 0   -- plain: Finder converted the row
+end
+
+function Results.PlayerSorter(mode, friendsFirst)
+    return function(a, b)
+        if friendsFirst then
+            local ka, kb = known(a), known(b)
+            if ka ~= kb then return ka end
+        end
+        if mode == "ROLE" then
+            local ra, rb = roleRank(a), roleRank(b)
+            if ra ~= rb then return ra < rb end
+        end
+        if mode ~= "NEWEST" then
+            local la, lb = levelOf(a), levelOf(b)
+            if la ~= lb then return la > lb end
+        end
+        local ga, gb = a.age or math.huge, b.age or math.huge   -- plain: our row, Finder already cleaned it
+        if ga ~= gb then return ga < gb end
+        return (a.id or 0) < (b.id or 0)   -- plain: our row
+    end
+end
+
 function Results.Build(results, ctx)
     local filters = ctx.filters or {}
     local text = type(filters.text) == "string" and filters.text ~= "" and filters.text:lower() or nil
@@ -152,6 +193,6 @@ function Results.Build(results, ctx)
     end
     local sort = sorter(ns.Settings.Get("sortFriendsFirst"))
     table.sort(out.groups, sort)
-    table.sort(out.players, sort)
+    table.sort(out.players, Results.PlayerSorter(ns.Settings.Get("playerSort"), ns.Settings.Get("sortFriendsFirst")))
     return out
 end

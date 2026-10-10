@@ -340,13 +340,33 @@ local function newDivider(parent)
     row.bg:SetColorTexture(0.08, 0.1, 0.15, 1)
     row.text = Controls.Text(row, "small")
     row.text:SetPoint("LEFT", PAD + 2, 0)
+    -- The players' divider: "Sort: Role" with a menu of the orders.
+    row.sort = Controls.Button(row, { text = "", size = "fixed", height = DIVIDER_H - 2, icon = "ChevronDown",
+        onClick = function(self) Rows.OpenSortMenu(self) end, tip = function() return L.TIP_PLAYER_SORT end })
+    row.sort:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
+    row.sort:Hide()
     return row
+end
+
+function Rows.OpenSortMenu(owner)
+    ns.Menu.Open(owner, function(root)
+        root:CreateTitle(L.PLAYER_SORT)
+        for _, mode in ipairs(ns.Results.PLAYER_SORTS) do
+            root:CreateRadio(L["PLAYER_SORT_" .. mode], function(m) return S("playerSort") == m end,
+                function(m) Settings.Set("playerSort", m) end, mode)
+        end
+    end)
 end
 
 local function layoutDivider(row, entry, width)
     Controls.Restyle(row.text, { 0.78, 0.59, 0.12 })
     row.text:SetText(entry.text)
     row:SetSize(width, DIVIDER_H)
+    row.sort:SetShown(entry.sort == true)
+    if entry.sort then
+        row.sort:SetLabel(L.PLAYER_SORT_BUTTON:format(L["PLAYER_SORT_" .. S("playerSort")]))
+        row.sort:SetWidth(math.floor(row.sort.label:GetStringWidth() + 28))
+    end
     return DIVIDER_H
 end
 

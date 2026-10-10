@@ -115,7 +115,7 @@ local EXPECTED = {
     point = "CENTER", relPoint = "CENTER", x = 0, y = 40, width = 720, height = 460,
     scale = 100, locked = false, sideWidth = 190,
     layout = "SIDEBAR", stackedWidth = 480, stackedHeight = 560, detailsWidth = 880, detailsHeight = 480,
-    minInterval = 1, levelRangeOnly = true, category = 2, sortFriendsFirst = true,
+    minInterval = 1, levelRangeOnly = true, category = 2, sortFriendsFirst = true, playerSort = "ROLE",
     filterMyRole = true, filterLevelFits = false, hideSeen = false,
     markOpenSlot = true, showPlayers = true, rowHeight = 28, playerRowHeight = 34,
     memoryMinutes = 30,
@@ -1329,6 +1329,37 @@ UnitClass = nil
 check("unknown class: all roles", roleSet(Ro.Allowed()), "THD")
 ForeverGroupFinderChar.roles = nil
 
+-- Player sorting: role then level, level, newest.
+do
+local R = ns.Results
+local function p(id, roles, level, age, friend)
+    return { id = id, kind = "PLAYER", roles = roles, members = { { level = level } }, age = age, friend = friend }
+end
+local function order(list, mode, friendsFirst)
+    local copy = {}
+    for i, v in ipairs(list) do copy[i] = v end
+    table.sort(copy, R.PlayerSorter(mode, friendsFirst))
+    local ids = {}
+    for _, v in ipairs(copy) do ids[#ids + 1] = v.id end
+    return table.concat(ids, ",")
+end
+local T, H, D = { tank = true }, { healer = true }, { dps = true }
+local list = {
+    p(1, D, 30, 10), p(2, H, 20, 5), p(3, { tank = true, dps = true }, 18, 50), p(4, T, 25, 60),
+    p(5, D, 30, 2), p(6, {}, 40, 1), p(7, H, 20, 5), p(8, { healer = true, dps = true }, 22, 70),
+}
+check("ROLE: tank, healer, dps, none; level high first; then age, id", order(list, "ROLE"), "4,3,8,2,7,5,1,6")
+check("ROLE: tank+dps counts as tank", order({ p(1, T, 10, 1), p(2, { tank = true, dps = true }, 12, 1) }, "ROLE"), "2,1")
+check("LEVEL: level high first, then age, then id", order(list, "LEVEL"), "6,5,1,4,8,2,7,3")
+check("NEWEST: age, then id", order(list, "NEWEST"), "6,5,2,7,1,3,4,8")
+check("friends stay first", order({ p(1, T, 60, 1), p(2, D, 10, 9, 1) }, "ROLE", true), "2,1")
+check("without friends first: role", order({ p(1, T, 60, 1), p(2, D, 10, 9, 1) }, "ROLE", false), "1,2")
+check("missing level sorts last in LEVEL", order({ { id = 1, members = {} }, p(2, D, 10, 1) }, "LEVEL"), "2,1")
+check("import: known player sort kept", ns.Share.Import("FGF1:ts10:playerSorts5:LEVEL}") and S("playerSort"), "LEVEL")
+Settings.Set("playerSort", nil)
+check("import: unknown player sort dropped", ns.Share.Import("FGF1:ts10:playerSorts4:NAME}") and ns.DB().playerSort, nil)
+end
+
 section("Listing")
 local Li = ns.Listing
 local lfg = M.lfg
@@ -1669,6 +1700,21 @@ local used = f.pool.used
 check("rows: divider, 2 groups, divider, 1 player", #used, 5)
 check("one activity ticked: the divider names it", used[1].text:GetText(), "The Deadmines – Groups (2)")
 check("players divider", used[4].text:GetText(), "Players (1)")
+check("players divider: sort button", used[4].sort:IsShown() and used[4].sort.label:GetText(), "Sort: Role, then level")
+check("groups divider: no sort button", used[1].sort:IsShown(), false)
+click(used[4].sort)
+check("sort menu: three orders", M.MenuTexts(M.LastMenu()), "Sort players,Role, then level,Level,Newest first")
+do
+local k0 = searches()
+menuClick(M.MenuFind(M.LastMenu(), "Level"))
+check("sort menu sets the order", S("playerSort"), "LEVEL")
+check("changing the order does not search", searches(), k0)
+used = f.pool.used
+check("divider shows the order", used[4].sort.label:GetText(), "Sort: Level")
+Settings.Set("playerSort", nil)
+used = f.pool.used
+built = W.Built()
+end
 check("group row kind", used[2].kind, "GROUP")
 check("one activity ticked: no activity in the rows", used[2].activity:IsShown(), false)
 do

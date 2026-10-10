@@ -267,6 +267,7 @@ local function listFilterRows()
         check("markOpenSlot", "OPT_MARK_OPEN_SLOT"),
         check("showPlayers", "OPT_SHOW_PLAYERS"),
         check("sortFriendsFirst", "OPT_SORT_FRIENDS_FIRST"),
+        choice("playerSort", "PLAYER_SORT", ns.Results.PLAYER_SORTS, "PLAYER_SORT_"),
         { type = "header", label = "OPT_SEARCH" },
         {
             key = "category", type = "select", label = "OPT_CATEGORY",
