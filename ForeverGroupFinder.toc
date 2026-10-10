@@ -1,0 +1,36 @@
+## Interface: 16001
+## Title: Forever Group Finder
+## Notes: A group finder in the style of the Forever addons: search and list groups and players, filters, saved listings, one window.
+## Notes-deDE: Eine Gruppensuche im Stil der Forever-Addons: Gruppen und Spieler suchen und anbieten, Filter, gespeicherte Anzeigen, ein Fenster.
+## Notes-esES: Un buscador de grupos al estilo de los addons Forever: busca y ofrece grupos y jugadores, filtros, anuncios guardados, una sola ventana.
+## Notes-esMX: Un buscador de grupos al estilo de los addons Forever: busca y ofrece grupos y jugadores, filtros, anuncios guardados, una sola ventana.
+## Notes-frFR: Une recherche de groupes dans le style des addons Forever : chercher et proposer des groupes et des joueurs, filtres, annonces enregistrées, une seule fenêtre.
+## Version: 1.0.0
+## IconTexture: Interface\AddOns\ForeverGroupFinder\Media\MinimapIcon.tga
+## AddonCompartmentFunc: ForeverGroupFinder_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: ForeverGroupFinder_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: ForeverGroupFinder_OnAddonCompartmentLeave
+## SavedVariables: ForeverGroupFinderProfiles
+## SavedVariablesPerCharacter: ForeverGroupFinderChar
+
+Locales\enUS.lua
+Locales\deDE.lua
+Locales\esES.lua
+Locales\frFR.lua
+Locale.lua
+Core.lua
+Profiles.lua
+Settings.lua
+Share.lua
+Media.lua
+Position.lua
+Resize.lua
+Corners.lua
+Border.lua
+Window.lua
+Options\Style.lua
+Options\Widgets.lua
+Options\Window.lua
+Options\Panel.lua
+Options\MinimapButton.lua
+Commands.lua

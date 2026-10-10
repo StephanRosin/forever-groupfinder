@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Build the release zip: one ForeverGroupFinder folder with exactly what
+# ./install copies, nothing else.
+#   tools/package            -> dist/ForeverGroupFinder-<version>.zip
+set -eu
+HERE="$(cd "$(dirname "$0")/.." && pwd)"
+VERSION="$(sed -n 's/^## Version: *//p' "$HERE/ForeverGroupFinder.toc" | tr -d '\r')"
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+"$HERE/install" "$STAGE" >/dev/null
+mkdir -p "$HERE/dist"
+OUT="$HERE/dist/ForeverGroupFinder-$VERSION.zip"
+rm -f "$OUT"
+(cd "$STAGE" && zip -qrX "$OUT" ForeverGroupFinder)
+echo "$OUT"
