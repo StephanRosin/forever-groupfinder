@@ -1843,6 +1843,7 @@ check("detail lines", detailTexts(), "Activities|The Deadmines (18-23)|Leader: G
     .. "|Members (2)|M:Grimnar:DAMAGER|M:Ilvea:DAMAGER|F:TANK|F:HEALER")
 check("member lines rendered", D.Frame().members[1]:IsShown() and D.Frame().members[1].name:GetText(), "Grimnar")
 check("free line rendered", D.Frame().members[3].name:GetText(), "Free: Tank")
+check("free line not cut to a recycled name width", D.Frame().members[3].name:GetWidth() > 110, true)
 local pd = D.Frame()
 click(pd.whisper)
 check("detail whispers the leader", M.tells[#M.tells].name, "Grimnar")

@@ -132,6 +132,8 @@ local function layoutMember(m, line, width)
         m.class:Hide()
         m.name:SetText(line.role and L.DETAIL_FREE:format(L[Rows.ROLE_LABEL[line.role]]) or L.DETAIL_FREE_ANY)   -- plain: our own value
         Controls.Color(m.name, Controls.DIM)
+        -- The line is recycled: a member's name width (capped at 110) would cut this text.
+        m.name:SetWidth(math.max(10, width - (ICON + 2 + 4 + ICON + 4)))
         m.level:SetText("")
         m.area:SetText("")
         return
