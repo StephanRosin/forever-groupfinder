@@ -270,13 +270,6 @@ function Finder.CategoryInfo(id)
     return { name = plain(info.name), showPlaystyle = plain(info.showPlaystyleDropdown) }
 end
 
--- The category asks for a playstyle with a listing (Blizzard's listing
--- shows its playstyle dropdown and requires a choice).
-function Finder.ShowsPlaystyle(categoryID)
-    local info = type(categoryID) == "number" and Finder.CategoryInfo(categoryID)
-    return info ~= nil and info ~= false and info.showPlaystyle == true
-end
-
 function Finder.ActivityGroupName(groupID)
     local name = C_LFGList.GetActivityGroupInfo(groupID)
     return plain(name)

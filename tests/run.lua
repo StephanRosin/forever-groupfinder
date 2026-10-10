@@ -1511,6 +1511,8 @@ LFGVanilla_ShowFrame, C_AddOns = nil, nil
 lfg.reset()
 
 section("Window")
+-- Posting always needs a playstyle; the window tests post with one chosen.
+ForeverGroupFinderChar.playstyle = 2
 Settings.Set("layout", "SIDEBAR")   -- the tests below were written for the sidebar layout
 local W, Side, LP, Memory = ns.Window, ns.Side, ns.ListingPanel, ns.Memory
 lfg.reset()
@@ -2571,7 +2573,7 @@ check("no name for none", PS.Name(0), nil)
 ForeverGroupFinderChar.playstyle = nil
 lfg.active = nil
 lfg.createOK = true
-lfg.catPlaystyle = { [2] = true }
+lfg.catPlaystyle = {}   -- the client reports false; the row shows anyway
 lfg.results, lfg.members, lfg.counts = {}, {}, {}
 result(1, "Grimnar", { member("Grimnar", "WARRIOR"), member("Ilvea", "MAGE") }, { generalPlaystyle = 2 })
 result(2, "Thal", { member("Thal", "PRIEST"), member("Ra", "ROGUE") }, { generalPlaystyle = 4 })
@@ -2580,7 +2582,7 @@ W.SetCheckedList({ 22 })
 M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
 W.ListingChanged()
 local lp = LP.Frame()
-check("category asks: playstyle row", lp.labels.PLAYSTYLE:IsShown() and lp.styles[1]:IsShown(), true)
+check("playstyle row always shown", lp.labels.PLAYSTYLE:IsShown() and lp.styles[1]:IsShown(), true)
 check("playstyle labels", lp.styles[2].label:GetText(), "Relaxed")
 check("Post off until a playstyle is chosen", lp.post.off, true)
 check("its tooltip", lp.post.offTip, "Choose a playstyle")
@@ -2600,7 +2602,7 @@ check("Update sends the new playstyle", #lfg.updates == nUpd + 1 and lfg.updates
 click(lp.post, "RightButton")
 lfg.catPlaystyle = nil
 W.ListingChanged()
-check("category without playstyle: row hidden", lp.labels.PLAYSTYLE:IsShown() or lp.styles[1]:IsShown(), false)
+check("playstyle row shown whatever the category says", lp.labels.PLAYSTYLE:IsShown() and lp.styles[1]:IsShown(), true)
 lfg.catPlaystyle = { [2] = true }
 -- Display.
 local g, pl

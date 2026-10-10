@@ -52,7 +52,10 @@ function Playstyle.Set(v)
     store().playstyle = VALID[v] and v or nil
 end
 
--- The current category wants a playstyle with a listing.
-function Playstyle.Required(categoryID)
-    return ns.Finder.ShowsPlaystyle(categoryID or ns.Settings.Get("category"))
+-- A listing always needs a playstyle: Forever's (modern) Vanilla-style listing
+-- always has the playstyle dropdown and refuses to post without a choice
+-- (Blizzard_LFGVanilla_Listing.xml PlayStyleDropdown, Listing.lua ~484). The
+-- category flag showPlaystyleDropdown is false there, so it is not consulted.
+function Playstyle.Required()
+    return true
 end
