@@ -1876,20 +1876,47 @@ for _, sq in ipairs(groupRow.squares) do
     if sq:IsShown() and not sq.free and not memberSq then memberSq = sq end
 end
 local function tipOf() local t = {} for _, l in ipairs(GameTooltip._lines or {}) do t[#t + 1] = l[1] end return table.concat(t, "|") end
+local strip = groupRow.strip
+local pitch = memberSq:GetWidth() + 2
+check("strip covers the slots", strip:GetWidth() >= 2 * memberSq:GetWidth(), true)
+check("slots themselves take no mouse", memberSq._motion, nil)
+check("strip: hover only, clicks pass", strip._motion == true and strip._click == false, true)
+strip._rect = { 100, 0, strip:GetWidth(), 24 }
+local function cursorAt(rel) M.state.cursorX = 100 + rel end
+local function slotIndex(sq) for i, q in ipairs(groupRow.squares) do if q == sq then return i end end end
 groupRow._mouseOver = true
-memberSq:GetScript("OnEnter")(memberSq)
-check("slot tooltip: anchored right of the cursor", GameTooltip._anchor, "ANCHOR_CURSOR_RIGHT")
-check("slot tooltip: owner is the slot", GameTooltip._owner, memberSq)
-check("slot tooltip: name, level, class, role", tipOf():find("^%w+|Level %d+|%u+|%a+") ~= nil, true)
-check("slot tooltip: not the row tooltip", tipOf():find("The Deadmines", 1, true), nil)
-check("slot tooltip keeps the row hover", groupRow.hover:IsShown(), true)
-memberSq:GetScript("OnLeave")(memberSq)
-check("back on the row: row tooltip again", tipOf():find("The Deadmines", 1, true) ~= nil and GameTooltip._anchor == "ANCHOR_CURSOR_RIGHT", true)
-freeSq:GetScript("OnEnter")(freeSq)
-check("free slot tooltip", tipOf(), "Free: Tank")
+cursorAt(pitch * 2 + 1)   -- over the third slot (a member)
+strip:GetScript("OnEnter")(strip)
+check("strip: tooltip of the slot under the cursor", GameTooltip._owner, groupRow.squares[3])
+check("strip: slot tooltip anchored right of the cursor", GameTooltip._anchor, "ANCHOR_CURSOR_RIGHT")
+check("strip: not the row tooltip", tipOf():find("The Deadmines", 1, true), nil)
+check("strip keeps the row hover", groupRow.hover:IsShown(), true)
+check("strip follows the cursor via OnUpdate", strip:GetScript("OnUpdate") ~= nil, true)
+GameTooltip._lines = {}
+strip:GetScript("OnUpdate")(strip, 0.1)
+check("same slot: no re-show", #GameTooltip._lines, 0)
+cursorAt(pitch * 2 - 1)   -- in the gap before slot 3 -> nearest is slot 3
+strip:GetScript("OnUpdate")(strip, 0.1)
+check("gap: still the nearest slot, no fallback to the group tooltip", #GameTooltip._lines == 0 and GameTooltip._owner == groupRow.squares[3], true)
+cursorAt(pitch + memberSq:GetWidth() + 0.4)   -- gap after slot 2, nearer to slot 2
+strip:GetScript("OnUpdate")(strip, 0.1)
+check("gap: nearest slot wins", slotIndex(GameTooltip._owner), 2)
+check("free slot tooltip", tipOf(), "Free: Healer")
+cursorAt(2)
+strip:GetScript("OnUpdate")(strip, 0.1)
+check("first slot: free tank", tipOf(), "Free: Tank")
+cursorAt(-5)   -- just left of the strip but still entered: clamps
+strip:GetScript("OnUpdate")(strip, 0.1)
+check("clamped to the first slot", slotIndex(GameTooltip._owner), 1)
+check("index maths", ns.Rows.SlotIndexAt(1000, 4, 24, 2), 4)
+check("no slots", ns.Rows.SlotIndexAt(5, 0, 24, 2), nil)
+strip:GetScript("OnLeave")(strip)
+check("leaving the strip: row tooltip again", tipOf():find("The Deadmines", 1, true) ~= nil and GameTooltip._anchor == "ANCHOR_CURSOR_RIGHT", true)
+check("OnUpdate off outside the strip", strip:GetScript("OnUpdate"), nil)
 groupRow._mouseOver = false
-freeSq:GetScript("OnLeave")(freeSq)
-check("leaving the row from a slot hides the tooltip", tipOf(), "")
+strip:GetScript("OnEnter")(strip)
+strip:GetScript("OnLeave")(strip)
+check("leaving the row from the strip hides the tooltip", tipOf(), "")
 check("slot tooltip: member data", (function()
     local lines = ns.Rows.SlotTooltipLines({ member = { name = "Zed", level = 31, classFile = "MAGE", area = "Ironforge" }, role = "DAMAGER" })
     local t = {}
@@ -1897,7 +1924,6 @@ check("slot tooltip: member data", (function()
     return table.concat(t, "|")
 end)(), "Zed|Level 31|MAGE|DPS|Ironforge")
 check("slot tooltip: garbage member survives", #ns.Rows.SlotTooltipLines({ member = { name = {}, level = "x" }, role = {} }), 1)
-check("slots take hover only; clicks fall through to the row", memberSq._motion == true and memberSq._click == false, true)
 groupRow:GetScript("OnLeave")(groupRow)
 local tl = ns.Rows.TooltipLines(W.Built().players[1], 0)
 check("player tooltip: area", (function()

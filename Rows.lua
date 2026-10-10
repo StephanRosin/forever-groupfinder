@@ -476,23 +476,48 @@ function Rows.PaintSlot(sq, slot)
     end
 end
 
--- A row slot answers hover with its own tooltip; clicks belong to the row.
-local function newSlot(row, sq)
-    sq:SetMouseMotionEnabled(true)
-    sq:SetMouseClickEnabled(false)   -- clicks fall through to the row (left: details, right: menu)
-    sq:SetScript("OnEnter", function(self)
+-- The slot under the cursor: a cursor in a gap belongs to the nearest slot.
+function Rows.SlotIndexAt(rel, count, size, gap)
+    if count < 1 then return nil end
+    local idx = math.floor((rel - size / 2) / (size + gap) + 0.5) + 1
+    return math.max(1, math.min(count, idx))
+end
+
+-- One invisible hover zone over all slots (hover only, clicks fall through to
+-- the row): the tooltip follows the slot under the cursor and never drops to
+-- the row tooltip between two slots.
+local function newStrip(row)
+    local strip = CreateFrame("Frame", nil, row)
+    strip:SetMouseMotionEnabled(true)
+    strip:SetMouseClickEnabled(false)   -- left: details, right: menu, on the row
+    local function follow()
+        local left = strip:GetLeft()
+        if not left or not strip.count then return end
+        local cx = GetCursorPosition() / strip:GetEffectiveScale()
+        local idx = Rows.SlotIndexAt(cx - left, strip.count, strip.size, SQUARE_GAP)
+        local slot = idx and row.squares[idx].slot
+        if slot and slot ~= strip.shown then
+            strip.shown = slot
+            Rows.ShowSlotTooltip(row.squares[idx], slot)
+        end
+    end
+    strip:SetScript("OnEnter", function(self)
         row.hover:Show()
         Rows.ShowInvite(row, true)
-        if self.slot then Rows.ShowSlotTooltip(self, self.slot) end
+        self.shown = nil
+        self:SetScript("OnUpdate", follow)
+        follow()
     end)
-    sq:SetScript("OnLeave", function()
+    strip:SetScript("OnLeave", function(self)
+        self.shown = nil
+        self:SetScript("OnUpdate", nil)
         if row:IsMouseOver() and row.entry then
             Rows.ShowTooltip(row, row.entry, ns.Window.Elapsed())
         else
             GameTooltip:Hide()
         end
     end)
-    return sq
+    return strip
 end
 
 local function newGroup(parent)
@@ -503,7 +528,8 @@ local function newGroup(parent)
     row.levels = Controls.Text(row, "small")
     row.count = Controls.Text(row, "small")
     row.squares = {}
-    for i = 1, MAX_SQUARES do row.squares[i] = newSlot(row, newSquare(row)) end
+    for i = 1, MAX_SQUARES do row.squares[i] = newSquare(row) end
+    row.strip = newStrip(row)
     row.more = Controls.Text(row, "small")
     row.tag = Controls.Text(row, "small")
     row.comment = Controls.Text(row, "comment")
@@ -528,6 +554,13 @@ local function layoutSquares(row, entry, x)
             sq:Hide()
         end
     end
+    local shownCount = math.min(#slots, MAX_SQUARES)
+    local strip = row.strip
+    strip.count, strip.size, strip.shown = shownCount, SQUARE, nil
+    strip:ClearAllPoints()
+    strip:SetPoint("TOPLEFT", row, "LEFT", x, SQUARE / 2)
+    strip:SetSize(math.max(1, shownCount * (SQUARE + SQUARE_GAP) - SQUARE_GAP), SQUARE)
+    strip:SetShown(shownCount > 0)
     local extra = #slots - MAX_SQUARES
     row.more:ClearAllPoints()
     row.more:SetPoint("LEFT", row, "LEFT", x + MAX_SQUARES * (SQUARE + SQUARE_GAP), 0)
