@@ -19,7 +19,7 @@ ns.ListingPanel = Panel
 
 local GAP = 4
 local EDIT_ICON = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up"   -- a pencil and note
-local PILL_H, PILL_PAD = 16, 6   -- the status pill
+local PILL_PAD = 6   -- the status pill's sides
 local ROLE_SIZE = 28              -- a role icon toggle
 local LABEL_MIN, LABEL_MAX, COL_GAP = 44, 96, 8   -- the label column
 local ROLE_ATLAS = { tank = "TANK", healer = "HEALER", dps = "DAMAGER" }
@@ -163,7 +163,10 @@ local function paintPill(kind, text)
     Controls.Color(p.status, look[1])
     p.pill.bg:SetColorTexture(look[2][1], look[2][2], look[2][3], look[2][4])
     Controls.PaintOutline(p.pill.edges, { look[1][1], look[1][2], look[1][3], 0.6 })
-    p.pill:SetSize(math.floor(p.status:GetStringWidth() + PILL_PAD * 2 + 0.5), PILL_H)
+    -- As tall as the buttons, with their text size: it shares a line with
+    -- the main button.
+    Controls.Restyle(p.status, look[1])
+    p.pill:SetSize(math.floor(p.status:GetStringWidth() + PILL_PAD * 2 + 0.5), Controls.ButtonHeight())
     p.pill.kind = kind
 end
 
@@ -262,7 +265,7 @@ function Panel.Layout(width)
     local y = 0
     -- Status: the pill and right after it the main button (gold), which
     -- goes under the pill when the value column is too narrow.
-    local h = math.max(PILL_H, bh)
+    local h = bh
     label("STATUS", y, h)
     p.pill:ClearAllPoints()
     p.pill:SetPoint("LEFT", p, "TOPLEFT", vx, -y - h / 2)
@@ -395,6 +398,7 @@ function Panel.Create(parent)
     p.pill.bg:SetAllPoints()
     p.pill.edges = Controls.Outline(p.pill, Controls.DIM)
     p.status = Controls.Text(p.pill, "small")
+    p.status.sizeKey = "buttonTextSize"
     p.status:SetPoint("CENTER")
     p.post = Controls.Button(p, { text = "", primary = true,
         onClick = function(_, mouse) Panel.Action(mouse) end })

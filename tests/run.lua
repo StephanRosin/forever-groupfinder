@@ -2220,6 +2220,10 @@ check("rows top to bottom", lp.labels.STATUS._points.RIGHT[4] > lp.labels.ROLES.
 check("main button right after the status pill", lp.post._points.LEFT[3], vx + lp.pill:GetWidth() + 8)
 check("main button on the status row", lp.post._points.LEFT[4], lp.pill._points.LEFT[4])
 check("main button: the button size", lp.post:GetHeight(), 22)
+check("pill as tall as the main button", lp.pill:GetHeight(), lp.post:GetHeight())
+check("pill text the button text size", lp.status._font[2], lp.post.label._font[2])
+check("pill and button centred on one line", lp.pill._points.LEFT[4], lp.post._points.LEFT[4])
+check("Edit centred on the comment text's line", lp.comment._points.LEFT[4], lp.commentText._points.LEFT[4])
 check("no extra row: the comment row is the last", (function()
     local lowest = lp.comment._points.LEFT[4]
     for _, fr in ipairs({ lp.post, lp.pill }) do if fr._points.LEFT[4] < lowest then return false end end
@@ -2571,6 +2575,7 @@ for _, mode in ipairs(Layouts.ORDER) do
         Settings.SetMany({ layout = mode, buttonHeight = sz[1], chipHeight = sz[2], buttonTextSize = sz[3] })
         local tag = mode .. " " .. sz[1] .. "/" .. sz[2] .. "/" .. sz[3] .. ": "
         check(tag .. "button height applied", LP.Frame().comment:GetHeight(), sz[1])
+        check(tag .. "pill as tall as the main button", LP.Frame().pill:GetHeight() .. "/" .. LP.Frame().post:GetHeight(), sz[1] .. "/" .. sz[1])
         check(tag .. "chip height applied", f.filters.chips.language:GetHeight(), sz[2])
         check(tag .. "text size applied", f.filters.chips.language.label._font[2], sz[3])
         check(tag .. "listing values inside", insideListing(), true)
