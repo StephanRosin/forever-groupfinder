@@ -81,7 +81,7 @@ nameFont = "Friz Quadrata", nameSize = 12 [8, 20], nameFlag = "SHADOW", nameColo
 commentFont = "Friz Quadrata", commentSize = 11 [8, 18], commentFlag = "SHADOW", commentColor = {0.79, 0.76, 0.69},
 smallFont = "Friz Quadrata", smallSize = 10 [7, 16], smallFlag = "SHADOW", smallColor = {0.55, 0.54, 0.5},
 ```
-`templates` entries: `{ name = "", activityIDs = {}, comment = "", roles = {tank=false, healer=true, dps=false} }`. Tables (templates, languages, whisperTemplates) are stored whole when they differ from the default.
+`templates` entries: `{ name = "", activityIDs = {}, roles = {tank=false, healer=true, dps=false} }` (no comment: the addon cannot write it). Tables (templates, languages, whisperTemplates) are stored whole when they differ from the default.
 
 - [ ] Steps: copy/port the framework files, rename all identifiers, strip meter code, write the TOC, DEFAULTS, locale keys for everything above; tests: TOC lists only existing files, locales same keys/placeholders, settings defaults/ranges/only-non-defaults stored, profile switch/export/import round trip (`FGF1:`), slash parsing, compartment globals exist, secret lint green. `tests/run` green → commit "Scaffold: framework ported from Forever Combat Meter".
 
@@ -119,18 +119,18 @@ smallFont = "Friz Quadrata", smallSize = 10 [7, 16], smallFlag = "SHADOW", small
 
 ### Task 5: Listing
 
-**Consumes:** probe results from the ledger (Task 0).
+**Consumes:** probe results from the ledger (Task 0): Search/Create/Update/Remove work from an addon click; the addon must NEVER write the comment (SetText on Blizzard's comment EditBox is illegal; comments also need an authenticator).
 
-**Produces:** `Listing.State()` → `{active=bool, activityIDs, comment, remaining (s) or nil, roles}`; `Listing.Post(activityIDs, comment, roles)` (click path) — sets the comment through the path the probe confirmed (if the probe showed no addon path works: open Blizzard's listing tab via `LFGVanilla_ShowFrame(1)` with the activities preselected and print a one-line hint), then `Finder.CreateOrUpdate`; `Listing.Remove()`; `Listing.Templates()`, `Listing.SaveTemplate(name, activityIDs, comment, roles)`, `Listing.DeleteTemplate(name)`, `Listing.ApplyTemplate(name)` → `{activityIDs, comment, roles}`; remaining time from `duration` of the active entry (seconds) counted down locally; `Listing.OnExpiryWarning(fn)` fires once when remaining < `expiryWarnMinutes`; `Listing.Missing(activityID)` → `{TANK=n, HEALER=n, DAMAGER=n}` from the party's `UnitGroupRolesAssigned` and the activity's `maxPlayers` (5 → 1/1/3; 10 → 2/3/5; 20 → 2/5/13; 40 → 4/10/26; others: DAMAGER = max − members), only when the player leads a group (`UnitIsGroupLeader("player")`). Whisper template expansion `{role}`, `{level}`, `{class}`, `{activity}`.
+**Produces:** `Listing.State()` → `{active=bool, activityIDs, comment, remaining (s) or nil, roles}`; `Listing.Post(activityIDs, roles)` (click path) → `Finder.CreateOrUpdate` (an existing comment is kept by UpdateListing); `Listing.Comment()` → current comment from the active entry (read-only, secret-guarded); `Listing.CanComment(categoryID)` → `C_LFGList.IsPlayerAuthenticatedForLFG(categoryID)` (via Finder); `Listing.OpenCommentEditor()` → `C_AddOns.LoadAddOn("Blizzard_GroupFinder_VanillaStyle")` then `LFGVanilla_ShowFrame(1)`; `Listing.Remove()`; `Listing.Templates()`, `Listing.SaveTemplate(name, activityIDs, roles)`, `Listing.DeleteTemplate(name)`, `Listing.ApplyTemplate(name)` → `{activityIDs, roles}`; remaining time from `duration` of the active entry (seconds) counted down locally; `Listing.OnExpiryWarning(fn)` fires once when remaining < `expiryWarnMinutes`; `Listing.Missing(activityID)` → `{TANK=n, HEALER=n, DAMAGER=n}` from the party's `UnitGroupRolesAssigned` and the activity's `maxPlayers` (5 → 1/1/3; 10 → 2/3/5; 20 → 2/5/13; 40 → 4/10/26; others: DAMAGER = max − members), only when the player leads a group (`UnitIsGroupLeader("player")`). Whisper template expansion `{role}`, `{level}`, `{class}`, `{activity}`.
 
-- [ ] Steps: tests (template CRUD + persistence shape, apply, countdown and single warning, missing roles per size and assigned roles, template expansion, post calls Finder in the right order, fallback path when comment path unavailable), implement, green, commit "Listing: post/update/remove, templates, expiry warning, leader role arithmetic".
+- [ ] Steps: tests (template CRUD + persistence shape, apply, countdown and single warning, missing roles per size and assigned roles, template expansion, post calls Finder in the right order, CanComment/OpenCommentEditor, the addon never calls SetText on Blizzard frames), implement, green, commit "Listing: post/update/remove, templates, expiry warning, leader role arithmetic".
 
 ### Task 6: Window, rows, menu
 
 **Produces:** `ns.Window.Toggle()`, `Show()`, `Hide()`, `Refresh()`; the frame per spec variant B and mockup `layout-v2.html`:
 - Header like the combat meter FOREVER style (title "Group Finder", refresh button showing "⟳ <age>" — click = `Finder.Search` with the current category/activities/languages; lock button; close button), corner resize arrows when unlocked (ns.Resize), position via ns.Position, ESC closes (UISpecialFrames).
 - Left column (`sideWidth`): category selector (Dungeons, Raids, Quests & Zones, Battlegrounds, Custom), search box, scrollable activity list with checkboxes coloured by fit (FITS normal, LOW grey, HIGH red) showing "min–max", and at the bottom the checkbox "Only in my level range" (`levelRangeOnly`). Ticking/unticking an activity or switching category or the switch triggers a search (OnClick path) and updates "my listing" activities.
-- Right top "My listing": activity chips (from the checked activities), comment edit box, role toggles (solo), template dropdown (apply/save/delete), remaining time, buttons Post/Update and Remove; expiry warning text with "Extend" (re-post).
+- Right top "My listing": activity chips (from the checked activities), current comment read-only + "Comment…" button (opens Blizzard's listing tab; greyed with tooltip "Comments need an authenticator on your account" when `Listing.CanComment` is false), role toggles (solo), template dropdown (apply/save/delete), remaining time, buttons Post/Update and Remove; expiry warning text with "Extend" (re-post).
 - Leader line (only when leading): "Missing: …".
 - Filter chips: Room for my role, Level fits, Text (edit box), Hide seen, Language (dropdown multi-select).
 - List: divider "Groups (n)", group rows (activity, member class squares with dashed free slots up to `maxPlayers` capped at 5 squares + "+n", comment, age, Guild/Friend tag, green left edge when freeForMe, dim when seen, delisted crossed-out), divider "Players (n)", player rows on two lines (class-coloured name, level, roles; location line with a pin icon; activity chips; comment; age). Rows recycled; `LFG_LIST_SEARCH_RESULT_UPDATED` updates the matching row in place (no re-sort until the next full result set).
@@ -149,7 +149,7 @@ smallFont = "Friz Quadrata", smallSize = 10 [7, 16], smallFlag = "SHADOW", small
 
 ### Task 8: In-game check (controller with the user)
 
-Install (`./install "<WoW>/_classic_beta_/Interface/AddOns"`), user `/reload`s and checks: opening via key/micro button/minimap/`/fgf`, activity list + level switch, search on interaction, groups/players with location, filters, memory, templates, posting with comment, leader line, options, profiles, combat (no errors, no blocked actions). Fix findings with tests.
+Install (`./install "<WoW>/_classic_beta_/Interface/AddOns"`), user `/reload`s and checks: opening via key/micro button/minimap/`/fgf`, activity list + level switch, search on interaction, groups/players with location, filters, memory, templates, posting (comment via Blizzard's tab if authenticated), leader line, options, profiles, combat (no errors, no blocked actions). Fix findings with tests.
 
 ### Task 9: Docs, CurseForge text, Vault
 
