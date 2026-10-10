@@ -28,6 +28,7 @@ local LANGUAGES = {      -- the language filter, each in its own name
     { code = "itIT", label = "Italiano" }, { code = "ptBR", label = "Português" },
 }
 Window.LANGUAGES = LANGUAGES
+Window.SECTION_GAP = 12   -- space above the players divider
 
 local f
 local checked = {}         -- activity id -> true: the search and my listing
@@ -240,6 +241,7 @@ function Window.RenderList()
             or L.DIVIDER_GROUPS:format(#built.groups) })
         for _, row in ipairs(built.groups) do place("GROUP", row) end
         if S("showPlayers") then
+            if #built.groups > 0 then y = y + Window.SECTION_GAP end   -- breathing room between the two lists
             place("DIVIDER", { text = L.DIVIDER_PLAYERS:format(#built.players), sort = true })
             for _, row in ipairs(built.players) do place("PLAYER", row) end
         end

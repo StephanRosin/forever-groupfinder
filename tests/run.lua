@@ -1700,6 +1700,8 @@ local used = f.pool.used
 check("rows: divider, 2 groups, divider, 1 player", #used, 5)
 check("one activity ticked: the divider names it", used[1].text:GetText(), "The Deadmines – Groups (2)")
 check("players divider", used[4].text:GetText(), "Players (1)")
+check("gap above the players divider", (select(5, used[3]:GetPoint())) - (select(5, used[4]:GetPoint()))
+    > used[3]:GetHeight() + ns.Window.SECTION_GAP - 1, true)
 check("players divider: sort button", used[4].sort:IsShown() and used[4].sort.label:GetText(), "Sort: Role, then level")
 check("groups divider: no sort button", used[1].sort:IsShown(), false)
 click(used[4].sort)
