@@ -2,7 +2,7 @@ local ADDON, ns = ...
 local L, Settings, Controls, Activities = ns.L, ns.Settings, ns.Controls, ns.Activities
 local S = Settings.Get
 
--- The activity list: category selector, search box, the activity list with
+-- The activity list: the categories as radio buttons, search box, the activity list with
 -- check boxes coloured by level fit, and at the bottom the switch "Only in
 -- my level range". One panel for every layout: the window's left column
 -- (SIDEBAR) or the content of the activity dropdown (STACKED, DETAILS;
@@ -17,11 +17,14 @@ local PAD = 6
 local ITEM_H = 18
 local CHECK = 11
 local FIT_COLOR = { FITS = nil, LOW = Controls.GREY, HIGH = Controls.RED }
+local RADIO_H, RADIO_GAP = 16, 8
 
 local panel
 local items = {}
 local filterText = ""
 local width              -- set by the layout; the side width until then
+local radioH = RADIO_H     -- the radios' height (one or more lines)
+local height = 0           -- the panel's height from the layout
 
 -- The activities shown: the category's, filtered by text and (with the
 -- switch on) by level, but my active listing's and the checked ones stay,
@@ -96,7 +99,7 @@ end
 -- Lays the list out again (no search).
 function Side.Refresh()
     if not panel then return end
-    panel.category:SetLabel(Side.CategoryName(S("category")))
+    Side.LayoutCategories((width or S("sideWidth")) - 2 * PAD)
     panel.levelBox:SetChecked(S("levelRangeOnly"))
     panel.levelText:SetText(L.LEVEL_RANGE_ONLY)
     panel.search.hint:SetText(L.SEARCH_ACTIVITIES)
@@ -163,26 +166,61 @@ end
 function Side.Items() return items end
 function Side.Panel() return panel end
 
-local function openCategoryMenu(owner)
-    ns.Menu.Open(owner, function(root)
-        for _, c in ipairs(Activities.Categories()) do
-            root:CreateRadio(c.name, function(id) return S("category") == id end,
-                function(id) Side.SetCategory(id) end, c.id)
-        end
-    end)
+-- The categories: radio buttons side by side, wrapping to more lines.
+local function radio(i)
+    local r = panel.cats[i]
+    if r then return r end
+    r = CreateFrame("Button", nil, panel)
+    r:SetHeight(RADIO_H)
+    r:RegisterForClicks("LeftButtonUp")
+    r.box = Controls.CheckMark(r, CHECK)
+    r.box:SetPoint("LEFT", 0, 0)
+    r.label = Controls.Text(r, "small")
+    r.label:SetPoint("LEFT", r.box, "RIGHT", 4, 0)
+    r:SetScript("OnClick", function(self) if self.categoryID then Side.SetCategory(self.categoryID) end end)
+    r:SetScript("OnEnter", function(self) Controls.Tooltip(self, L.TIP_CATEGORY) end)
+    r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    panel.cats[i] = r
+    return r
+end
+
+-- Lays the radios out in w; returns their height.
+function Side.LayoutCategories(w)
+    if not panel then return 0 end
+    local x, line = 0, 0
+    local cats = Activities.Categories()
+    for i, c in ipairs(cats) do
+        local r = radio(i)
+        r.categoryID = c.id
+        local on = S("category") == c.id
+        r.box:SetChecked(on)
+        Controls.Restyle(r.label, on and Controls.GOLD or Controls.TEXT)
+        r.label:SetText(c.name)
+        local rw = math.floor(CHECK + 4 + r.label:GetStringWidth() + 0.5)
+        if x > 0 and x + rw > w then x, line = 0, line + 1 end
+        r:SetWidth(math.min(rw, w))
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD + x, -PAD - line * (RADIO_H + 2))
+        r:Show()
+        x = x + rw + RADIO_GAP
+    end
+    for i = #cats + 1, #panel.cats do panel.cats[i]:Hide() end
+    radioH = (#cats > 0 and (line + 1) * (RADIO_H + 2) - 2) or 0
+    panel.search:ClearAllPoints()
+    panel.search:SetPoint("TOPLEFT", panel, "TOPLEFT", PAD, -PAD - radioH - 4)
+    panel.search:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -PAD, -PAD - radioH - 4)
+    panel.scroll.viewHeight = math.max(0, height - 2 * PAD - radioH - 4 - 18 - 4 - ITEM_H - 2 - 4 - PAD)
+    return radioH
 end
 
 -- Building -----------------------------------------------------------------------------
 
 function Side.Create(parent)
     panel = CreateFrame("Frame", nil, parent)
-    panel.category = Controls.Button(panel, { text = "", height = 18, icon = "ChevronDown",
-        onClick = function(self) openCategoryMenu(self) end, tip = function() return L.TIP_CATEGORY end })
-    panel.category:SetPoint("TOPLEFT", PAD, -PAD)
-    panel.category:SetPoint("TOPRIGHT", -PAD, -PAD)
+    panel.cats = {}
     panel.search = Controls.EditBox(panel, L.SEARCH_ACTIVITIES, 40)
-    panel.search:SetPoint("TOPLEFT", panel.category, "BOTTOMLEFT", 0, -4)
-    panel.search:SetPoint("TOPRIGHT", panel.category, "BOTTOMRIGHT", 0, -4)
+    panel.search:SetPoint("TOPLEFT", PAD, -PAD - RADIO_H - 4)
+    panel.search:SetPoint("TOPRIGHT", -PAD, -PAD - RADIO_H - 4)
     panel.search:HookScript("OnTextChanged", function(self) Side.SetFilterText(self:GetText()) end)
     panel.search:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
 
@@ -222,6 +260,7 @@ end
 function Side.SetSize(w, h)
     width = w
     if not panel then return end
+    height = h
     panel:SetSize(w, h)
-    panel.scroll.viewHeight = math.max(0, h - 2 * PAD - 18 - 4 - 18 - 4 - ITEM_H - 2 - 4 - PAD)
+    Side.LayoutCategories(w - 2 * PAD)
 end

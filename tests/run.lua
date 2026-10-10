@@ -1597,16 +1597,50 @@ lfg.active = nil
 M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
 check("gone again without the listing", visible():find("23", 1, true), nil)
 
--- Category switch through the selector menu.
-click(Side.Panel().category)
-local catMenu = M.LastMenu()
-check("category menu lists categories", M.MenuTexts(catMenu), "Dungeons,Raids")
+-- Category switch through the radio buttons.
+local cats = Side.Panel().cats
+local function catTexts()
+    local t = {}
+    for _, r in ipairs(cats) do if r:IsShown() then t[#t + 1] = r.label:GetText() end end
+    return table.concat(t, ",")
+end
+check("radios for the available categories", catTexts(), "Dungeons,Raids")
+check("current category ticked", cats[1].box:GetChecked() and not cats[2].box:GetChecked(), true)
+check("radios side by side", cats[2]._points.TOPLEFT[3] > cats[1]._points.TOPLEFT[3]
+    and cats[2]._points.TOPLEFT[4] == cats[1]._points.TOPLEFT[4], true)
+check("no category dropdown any more", Side.Panel().category, nil)
 M.state.time = M.state.time + 5
 local k = searches()
-menuClick(M.MenuFind(catMenu, "Raids"))
+click(cats[2])
+check("radio click searches", searches(), k + 1)
+check("radio searched the new category", lfg.searches[#lfg.searches][1], 114)
+check("new category ticked", cats[2].box:GetChecked() and not cats[1].box:GetChecked(), true)
 check("category stored", S("category"), 114)
 check("category switch clears ticks", next(W.Checked()), nil)
 check("raids: MC out of range hidden", visible(), "")
+check("same radio again: no search", (function()
+    M.state.time = M.state.time + 5
+    local n = searches()
+    click(cats[2])
+    return searches() - n
+end)(), 0)
+-- Many categories wrap to a second line; the search box moves down.
+lfg.cats = { 2, 114, 116, 118, 120 }
+lfg.catNames = { [2] = "Dungeons", [114] = "Raids", [116] = "Quests & Zones", [118] = "Battlegrounds", [120] = "Custom" }
+M.Fire("LFG_LIST_AVAILABILITY_UPDATE")
+Side.Refresh()
+check("five radios", catTexts(), "Dungeons,Raids,Quests & Zones,Battlegrounds,Custom")
+check("wrapped to more lines", cats[5]._points.TOPLEFT[4] < cats[1]._points.TOPLEFT[4], true)
+check("all inside the panel", (function()
+    for _, r in ipairs(cats) do
+        if r._points.TOPLEFT[3] + r:GetWidth() > S("sideWidth") - 6 + 1 then return false end
+    end
+    return true
+end)(), true)
+check("search box below the radios", Side.Panel().search._points.TOPLEFT[4] < cats[5]._points.TOPLEFT[4], true)
+lfg.cats = { 2, 114 }
+lfg.catNames = { [2] = "Dungeons", [114] = "Raids" }
+M.Fire("LFG_LIST_AVAILABILITY_UPDATE")
 Settings.Set("category", nil)
 W.SetChecked(22, true)
 Side.Refresh()
@@ -2460,7 +2494,7 @@ check("popup above the window's parts", f.side:GetFrameStrata(), "DIALOG")
 check("popup title", f.popup.header.title:GetText(), "Activities")
 check("popup header as the window's", f.popup.header:GetHeight() .. "/" .. f.popup.header.close:GetWidth(), "32/22")
 check("popup header shine clipped", (f.popup.header.shine._masks or 0) > 0, true)
-check("popup has the category selector and switch", Side.Panel().category:IsShown() and Side.Panel().level:IsShown(), true)
+check("popup has the category radios and switch", Side.Panel().cats[1]:IsShown() and Side.Panel().level:IsShown(), true)
 check("popup list: the same items", visible():find("24,22", 1, true) ~= nil, true)
 M.state.time = M.state.time + 5
 k = searches()
