@@ -1847,7 +1847,9 @@ check("free line not cut to a recycled name width", D.Frame().members[3].name:Ge
 local pd = D.Frame()
 click(pd.whisper)
 check("detail whispers the leader", M.tells[#M.tells].name, "Grimnar")
-check("whispered row is seen", Memory.IsSeen(groupRow.entry.key), true)
+check("whispering does not mark seen", Memory.IsSeen(groupRow.entry.key), false)
+click(pd.seen)
+check("the Seen button marks seen", Memory.IsSeen(groupRow.entry.key), true)
 check("seen row dimmed", groupRow.activity:GetAlpha(), 0.45)
 check("seen row keeps its frame at full alpha", groupRow:GetAlpha(), 1)
 check("seen row keeps the green edge", groupRow.edge:IsShown() and groupRow.edge:GetAlpha(), 1)
@@ -1888,6 +1890,7 @@ for _, row in ipairs(used) do if row.kind == "PLAYER" then playerRow = row end e
 tells = #M.tells
 click(playerRow)
 check("player left click still whispers", M.tells[#M.tells].name == "Solo" and #M.tells, tells + 1)
+check("player left click does not mark seen", Memory.IsSeen(playerRow.entry.key), false)
 check("player click opens no panel", D.IsShown(), false)
 -- Slots: Tank, Healer, Damage, unknown; free places in the same order.
 local function slotText(entry)
@@ -1938,8 +1941,10 @@ W.RefreshRows()
 click(groupRow, "RightButton")
 local menu = M.LastMenu()
 check("group menu: no invite", M.MenuTexts(menu), "Grimnar,Whisper,Whisper template,-,Mark as seen,Hide,Ignore the leader")
+ns.AccountDB().memory.seen = {}
 M.MenuClick(M.MenuFind(menu, "Whisper"))
 check("menu whisper", M.tells[#M.tells].name, "Grimnar")
+check("menu whisper does not mark seen", Memory.IsSeen(groupRow.entry.key), false)
 UnitClass = function() return "Warrior", "WARRIOR" end
 click(groupRow, "RightButton")
 menu = M.LastMenu()
@@ -1947,6 +1952,7 @@ local tmpl = M.MenuFind(menu, "Whisper template")
 check("whisper templates expanded", tmpl.items[1] and tmpl.items[1].text, "Hi! Still looking for Tank? I'm a level 20 Warrior.")
 M.MenuClick(tmpl.items[1])
 check("template whisper text", M.tells[#M.tells].text, "Hi! Still looking for Tank? I'm a level 20 Warrior.")
+check("template whisper does not mark seen", Memory.IsSeen(groupRow.entry.key), false)
 UnitClass = nil
 do
 local playerEntry = W.Built().players[1]

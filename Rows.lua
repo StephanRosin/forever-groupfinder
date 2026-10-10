@@ -249,13 +249,12 @@ local function newBase(parent)
     return row
 end
 
--- Whisper the leader (or the player) and remember the row as seen. A player
--- row's left click; groups open the detail panel instead.
+-- Whisper the leader (or the player): a player row's left click; groups
+-- open the detail panel instead. Never marks seen (only "Mark as seen" /
+-- the Seen button do).
 function Rows.Whisper(entry)
     if type(entry.leader) ~= "string" then return end
     ns.Finder.Whisper(entry.leader)
-    ns.Memory.MarkSeen(entry.key)
-    ns.Window.RefreshRows()
 end
 
 -- The parts of a row that seen / no room / delisted dim: text and icons. The green

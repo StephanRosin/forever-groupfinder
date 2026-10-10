@@ -327,8 +327,7 @@ end
 function Detail.Whisper()
     local leader = current and leaderOf(current)
     if not leader then return end
-    ns.Finder.Whisper(leader)
-    seen()
+    ns.Finder.Whisper(leader)   -- never marks seen
 end
 
 function Detail.MarkSeen()

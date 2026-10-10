@@ -140,9 +140,7 @@ function Menu.AddWhisperTemplates(parent, row)
     for _, text in ipairs(ns.Settings.Get("whisperTemplates")) do
         local expanded = ns.Listing.Expand(text, firstActivity)
         local item = parent:CreateButton(expanded, function()
-            ns.Finder.Whisper(leader, expanded)
-            ns.Memory.MarkSeen(row.key)
-            ns.Window.RefreshRows()
+            ns.Finder.Whisper(leader, expanded)   -- whispering never marks seen
         end)
         if type(leader) ~= "string" and item.SetEnabled then item:SetEnabled(false) end
     end
@@ -154,11 +152,7 @@ function Menu.BuildRowMenu(root, row)
     local leader = row.leader
     local hasName = type(leader) == "string" and leader ~= ""
     root:CreateTitle(hasName and leader or L.UNKNOWN_PLAYER)
-    local whisper = root:CreateButton(L.MENU_WHISPER, function()
-        Finder.Whisper(leader)
-        Memory.MarkSeen(row.key)
-        ns.Window.RefreshRows()
-    end)
+    local whisper = root:CreateButton(L.MENU_WHISPER, function() Finder.Whisper(leader) end)
     local templates = root:CreateButton(L.MENU_WHISPER_TEMPLATE)
     Menu.AddWhisperTemplates(templates, row)
     -- Invite only for a solo player: a group is joined by whispering its leader.
