@@ -73,14 +73,21 @@ local function hideTooltip() GameTooltip:Hide() end
 
 local function paintButton(b)
     local hover = b.hover and not b.off
-    local c = b.on and Controls.GOLD or Controls.EDGE
+    local c = (b.on or b.primary) and Controls.GOLD or Controls.EDGE
     Controls.PaintOutline(b.edges, hover and Controls.GOLD or c)
-    b.bg:SetGradient("VERTICAL", CreateColor(0.13, 0.1, 0.04, 0.95),
-        hover and CreateColor(0.3, 0.23, 0.09, 0.95) or CreateColor(0.23, 0.17, 0.06, 0.95))
+    if b.primary then
+        -- The main action of a block: a brighter gold face.
+        b.bg:SetGradient("VERTICAL", CreateColor(0.42, 0.3, 0.07, 0.95),
+            hover and CreateColor(0.78, 0.58, 0.16, 0.95) or CreateColor(0.62, 0.46, 0.12, 0.95))
+    else
+        b.bg:SetGradient("VERTICAL", CreateColor(0.13, 0.1, 0.04, 0.95),
+            hover and CreateColor(0.3, 0.23, 0.09, 0.95) or CreateColor(0.23, 0.17, 0.06, 0.95))
+    end
     b:SetAlpha(b.off and Controls.DISABLED_ALPHA or 1)
 end
 
--- opts = { text, width, height, icon, onClick(self, mouse), tip (string or function) }.
+-- opts = { text, width, height, icon, onClick(self, mouse), tip (string or function),
+--         primary (the block's main action: a gold face) }.
 -- SetOff(true, tip) greys the button out: clicks do nothing, the tooltip
 -- still explains why (a disabled client button would not show it).
 function Controls.Button(parent, opts)
@@ -101,7 +108,7 @@ function Controls.Button(parent, opts)
         b.icon:SetTexture(Media.Icon(opts.icon))
         b.icon:SetVertexColor(Controls.GOLD[1], Controls.GOLD[2], Controls.GOLD[3])
     end
-    b.tip, b.onClick = opts.tip, opts.onClick
+    b.tip, b.onClick, b.primary = opts.tip, opts.onClick, opts.primary
     function b.SetLabel(self, text)
         self.label:SetText(text or "")
         if self.icon then
