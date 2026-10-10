@@ -1762,8 +1762,9 @@ check("free slots from the counts (tank, healer)", (function()
     for _, sq in ipairs(g1.squares) do if sq:IsShown() and sq.free then free[#free + 1] = sq.role._atlas end end
     return table.concat(free, ",")
 end)(), "groupfinder-icon-role-large-tank,groupfinder-icon-role-large-heal")
-check("member slot shows the role on the class colour", g1.squares[1].role._atlas == "groupfinder-icon-role-large-dps"
-    and g1.squares[1].fill:IsShown(), true)
+check("free tank and healer first (slots by role)", g1.squares[1].free and g1.squares[2].free and not g1.squares[3].free, true)
+check("member slot shows the role on the class colour", g1.squares[3].role._atlas == "groupfinder-icon-role-large-dps"
+    and g1.squares[3].fill:IsShown(), true)
 check("room filter on: no green edge (every row has room)", g1.edge:IsShown(), false)
 Settings.Set("filterMyRole", false)   -- the edge tells rows apart only with the filter off
 used = f.pool.used
@@ -1931,11 +1932,19 @@ local function detailTexts()
     end
     return table.concat(t, "|")
 end
-check("detail lines", detailTexts(), "The Deadmines (18-23)|Leader: Grimnar|Listed 1 min ago|Comment|c1"
-    .. "|Members (2)|M:Grimnar:DAMAGER|M:Ilvea:DAMAGER|F:TANK|F:HEALER")
-check("member lines rendered", D.Frame().members[1]:IsShown() and D.Frame().members[1].name:GetText(), "Grimnar")
-check("free line rendered", D.Frame().members[3].name:GetText(), "Free: Tank")
-check("free line not cut to a recycled name width", D.Frame().members[3].name:GetWidth() > 110, true)
+check("detail lines", detailTexts(), "Level 18-23|Leader: Grimnar|Listed 1 min ago|Comment|c1"
+    .. "|Members (2)|F:TANK|F:HEALER|M:Grimnar:DAMAGER|M:Ilvea:DAMAGER")
+check("single activity: the name only in the title", D.Frame().header.title:GetText() == "The Deadmines"
+    and not detailTexts():find("The Deadmines", 1, true), true)
+check("several activities: title first +n, body lists all", (function()
+    local row = { activityIDs = { 22, 24 }, members = {}, leader = "X" }
+    local t = {}
+    for _, line in ipairs(D.Lines(row, 0)) do t[#t + 1] = line.text end
+    return ns.Rows.ActivityText(row.activityIDs) .. " / " .. table.concat(t, "|", 1, 3)
+end)(), "The Deadmines, +1 / Activities|The Deadmines (18-23)|Wailing Caverns (17-24)")
+check("member lines rendered", D.Frame().members[3]:IsShown() and D.Frame().members[3].name:GetText(), "Grimnar")
+check("free line rendered first (tank before DPS)", D.Frame().members[1].name:GetText(), "Free: Tank")
+check("free line not cut to a recycled name width", D.Frame().members[1].name:GetWidth() > 110, true)
 local pd = D.Frame()
 click(pd.whisper)
 check("detail whispers the leader", M.tells[#M.tells].name, "Grimnar")
@@ -1995,7 +2004,11 @@ end
 check("slots ordered by role", slotText({ activityIDs = { 22 }, members = {
     { name = "D", role = "DAMAGER" }, { name = "X" }, { name = "H", role = "HEALER" }, { name = "T", role = "TANK" } },
     counts = { TANK_REMAINING = 0, HEALER_REMAINING = 1, DAMAGER_REMAINING = 2 } }),
-    "T:TANK,H:HEALER,D:DAMAGER,X:nil,free:HEALER,free:DAMAGER,free:DAMAGER")
+    "T:TANK,H:HEALER,free:HEALER,D:DAMAGER,free:DAMAGER,free:DAMAGER,X:nil")
+check("free tank and healer before members of DPS", slotText({ activityIDs = { 22 }, members = {
+    { name = "A", role = "DAMAGER" }, { name = "B", role = "DAMAGER" } },
+    counts = { TANK_REMAINING = 1, HEALER_REMAINING = 1, DAMAGER_REMAINING = 1 } }),
+    "free:TANK,free:HEALER,A:DAMAGER,B:DAMAGER,free:DAMAGER")
 check("without counts free places up to the size", slotText({ activityIDs = { 22 }, members = { { name = "A", role = "TANK" } } }),
     "A:TANK,free:nil,free:nil,free:nil,free:nil")
 local flagged = D.Lines({ activityIDs = { 22 }, leader = "L", voice = 1, newPlayerFriendly = true, friend = 2, guild = 0,
@@ -2530,10 +2543,10 @@ check("chips start after the name", pr.chips[1]._points.TOPLEFT[1] == pr and pr.
     >= pr.name._points.TOPLEFT[3] + pr.name:GetStringWidth(), true)
 click(gr)
 local pm = D.Frame().members
-check("long member name not cut", pm[1].name:GetWidth() >= pm[1].name:GetStringWidth(), true)
-check("short area beside the name", pm[1]:GetHeight(), 18)
-check("long area on its own line", pm[2]:GetHeight() > 18 and pm[2].area._points.TOPLEFT ~= nil, true)
-check("second line dim", pm[2].area._textColor[1], ns.Controls.DIM[1])
+check("long member name not cut", pm[3].name:GetWidth() >= pm[3].name:GetStringWidth(), true)
+check("short area beside the name", pm[3]:GetHeight(), 18)
+check("long area on its own line", pm[4]:GetHeight() > 18 and pm[4].area._points.TOPLEFT ~= nil, true)
+check("second line dim", pm[4].area._textColor[1], ns.Controls.DIM[1])
 D.Close()
 end
 
@@ -2966,7 +2979,7 @@ D.Refresh()
 check("details: embedded no-room note", f.detail.header.note:GetText(), "No room for you")
 D.Row().noRoom = false
 D.Refresh()
-check("details: embedded members", f.detail.members[1]:IsShown() and f.detail.members[1].name:GetText(), "Grimnar")
+check("details: embedded members (by role, free tank first)", f.detail.members[3]:IsShown() and f.detail.members[3].name:GetText(), "Grimnar")
 check("details: column at the right edge", f.detail._points.TOPLEFT[3], 880 - Layouts.COLUMN_W)
 check("details: column from the header down", f.detail._points.TOPLEFT[4], -(ns.Header.HEIGHT + 8))
 check("details: column to the bottom", -f.detail._points.TOPLEFT[4] + f.detail:GetHeight(), 480)

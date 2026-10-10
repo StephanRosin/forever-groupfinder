@@ -57,16 +57,24 @@ function Detail.Lines(row, elapsed)
     end
     local function heading(t) lines[#lines + 1] = { kind = "heading", text = t } end
     if row.delisted == true then text(L.DELISTED, Controls.RED, "name") end
-    -- One activity: the title already names it (its levels follow).
+    -- One activity: the title names it, the body only its levels. Several:
+    -- the title says "<first>, +n", the body lists them all with levels.
     local ids = type(row.activityIDs) == "table" and row.activityIDs or {}   -- plain: Finder converted the row
-    if #ids ~= 1 then heading(L.DETAIL_ACTIVITIES) end
-    for _, id in ipairs(type(row.activityIDs) == "table" and row.activityIDs or {}) do   -- plain: Finder converted the row
-        local info = Activities.Info(id)
-        local name = Activities.Name(id) or L.UNKNOWN_ACTIVITY
+    if #ids == 1 then
+        local info = Activities.Info(ids[1])
         if info and info.minLevel > 0 and info.maxLevel > 0 then
-            name = L.DETAIL_ACTIVITY:format(name, L.LEVEL_RANGE:format(info.minLevel, info.maxLevel))
+            text(L.DETAIL_LEVELS:format(L.LEVEL_RANGE:format(info.minLevel, info.maxLevel)), Controls.DIM, "small")
         end
-        text(name, Controls.GOLD, "activity")
+    else
+        heading(L.DETAIL_ACTIVITIES)
+        for _, id in ipairs(ids) do
+            local info = Activities.Info(id)
+            local name = Activities.Name(id) or L.UNKNOWN_ACTIVITY
+            if info and info.minLevel > 0 and info.maxLevel > 0 then
+                name = L.DETAIL_ACTIVITY:format(name, L.LEVEL_RANGE:format(info.minLevel, info.maxLevel))
+            end
+            text(name, Controls.GOLD, "activity")
+        end
     end
     text(L.DETAIL_LEADER:format(leaderOf(row) or L.UNKNOWN_PLAYER))
     local age = Controls.Age(type(row.age) == "number" and row.age + (elapsed or 0) or nil)   -- plain: Finder converted the row

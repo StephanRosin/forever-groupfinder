@@ -42,11 +42,11 @@ Rows.DIVIDER_H = DIVIDER_H
 
 function Rows.RoleAtlas(role) return ROLE_ATLAS[role] end
 
--- The slots of a group: { member = m, role = } for every member, ordered
--- Tank, Healer, Damage (unknown roles last, the list order kept), then
--- { free = true, role = } per free place from the counts' *_REMAINING in
--- the same order. Without counts the free places up to the activity's size
--- have no role.
+-- The slots of a group: { member = m, role = } for every member and
+-- { free = true, role = } per free place from the counts' *_REMAINING, all
+-- in Rows.SlotOrder: Tank (members, then free), Healer, DPS, unknown.
+-- Without counts the free places up to the activity's size have no role
+-- (last).
 function Rows.Slots(entry)
     local members = type(entry.members) == "table" and entry.members or {}   -- plain: Finder converted the row
     local slots = {}
@@ -54,24 +54,31 @@ function Rows.Slots(entry)
         local role = type(m.role) == "string" and ROLE_RANK[m.role] and m.role or nil   -- plain: Finder converted the member
         slots[#slots + 1] = { member = m, role = role, index = i }
     end
-    table.sort(slots, function(a, b)
-        local ra, rb = ROLE_RANK[a.role] or 4, ROLE_RANK[b.role] or 4
-        if ra ~= rb then return ra < rb end
-        return a.index < b.index
-    end)
     local counts = type(entry.counts) == "table" and entry.counts or {}
     local known = false
     for _, role in ipairs(Rows.ROLES) do
         local n = counts[role .. "_REMAINING"]
         if type(n) == "number" then
             known = true
-            for _ = 1, n do slots[#slots + 1] = { free = true, role = role } end
+            for _ = 1, n do slots[#slots + 1] = { free = true, role = role, index = #slots + 1 } end
         end
     end
     if not known then
-        for _ = #members + 1, Rows.MaxPlayers(entry.activityIDs) do slots[#slots + 1] = { free = true } end
+        for _ = #members + 1, Rows.MaxPlayers(entry.activityIDs) do slots[#slots + 1] = { free = true, index = #slots + 1 } end
     end
+    table.sort(slots, Rows.SlotOrder)
     return slots
+end
+
+-- The one order of slots everywhere (rows, details): by role - Tank, Healer,
+-- DPS, unknown - and inside a role the members before the free places,
+-- then as listed.
+function Rows.SlotOrder(a, b)
+    local ra, rb = ROLE_RANK[a.role] or 4, ROLE_RANK[b.role] or 4
+    if ra ~= rb then return ra < rb end
+    local fa, fb = a.free and 1 or 0, b.free and 1 or 0
+    if fa ~= fb then return fa < fb end
+    return a.index < b.index
 end
 
 -- Colours and names -------------------------------------------------------------------
