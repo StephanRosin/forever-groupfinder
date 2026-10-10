@@ -2708,6 +2708,13 @@ check("no search was ever blocked", #lfg.blocked, 0)
 ForeverGroupFinderChar.roles = nil
 lfg.reset()
 
+-- The invite label follows a language change (it was fixed at row creation).
+Locale.Set("frFR"); ns.Window.Refresh()
+check("invite label follows the language", (function() for _, r in ipairs(ns.Window.Frame().pool.used) do if r.kind == "PLAYER" and r.invite:IsShown() then return r end end end)().invite.label:GetText(), ns.L.INVITE)
+check("invite label is French", ns.L.INVITE, "Inviter")
+Locale.Set("AUTO"); ns.Window.Refresh()
+check("invite label back to the game language", (function() for _, r in ipairs(ns.Window.Frame().pool.used) do if r.kind == "PLAYER" and r.invite:IsShown() then return r end end end)().invite.label:GetText(), ns.L.INVITE)
+
 section("Blizzard redirection")
 local B = ns.Blizzard
 lfg.reset()

@@ -276,6 +276,7 @@ function Panel.Refresh()
     p.warningText:SetText(L.EXPIRY_WARNING)
     p.leader:SetText(Panel.LeaderText() or "")
     p.copyHint:SetText(L.COPY_HINT)
+    if p.copyClose then p.copyClose:SetLabel(L.CLOSE) end
 end
 
 -- Places everything for width; returns the panel's height.

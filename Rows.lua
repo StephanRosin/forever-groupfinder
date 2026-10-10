@@ -605,6 +605,7 @@ local function layoutPlayer(row, entry, width, elapsed)
     row.comment:SetWidth(math.max(1, roomLeft))
     row.comment:SetText(type(entry.comment) == "string" and entry.comment or "")   -- plain: Finder converted the row
     row.comment:SetShown(roomLeft >= 40)
+    row.invite:SetLabel(L.INVITE)    -- every layout pass: the language may have changed
     row.invite.leader = type(entry.leader) == "string" and entry.leader or nil
     row.invite:ClearAllPoints()
     row.invite:SetPoint("RIGHT", row, "RIGHT", -PAD - AGE_W, 0)
