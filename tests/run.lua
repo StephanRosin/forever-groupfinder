@@ -2448,6 +2448,16 @@ check("a raid result with raids chosen", (function()
     Settings.Set("category", nil)
     return n
 end)(), 1)
+do   -- the category option resets the ticked activities like the radio buttons
+    local spec
+    for _, page in ipairs(ns.Options.PAGES) do
+        for _, row in ipairs(page.rows()) do if row.key == "category" then spec = row end end
+    end
+    W.SetChecked(22, true)
+    spec.set(114)
+    check("options category change clears ticked activities of the old category", #W.CheckedList(), 0)
+    spec.set(2)
+end
 lfg.results[9] = nil
 W.SetChecked(22, true)
 W.Rebuild()

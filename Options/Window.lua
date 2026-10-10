@@ -281,7 +281,8 @@ local function listFilterRows()
             set = function(v)
                 if v == S("category") then return end
                 Settings.Set("category", v)
-                ns.Window.ResetChecked()
+                ns.Window.ResetChecked()   -- the ticked activities belong to the old category
+                ns.Window.Refresh()        -- Settings.Set refreshed before they were reset
             end,
         },
         check("levelRangeOnly", "OPT_LEVEL_RANGE_ONLY"),
