@@ -81,18 +81,21 @@ end
 local function placeSideInPopup(f, height)
     local popup, side = f.popup, f.side
     local h = math.max(160, math.min(POPUP_H, height - 60))
-    popup:SetSize(POPUP_W, h)
+    -- Wide enough for every category radio on one line (capped to the screen).
+    local w = math.min(math.max(POPUP_W, ns.Side.CategoriesWidth()), math.max(POPUP_W, UIParent:GetWidth() - 40))
+    popup.width = w
+    popup:SetSize(w, h)
     popup:ClearAllPoints()
     popup:SetPoint("TOPLEFT", f.activity, "BOTTOMLEFT", 0, -4)
-    ns.Window.ApplyLook(popup, POPUP_W, h)
+    ns.Window.ApplyLook(popup, w, h)
     popup.header.title:SetText(L.ACTIVITIES)
-    ns.Header.Layout(popup.header, POPUP_W)
+    ns.Header.Layout(popup.header, w)
     side:SetFrameStrata("DIALOG")
     side:SetFrameLevel(popup:GetFrameLevel() + 5)
     side:ClearAllPoints()
     side:SetPoint("TOPLEFT", popup, "TOPLEFT", 0, -POPUP_HEADER)
     side:SetPoint("BOTTOMRIGHT", popup, "BOTTOMRIGHT", 0, 0)
-    ns.Side.SetSize(POPUP_W, h - POPUP_HEADER)
+    ns.Side.SetSize(w, h - POPUP_HEADER)
     side:SetShown(popup:IsShown())
 end
 

@@ -2636,6 +2636,31 @@ lfg.catPlaystyle = nil
 ForeverGroupFinderChar.playstyle = nil
 end
 
+-- The activity popup is wide enough for every category radio on one line.
+do
+Settings.Set("layout", "STACKED")
+lfg.cats = { 2, 116, 120 }
+for _, names in ipairs({
+    { [2] = "Dungeons", [116] = "Quests & Zones", [120] = "Custom" },
+    { [2] = "Dungeons", [116] = "Quests und Gebiete", [120] = "Benutzerdefiniert" },
+    { [2] = "Donjons", [116] = "Quêtes et zones de la carte", [120] = "Personnalisée" },
+}) do
+    lfg.catNames = names
+    M.Fire("LFG_LIST_AVAILABILITY_UPDATE")
+    click(f.activity)
+    local cats = Side.Panel().cats
+    local oneLine = cats[1]._points.TOPLEFT[4] == cats[3]._points.TOPLEFT[4]
+    local inside = cats[3]._points.TOPLEFT[3] + cats[3]:GetWidth() <= f.popup:GetWidth()
+    check("popup fits the radios on one line: " .. names[116], oneLine and inside, true)
+    click(f.activity)
+end
+check("never wider than the screen", f.popup:GetWidth() <= UIParent:GetWidth(), true)
+lfg.cats = { 2, 114 }
+lfg.catNames = { [2] = "Dungeons", [114] = "Raids" }
+M.Fire("LFG_LIST_AVAILABILITY_UPDATE")
+Settings.Set("layout", nil)
+end
+
 -- Button and chip sizes from the settings; nothing leaves its container at
 -- the smallest and the largest sizes, in every layout.
 do

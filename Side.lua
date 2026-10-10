@@ -184,6 +184,20 @@ local function radio(i)
     return r
 end
 
+-- The width all category radios need side by side (and the panel's
+-- margins), measured in the current language and font.
+function Side.CategoriesWidth()
+    if not panel then return 0 end
+    local total = 0
+    for i, c in ipairs(Activities.Categories()) do
+        local r = radio(i)
+        Controls.Restyle(r.label)
+        r.label:SetText(c.name)
+        total = total + CHECK + 4 + r.label:GetStringWidth() + (i > 1 and RADIO_GAP or 0)
+    end
+    return math.ceil(total + 2 * PAD + 2)
+end
+
 -- Lays the radios out in w; returns their height.
 function Side.LayoutCategories(w)
     if not panel then return 0 end
