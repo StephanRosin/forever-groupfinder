@@ -868,6 +868,172 @@ check("cache holds", A.Name(7), "New Place")
 M.Fire("PLAYER_LEVEL_UP")
 check("level up refreshes the cache", A.Name(7), "Renamed")
 
+section("Memory")
+local Mem = ns.Memory
+check("Memory exists", Mem ~= nil, true)
+local clock = 1000000
+Mem.now = function() return clock end
+check("key", Mem.Key({ leaderName = "Anna", activityIDs = { 5, 2, 9 } }), "Anna|2,5,9")
+check("key without leader", Mem.Key({ activityIDs = { 1 } }), nil)
+check("key without activities", Mem.Key({ leaderName = "Anna" }), "Anna|")
+check("key does not reorder the input", (function()
+    local r = { leaderName = "B", activityIDs = { 3, 1 } }
+    Mem.Key(r)
+    return r.activityIDs[1]
+end)(), 3)
+check("nil key is never seen", Mem.IsSeen(nil), false)
+Mem.MarkSeen("Anna|2")
+check("seen", Mem.IsSeen("Anna|2"), true)
+check("not seen", Mem.IsSeen("Bob|2"), false)
+Mem.MarkSeen(nil)
+Mem.Hide("Bob|3")
+check("hidden", Mem.IsHidden("Bob|3"), true)
+check("hidden is not seen", Mem.IsSeen("Bob|3"), false)
+clock = clock + 29 * 60
+check("seen holds before the limit", Mem.IsSeen("Anna|2"), true)
+check("hidden holds before the limit", Mem.IsHidden("Bob|3"), true)
+clock = clock + 2 * 60
+check("seen expires", Mem.IsSeen("Anna|2"), false)
+check("hidden expires", Mem.IsHidden("Bob|3"), false)
+check("expired entries are pruned", next(ns.AccountDB().memory.seen), nil)
+Settings.Set("memoryMinutes", 60)
+Mem.MarkSeen("C|1")
+clock = clock + 45 * 60
+check("limit follows the setting", Mem.IsSeen("C|1"), true)
+Settings.Set("memoryMinutes", nil)
+check("shorter setting expires it", Mem.IsSeen("C|1"), false)
+Mem.Ignore("Zed")
+Mem.Ignore("Abe")
+check("ignored", Mem.IsIgnored("Zed"), true)
+check("not ignored", Mem.IsIgnored("Y"), false)
+check("ignore of nil", Mem.IsIgnored(nil), false)
+clock = clock + 1000 * 3600
+check("ignore is permanent", Mem.IsIgnored("Zed"), true)
+check("ignore list sorted", table.concat(Mem.IgnoreList(), ","), "Abe,Zed")
+Mem.Unignore("Zed")
+check("unignored", Mem.IsIgnored("Zed"), false)
+check("stored account wide", ns.AccountDB().memory.ignore.Abe, true)
+check("export carries no memory", ns.Share.Export():find("memory", 1, true), nil)
+check("import leaves memory alone", (function()
+    ns.Share.Import(ns.Share.Export())
+    return Mem.IsIgnored("Abe")
+end)(), true)
+check("decoded profile drops memory", ns.Share.Decode("FGF1:ts6:memoryt}}").memory, nil)
+Mem.Unignore("Abe")
+
+section("Results")
+local R = ns.Results
+check("Results exists", R ~= nil, true)
+local function member(name, role) return { name = name, level = 60, classFile = "MAGE", role = role, area = "Elwynn", isLeader = true,
+    lfgRoles = { tank = role == "TANK", healer = role == "HEALER", dps = role == "DAMAGER" } } end
+local function group(id, leader, acts, o)
+    o = o or {}
+    local g = { id = id, activityIDs = acts, leaderName = leader, comment = o.comment, numMembers = o.n or 3, age = o.age or 10,
+        friends = o.friends or 0, guild = o.guild or 0, isDelisted = o.delisted, members = { member(leader or "x", "TANK"), member("m2", "DAMAGER"), member("m3", "DAMAGER") },
+        counts = { TANK = 1, HEALER = 0, DAMAGER = 2, TANK_REMAINING = o.tankFree or 0, HEALER_REMAINING = o.healFree or 1, DAMAGER_REMAINING = o.dpsFree or 0 } }
+    return g
+end
+local function solo(id, name, acts, o)
+    o = o or {}
+    return { id = id, activityIDs = acts, leaderName = name, comment = o.comment, numMembers = 1, age = o.age or 5,
+        friends = o.friends or 0, guild = o.guild or 0, members = { member(name, "HEALER") }, counts = {} }
+end
+local fits = { [1] = "FITS", [2] = "HIGH", [3] = "LOW" }
+local ctx = function(c)
+    c = c or {}
+    return { myRole = c.myRole or "HEALER", myLevel = 60, filters = c.filters or {}, activityFit = function(id) return fits[id] end }
+end
+local ids = function(rows) local t = {} for _, r in ipairs(rows) do t[#t + 1] = r.id end return table.concat(t, ",") end
+
+local out = R.Build({ group(1, "A", { 1 }), solo(2, "B", { 1 }), group(3, "C", { 1 }) }, ctx())
+check("split groups", ids(out.groups), "1,3")
+check("split players", ids(out.players), "2")
+check("row kind group", out.groups[1].kind, "GROUP")
+check("row kind player", out.players[1].kind, "PLAYER")
+check("row leader", out.groups[1].leader, "A")
+check("row freeForMe", out.groups[1].freeForMe, true)
+check("player area", out.players[1].area, "Elwynn")
+check("player roles", out.players[1].roles.healer, true)
+check("row delisted flag", R.Build({ group(1, "A", { 1 }, { delisted = true }) }, ctx()).groups[1].delisted, true)
+check("one-member result with other members is a group", ids(R.Build({ { id = 9, activityIDs = { 1 }, leaderName = "Q", numMembers = 1,
+    members = { member("Q", "TANK"), member("W", "TANK") }, counts = {} } }, ctx()).groups), "9")
+
+-- filters
+local mixed = { group(1, "A", { 1 }, { healFree = 0, dpsFree = 1 }), group(2, "B", { 1 }), solo(3, "S", { 1 }) }
+check("no role filter keeps all", ids(R.Build(mixed, ctx()).groups), "2,1")
+local byRole = R.Build(mixed, ctx({ filters = { myRole = true } }))
+check("role filter drops full-for-me groups", ids(byRole.groups), "2")
+check("role filter never touches players", ids(byRole.players), "3")
+check("role filter follows the role", ids(R.Build(mixed, ctx({ myRole = "DAMAGER", filters = { myRole = true } })).groups), "1")
+local lv = { group(1, "A", { 1 }), group(2, "B", { 2 }), group(3, "C", { 3 }), group(4, "D", { 2, 1 }), solo(5, "E", { 3 }) }
+local lvl = R.Build(lv, ctx({ filters = { levelFits = true } }))
+check("level filter groups", ids(lvl.groups), "1,4")
+check("level filter players", ids(lvl.players), "")
+check("best fit of several activities", R.Build(lv, ctx()).groups[1].fit, "FITS")
+check("fit of a mismatch", (function() for _, r in ipairs(R.Build(lv, ctx()).groups) do if r.id == 2 then return r.fit end end end)(), "HIGH")
+Mem.MarkSeen("A|1")
+local seen = R.Build({ group(1, "A", { 1 }), group(2, "B", { 1 }) }, ctx({ filters = { hideSeen = true } }))
+check("hide seen", ids(seen.groups), "2")
+check("seen flag without the filter", R.Build({ group(1, "A", { 1 }) }, ctx()).groups[1].seen, true)
+local txt = { group(1, "Alice", { 1 }, { comment = "Need healer for RFC" }), group(2, "Bob", { 2 }), group(3, "Carl", { 3 }) }
+check("text in comment", ids(R.Build(txt, ctx({ filters = { text = "healer" } })).groups), "1")
+check("text in leader", ids(R.Build(txt, ctx({ filters = { text = "BOB" } })).groups), "2")
+Mem.Hide("Bob|2")
+check("hidden key dropped", ids(R.Build(txt, ctx()).groups), "1,3")
+Mem.Ignore("Carl")
+check("ignored leader dropped", ids(R.Build(txt, ctx()).groups), "1")
+check("ignored player dropped", ids(R.Build({ solo(1, "Carl", { 1 }) }, ctx()).players), "")
+Mem.Unignore("Carl")
+clock = clock + 100 * 3600
+check("text in activity name", ids(R.Build({ group(1, "A", { 1 }), group(2, "B", { 2 }) },
+    { myRole = "HEALER", myLevel = 60, filters = { text = "deadm" }, activityFit = function() return "FITS" end }).groups), "2")
+
+-- sort
+local sorted = R.Build({
+    group(1, "A", { 1 }, { healFree = 0, age = 5 }),
+    group(2, "B", { 2 }, { age = 5 }),
+    group(3, "C", { 1 }, { age = 9 }),
+    group(4, "D", { 1 }, { age = 2 }),
+    group(5, "E", { 1 }, { age = 5, friends = 1 }),
+    group(6, "F", { 3 }, { age = 1 }),
+    group(7, "G", { 1 }, { age = 5, guild = 2, healFree = 0 }),
+    group(8, "H", { 1 }, { age = 5 }),
+}, ctx())
+check("sort order", ids(sorted.groups), "5,7,4,8,3,2,6,1")
+local noFriends = R.Build({ group(1, "A", { 1 }, { age = 3 }), group(2, "B", { 1 }, { age = 1, friends = 1 }) }, ctx())
+check("friends first by default", ids(noFriends.groups), "2,1")
+Settings.Set("sortFriendsFirst", false)
+check("friends first can be off", ids(R.Build({ group(1, "A", { 1 }, { age = 3 }), group(2, "B", { 1 }, { age = 1, friends = 1 }) }, ctx()).groups), "2,1")
+check("friends off sorts by age", ids(R.Build({ group(1, "A", { 1 }, { age = 1 }), group(2, "B", { 1 }, { age = 3, friends = 1 }) }, ctx()).groups), "1,2")
+Settings.Set("sortFriendsFirst", nil)
+check("ties by id", ids(R.Build({ group(8, "A", { 1 }), group(3, "B", { 1 }), group(5, "C", { 1 }) }, ctx()).groups), "3,5,8")
+
+-- secret-nil fields
+local holes = { id = 1, members = {}, counts = {} }
+local ok, res = pcall(R.Build, { holes, { id = 2, numMembers = 3 }, { id = 3, activityIDs = {}, members = { { } }, numMembers = 1 } }, ctx({ filters = { text = "x", levelFits = true, myRole = true, hideSeen = true } }))
+check("nil fields do not break filters", ok, true)
+ok, res = pcall(R.Build, { holes, { id = 2 }, { id = 3, leaderName = "Z", members = { {} }, numMembers = 1 }, { id = 4, age = 3 } }, ctx())
+check("nil fields do not break sort and rows", ok, true)
+check("rows with holes are kept", #res.groups + #res.players, 4)
+check("nil input", pcall(R.Build, nil, ctx()), true)
+
+-- my role
+check("role override", (function() Settings.Set("roleOverride", "TANK") return R.MyRole() end)(), "TANK")
+Settings.Set("roleOverride", nil)
+GetSpecialization, GetSpecializationRole = nil, nil
+UnitGroupRolesAssigned = nil
+check("role fallback", R.MyRole(), "DAMAGER")
+UnitGroupRolesAssigned = function() return "HEALER" end
+check("role from group assignment", R.MyRole(), "HEALER")
+UnitGroupRolesAssigned = function() return "NONE" end
+check("unassigned group role", R.MyRole(), "DAMAGER")
+GetSpecialization = function() return 2 end
+GetSpecializationRole = function(i) return i == 2 and "TANK" or nil end
+check("role from specialization", R.MyRole(), "TANK")
+GetSpecializationRole = function() return nil end
+check("specialization without a role falls through", R.MyRole(), "DAMAGER")
+GetSpecialization, GetSpecializationRole, UnitGroupRolesAssigned = nil, nil, nil
+
 section("Source rules")
 for _, f in ipairs(tocFiles()) do
     local code = read(f):gsub("%-%-%[%[.-%]%]", ""):gsub("%-%-[^\n]*", "")
