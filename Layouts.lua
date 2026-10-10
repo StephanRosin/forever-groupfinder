@@ -13,8 +13,9 @@ local S = Settings.Get
 --   STACKED  narrow: an activity button at the top opens the activity list
 --            in a popup; listing, filters, list below; details float.
 --   DETAILS  activity button, filters and list on the left; a fixed column
---            on the right with the open group's details (or, leading a
---            group, the missing roles and fitting players) over my listing.
+--            on the right with my listing at the top and below it the open
+--            group's details (or, leading a group, the missing roles and
+--            fitting players).
 --
 -- Each layout has its own size settings, so switching keeps every size.
 local Layouts = {}
@@ -154,21 +155,24 @@ local function vline(t, f, x, top)
     t:Show()
 end
 
+-- The DETAILS column: my listing at the top (level with the activity
+-- button on the left), a rule, then the open group's details (or the
+-- leader view) down to the bottom; the details' buttons sit at its foot.
 local function placeColumn(f, width, height, top)
     local cw = Layouts.COLUMN_W
     local cx = width - cw
     vline(f.columnLine, f, cx - 1, top)
     local lw = cw - 2 * PAD
     local listingH = ns.ListingPanel.Layout(lw)
-    at(f.listing, f, cx + PAD, height - PAD - listingH, lw, listingH)
-    local ruleY = height - PAD - listingH - GAP
+    at(f.listing, f, cx + PAD, top + PAD, lw, listingH)
+    local ruleY = top + PAD + listingH + GAP
     hline(f.rule, f, cx, ruleY, cw)
-    local upper = math.max(0, ruleY - top - PAD)
-    at(f.detail, f, cx, top + PAD, cw, upper)
+    local lower = math.max(0, height - ruleY - 1)
+    at(f.detail, f, cx, ruleY + 1 + PAD, cw, math.max(0, lower - PAD))
     f.detail:SetShown(ns.Detail.Row() ~= nil)
-    ns.Detail.LayoutEmbedded(cw, upper)
-    at(f.column, f, cx, top, cw, upper + PAD)
-    ns.Column.Layout(cw, upper + PAD)
+    ns.Detail.LayoutEmbedded(cw, math.max(0, lower - PAD))
+    at(f.column, f, cx, ruleY + 1, cw, lower)
+    ns.Column.Layout(cw, lower)
 end
 
 -- Places every part for the window's size; f.listWidth is the list's
