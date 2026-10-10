@@ -2,7 +2,7 @@
 local M = dofile("wowmock.lua")
 -- Events the client knows: registering any other name throws, as in the game.
 M.validEvents = { ADDON_LOADED = true, PLAYER_LOGIN = true, PLAYER_ENTERING_WORLD = true,
-    PLAYER_REGEN_ENABLED = true, PLAYER_REGEN_DISABLED = true,
+    PLAYER_REGEN_ENABLED = true, PLAYER_REGEN_DISABLED = true, PLAYER_LEVEL_UP = true,
     LFG_LIST_SEARCH_RESULTS_RECEIVED = true, LFG_LIST_SEARCH_RESULT_UPDATED = true, LFG_LIST_SEARCH_FAILED = true,
     LFG_LIST_ACTIVE_ENTRY_UPDATE = true, LFG_LIST_AVAILABILITY_UPDATE = true, LFG_LIST_ENTRY_EXPIRED_TIMEOUT = true,
     LFG_LIST_ENTRY_EXPIRED_TOO_MANY_PLAYERS = true }
@@ -761,6 +761,112 @@ C_LFGList.IsPlayerAuthenticatedForLFG = nil
 check("CanComment guarded when the API is missing", F.CanComment(2), false)
 C_LFGList.IsPlayerAuthenticatedForLFG = saved
 lfg.reset()
+
+section("Activities")
+lfg.reset()
+local A = ns.Activities
+check("Activities exists", A ~= nil, true)
+lfg.cats = { 120, 118, 2, 114 }
+lfg.catNames = { [2] = "Dungeons (API)", [114] = "", [118] = "Battlegrounds", [120] = "Custom" }
+local cats = A.Categories()
+local ids = {}
+for _, c in ipairs(cats) do ids[#ids + 1] = c.id end
+check("category order, only available", table.concat(ids, ","), "2,114,118,120")
+check("category name from the API", cats[1].name, "Dungeons (API)")
+check("empty API name falls back to the locale", cats[2].name, ns.L.CATEGORY_114)
+lfg.cats = { 116 }
+check("missing category info falls back", A.Categories()[1].name, ns.L.CATEGORY_116)
+lfg.cats = {}
+check("no categories", #A.Categories(), 0)
+check("every locale names the five categories", (function()
+    for _, s in pairs(ns.Locales) do
+        for _, id in ipairs({ 2, 114, 116, 118, 120 }) do if not s["CATEGORY_" .. id] then return id end end
+    end
+    return true
+end)(), true)
+check("Finder.Categories", (function() lfg.cats = { 2, 114 }; return #F.Categories() end)(), 2)
+check("Finder.CategoryInfo unknown", F.CategoryInfo(5), nil)
+lfg.catNames[2] = "D"
+check("Finder.CategoryInfo name", F.CategoryInfo(2).name, "D")
+
+local function act(id, g, full, short, lo, hi, max)
+    lfg.activities[id] = { categoryID = 2, groupFinderActivityGroupID = g, fullName = full, shortName = short,
+        minLevelSuggestion = lo, maxLevelSuggestion = hi, maxNumPlayers = max }
+end
+lfg.groups = { [10] = { name = "Classic", order = 1 } }
+act(1, 10, "Ragefire Chasm", "RFC", 13, 18, 5)
+act(2, 10, "Deadmines", "", 17, 24, 5)
+act(3, 10, "Stratholme", "Strat", 58, 0, 5)
+act(4, 10, "Anyone Welcome", "Any", 0, 0, 5)
+act(5, 10, "Blackfathom Deeps", "BFD", 20, 30, 5)
+act(6, 10, "Wailing Caverns", "WC", 17, 24, 5)
+check("Finder.ActivityInfo", F.ActivityInfo(1).fullName, "Ragefire Chasm")
+check("Finder.ActivityInfo unknown", F.ActivityInfo(99), nil)
+check("Finder.Activities", #F.Activities(2), 6)
+check("Finder.Activities other category", #F.Activities(114), 0)
+check("Finder.ActivityGroupName", F.ActivityGroupName(10), "Classic")
+lfg.secret = true
+check("Finder.ActivityInfo hides secrets", F.ActivityInfo(1).fullName, nil)
+lfg.secret = false
+
+local info = A.Info(1)
+check("info name", info.name, "Ragefire Chasm")
+check("info short", info.shortName, "RFC")
+check("info levels", info.minLevel .. "-" .. info.maxLevel, "13-18")
+check("info players", info.maxPlayers, 5)
+check("info group", info.groupName, "Classic")
+check("empty short name falls back to the name", A.Info(2).shortName, "Deadmines")
+check("name", A.Name(1), "Ragefire Chasm")
+check("unknown activity", A.Info(99), nil)
+check("unknown name", A.Name(99), nil)
+
+-- fit at the boundaries
+local rfc = A.Info(1)
+check("fit below min", A.Fit(rfc, 12), "HIGH")
+check("fit at min", A.Fit(rfc, 13), "FITS")
+check("fit at max", A.Fit(rfc, 18), "FITS")
+check("fit above max", A.Fit(rfc, 19), "LOW")
+check("open-ended max", A.Fit(A.Info(3), 70), "FITS")
+check("open-ended range", A.Fit(A.Info(4), 1), "FITS")
+
+local function listIDs(opts)
+    local out = {}
+    for _, a in ipairs(A.List(2, opts)) do out[#out + 1] = a.id end
+    return table.concat(out, ",")
+end
+lfg.level = 20
+check("fit in the list", A.List(2)[1].fit, "FITS")
+-- level 20: FITS = 2,4,5,6 (4: minLevel 0); RFC LOW; Strat HIGH
+check("sorted FITS first, then minLevel, then name", listIDs(), "4,2,6,5,1,3")
+check("list entry fields", (function()
+    local e = A.List(2, { text = "bfd" })[1]
+    return e.name .. "|" .. e.shortName .. "|" .. e.minLevel .. "|" .. e.maxLevel .. "|" .. e.maxPlayers .. "|" .. e.groupName .. "|" .. e.fit
+end)(), "Blackfathom Deeps|BFD|20|30|5|Classic|FITS")
+check("switch on keeps only FITS", listIDs({ levelRangeOnly = true }), "4,2,6,5")
+check("switch off keeps all", listIDs({ levelRangeOnly = false }), "4,2,6,5,1,3")
+check("LOW and HIGH are classified", (function()
+    local f = {}
+    for _, a in ipairs(A.List(2)) do f[a.id] = a.fit end
+    return f[1] .. f[3]
+end)(), "LOWHIGH")
+check("text matches the name, any case", listIDs({ text = "DEAD" }), "2")
+check("text matches the short name", listIDs({ text = "strat" }), "3")
+check("text with the switch", listIDs({ text = "strat", levelRangeOnly = true }), "")
+check("text is plain, not a pattern", listIDs({ text = "." }), "")
+check("empty text matches all", listIDs({ text = "" }), "4,2,6,5,1,3")
+lfg.level = 70
+check("level 70", listIDs({ levelRangeOnly = true }), "4,3")
+
+-- cache refresh
+check("unknown before it exists", A.Info(7), nil)
+act(7, 10, "New Place", "NP", 1, 0, 5)
+check("a miss is cached until a refresh", A.Info(7), nil)
+M.Fire("LFG_LIST_AVAILABILITY_UPDATE")
+check("availability refreshes the cache", A.Info(7).name, "New Place")
+lfg.activities[7].fullName = "Renamed"
+check("cache holds", A.Name(7), "New Place")
+M.Fire("PLAYER_LEVEL_UP")
+check("level up refreshes the cache", A.Name(7), "Renamed")
 
 section("Source rules")
 for _, f in ipairs(tocFiles()) do

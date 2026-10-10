@@ -411,6 +411,7 @@ function M.lfg.reset()
     l.blocked, l.searches, l.creates, l.updates, l.removed, l.roles = {}, {}, {}, {}, 0, nil
     l.hardware, l.secret, l.results, l.members, l.counts, l.active = false, false, {}, {}, {}, nil
     l.authenticated, l.canUse, l.failure, l.createOK = {}, true, nil, true
+    l.cats, l.catNames, l.activities, l.groups, l.level = {}, {}, {}, {}, 60
 end
 M.lfg.reset()
 -- Runs fn as a click handler would: with a hardware event.
@@ -485,6 +486,43 @@ C_LFGList = {
     RemoveListing = function() M.lfg.removed = M.lfg.removed + 1; M.lfg.active = nil end,
     IsPlayerAuthenticatedForLFG = function(cat) return M.lfg.authenticated[cat] or false end,
 }
+-- Activity data the "server" offers: tests fill M.lfg.cats (ids), M.lfg.catNames[id],
+-- M.lfg.activities[id] = { categoryID, groupFinderActivityGroupID, fullName, shortName, minLevelSuggestion,
+-- maxLevelSuggestion, maxNumPlayers }, M.lfg.groups[id] = { name, order }.
+M.lfg.cats, M.lfg.catNames, M.lfg.activities, M.lfg.groups, M.lfg.level = {}, {}, {}, {}, 60
+function UnitLevel() return M.lfg.level end
+C_LFGList.GetAvailableCategories = function() return wrapAll(M.lfg.cats) end
+C_LFGList.GetLfgCategoryInfo = function(id)
+    local n = M.lfg.catNames[id]
+    if n == nil then return nil end
+    return wrapAll({ name = n })
+end
+C_LFGList.GetAvailableActivityGroups = function(cat)
+    local seen, out = {}, {}
+    for id, a in pairs(M.lfg.activities) do
+        local g = a.groupFinderActivityGroupID
+        if a.categoryID == cat and g and not seen[g] then seen[g] = true; out[#out + 1] = g end
+    end
+    table.sort(out)
+    return out
+end
+C_LFGList.GetActivityGroupInfo = function(g)
+    local x = M.lfg.groups[g]
+    if not x then return nil end
+    return wrap(x.name), wrap(x.order)
+end
+C_LFGList.GetAvailableActivities = function(cat, group)
+    local out = {}
+    for id, a in pairs(M.lfg.activities) do
+        if a.categoryID == cat and (not group or group == 0 or a.groupFinderActivityGroupID == group) then
+            out[#out + 1] = id
+        end
+    end
+    table.sort(out)
+    return out
+end
+C_LFGList.GetActivityInfoTable = function(id) return wrapAll(M.lfg.activities[id]) end
+
 C_LFGListRoles = { SetRoles = function(roles) M.lfg.roles = roles; return true end }
 C_LFGInfo = { CanPlayerUsePremadeGroup = function() return M.lfg.canUse, M.lfg.failure end }
 M.invited, M.tells = {}, {}

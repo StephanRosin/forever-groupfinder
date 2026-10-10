@@ -154,6 +154,38 @@ function Finder.Results()
     return out
 end
 
+-- Activities (read-only) -----------------------------------------------------------
+function Finder.Categories()
+    return plainList(C_LFGList.GetAvailableCategories()) or {}
+end
+
+function Finder.CategoryInfo(id)
+    local info = C_LFGList.GetLfgCategoryInfo(id)
+    if not info then return nil end
+    return { name = plain(info.name) }
+end
+
+function Finder.ActivityGroupName(groupID)
+    local name = C_LFGList.GetActivityGroupInfo(groupID)
+    return plain(name)
+end
+
+-- groupID is optional: nil lists the whole category
+function Finder.Activities(categoryID, groupID)
+    return plainList(C_LFGList.GetAvailableActivities(categoryID, groupID)) or {}
+end
+
+function Finder.ActivityInfo(id)
+    local a = C_LFGList.GetActivityInfoTable(id)
+    if not a then return nil end
+    return {
+        categoryID = plain(a.categoryID), groupFinderActivityGroupID = plain(a.groupFinderActivityGroupID),
+        fullName = plain(a.fullName), shortName = plain(a.shortName),
+        minLevelSuggestion = plain(a.minLevelSuggestion), maxLevelSuggestion = plain(a.maxLevelSuggestion),
+        maxNumPlayers = plain(a.maxNumPlayers),
+    }
+end
+
 -- My listing ------------------------------------------------------------------------
 function Finder.ActiveEntry()
     if not C_LFGList.HasActiveEntryInfo() then return nil end
