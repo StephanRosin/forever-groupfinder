@@ -2301,6 +2301,48 @@ check("size import clamped", (function() ns.Share.Import("FGF1:ts17:groupRoleIco
 Settings.ResetProfile()
 end
 
+-- A settings refresh keeps the names (and level, class, area) of solo
+-- players whose name came only from the leader info.
+do
+lfg.results, lfg.members, lfg.counts = {}, {}, {}
+lfg.results[41] = { searchResultID = 41, activityIDs = { 22 }, numMembers = 1, age = 30, comment = "" }
+lfg.members[41] = { { level = 20 } }
+lfg.leaders = { [41] = { name = "Lonely", level = 21, classFilename = "MAGE", areaName = "Duskwood",
+    lfgRoles = { tank = false, healer = true, dps = false } } }
+W.SetCheckedList({ 22 })
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+local function soloRow()
+    for _, row in ipairs(f.pool.used) do if row.kind == "PLAYER" then return row end end
+end
+local function snapshot()
+    local r = soloRow()
+    return r and table.concat({ r.name:GetText() or "-", r.level:GetText() or "-", r.area:GetText() or "-",
+        tostring(r.class._atlas or r.class._texture) }, "|") or "no row"
+end
+local before = snapshot()
+check("solo name from the leader info", before:match("^[^|]*"), "Lonely")
+-- The client forgets the leader info later (seen in game): only the
+-- cached result may be used for a refresh.
+lfg.leaders = nil
+Settings.Set("nameSize", 15)
+check("name size refresh keeps name, level, area, class", snapshot(), before)
+Settings.Set("locationSize", 14)
+check("location size refresh keeps them", snapshot(), before)
+Settings.Set("nameSize", nil)
+Settings.Set("locationSize", nil)
+check("back to the defaults: still the same", snapshot(), before)
+M.Fire("LFG_LIST_SEARCH_RESULT_UPDATED", 41)
+check("a result update keeps the known name", snapshot(), before)
+lfg.results[41].comment = "still lf group"
+M.Fire("LFG_LIST_SEARCH_RESULT_UPDATED", 41)
+Settings.Set("nameSize", 15)
+check("a refresh after an update shows the update", soloRow().comment:GetText(), "still lf group")
+check("and still the name", snapshot(), before)
+Settings.Set("nameSize", nil)
+lfg.results[41] = nil
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+end
+
 -- Undo for hide / ignore; the counters lead to the lists in the options.
 do
 local U = ns.Undo

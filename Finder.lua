@@ -134,6 +134,41 @@ local function sum(a, b)
     return a + b
 end
 
+local rememberSolo
+-- What a solo listing's leader looked like when the client last told us:
+-- the leader info can be gone in a later read (a result update), and a
+-- player must not turn into "Unknown" then. Per result id; Finder.Results
+-- drops the ids no longer listed.
+local known = {}
+
+local function copyMember(m)
+    local out = {}
+    for k, v in pairs(m) do out[k] = v end
+    return out
+end
+
+-- Fills what this read is missing from the last read, then remembers it.
+-- Every value here was converted (plain) before.
+rememberSolo = function(r)
+    if r.numMembers ~= 1 then return end   -- plain: converted above
+    local last = known[r.id]
+    if last then
+        if type(r.leaderName) ~= "string" then r.leaderName = last.leaderName end   -- plain: converted above
+        local m = r.members[1]
+        if not m then
+            r.members[1] = copyMember(last.member)
+        else
+            for k, v in pairs(last.member) do
+                if m[k] == nil then m[k] = v end   -- plain: converted above
+            end
+        end
+    end
+    local m = r.members[1]
+    if m and type(m.name) == "string" then   -- plain: converted above
+        known[r.id] = { leaderName = type(r.leaderName) == "string" and r.leaderName or m.name, member = copyMember(m) }   -- plain: converted above
+    end
+end
+
 function Finder.Result(id)
     if not C_LFGList.HasSearchResultInfo(id) then return nil end
     local info = C_LFGList.GetSearchResultInfo(id)
@@ -199,6 +234,7 @@ function Finder.Result(id)
             if type(r.members[1].name) ~= "string" then r.members[1].name = r.leaderName end
         end
     end
+    rememberSolo(r)
     local counts = C_LFGList.GetSearchResultMemberCounts and C_LFGList.GetSearchResultMemberCounts(id)
     if type(counts) == "table" then
         for _, key in ipairs(COUNT_KEYS) do r.counts[key] = plain(counts[key]) end
@@ -207,11 +243,17 @@ function Finder.Result(id)
 end
 
 function Finder.Results()
-    local out = {}
+    local out, listed = {}, {}
     local _, ids = C_LFGList.GetSearchResults()
     for _, id in ipairs(ids or {}) do
         local r = Finder.Result(id)
-        if r then out[#out + 1] = r end
+        if r then
+            out[#out + 1] = r
+            listed[id] = true
+        end
+    end
+    for id in pairs(known) do
+        if not listed[id] then known[id] = nil end
     end
     return out
 end

@@ -178,6 +178,13 @@ local function onResultUpdated(id)
             if row.id == id then
                 local fresh = Finder.Result(id)
                 local new
+                -- The cached set follows, so a later rebuild (a settings
+                -- refresh) shows the same as this row.
+                for i, r in ipairs(results) do
+                    if r.id == id then
+                        if fresh then results[i] = fresh else r.isDelisted = true end
+                    end
+                end
                 if fresh then
                     local b = Results.Build({ fresh }, context(false))
                     new = b.groups[1] or b.players[1]
