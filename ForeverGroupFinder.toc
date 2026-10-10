@@ -34,6 +34,7 @@ Memory.lua
 Listing.lua
 Results.lua
 Controls.lua
+Header.lua
 Menu.lua
 Rows.lua
 Detail.lua

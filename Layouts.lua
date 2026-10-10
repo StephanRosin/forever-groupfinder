@@ -29,7 +29,8 @@ local SIZE_KEYS = {
 Layouts.COLUMN_W = 300     -- the DETAILS layout's right column
 local PAD, GAP = 8, 6
 local BUTTON_H = 18        -- the activity button
-local POPUP_W, POPUP_H, POPUP_HEADER = 250, 380, 24
+local POPUP_W, POPUP_H = 250, 380
+local POPUP_HEADER = ns.Header.HEIGHT
 local POPUP_NAME = "ForeverGroupFinderActivities"
 
 function Layouts.Current()
@@ -83,6 +84,7 @@ local function placeSideInPopup(f, height)
     popup:SetPoint("TOPLEFT", f.activity, "BOTTOMLEFT", 0, -4)
     ns.Window.ApplyLook(popup, POPUP_W, h)
     popup.header.title:SetText(L.ACTIVITIES)
+    ns.Header.Layout(popup.header, POPUP_W)
     side:SetFrameStrata("DIALOG")
     side:SetFrameLevel(popup:GetFrameLevel() + 5)
     side:ClearAllPoints()
@@ -121,17 +123,8 @@ function Layouts.Create(f)
     popup.bg = popup:CreateTexture(nil, "BACKGROUND")
     popup.bg:SetAllPoints()
     popup.clip = {}
-    local h = CreateFrame("Frame", nil, popup)
-    popup.header = h
-    h:SetHeight(POPUP_HEADER)
-    h:SetPoint("TOPLEFT")
-    h:SetPoint("TOPRIGHT")
-    Controls.HeaderGlow(h)
-    h.close = Controls.CloseButton(h, 16, function() Layouts.ClosePopup(f) end, function() return L.TIP_CLOSE end)
-    h.close:SetPoint("RIGHT", h, "RIGHT", -4, 0)
-    h.title = Controls.Text(h, "header")
-    h.title:SetPoint("LEFT", h, "LEFT", 10, 0)
-    h.title:SetPoint("RIGHT", h.close, "LEFT", -4, 0)
+    local h = ns.Header.Create(popup)
+    h.close = ns.Header.CloseButton(h, function() return L.TIP_CLOSE end, function() Layouts.ClosePopup(f) end)
     popup:Hide()
     f.popup = popup
 end

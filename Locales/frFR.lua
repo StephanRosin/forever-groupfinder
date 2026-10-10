@@ -124,7 +124,7 @@ L.CATEGORY_120 = "Personnalisé"
 
 -- La fenêtre
 L.WINDOW_TITLE = "Recherche de groupe"
-L.REFRESH = "Chercher"
+L.TIP_OPTIONS = "Options"
 L.REFRESH_AGE = "il y a %s"
 L.SEARCHING = "Recherche..."
 L.AGE_SECONDS = "%d s"

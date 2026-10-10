@@ -123,7 +123,7 @@ local EXPECTED = {
     borderStyle = "NONE", borderSize = 1, cornerRadius = 10,
     shadowEnabled = true, shadowSize = 9, shadowAlpha = 65,
     bgMode = "SOLID", bgAlpha = 85, bgTexture = "Blizzard Dialog Background Gold", headerLine = true,
-    headerFont = "Friz Quadrata", headerSize = 14, headerFlag = "SHADOW",
+    headerFont = "Friz Quadrata", headerSize = 18, headerFlag = "SHADOW",
     activityFont = "Friz Quadrata", activitySize = 12, activityFlag = "SHADOW",
     nameFont = "Friz Quadrata", nameSize = 12, nameFlag = "SHADOW",
     commentFont = "Friz Quadrata", commentSize = 11, commentFlag = "SHADOW",
@@ -1508,7 +1508,7 @@ click(Side.Items()[1])
 check("second tick inside the interval: no search", searches(), before + 1)
 check("still ticked", W.Checked()[24], true)
 check("my listing shows both", LP.Frame().chips[1]:IsShown() and LP.Frame().chips[2]:IsShown(), true)
-check("refresh shows the age", f.header.refresh.label:GetText(), "0 s ago")
+check("refresh shows the age", f.header.note:GetText(), "0 s ago")
 M.state.time = M.state.time + 4
 click(Side.Items()[1])
 check("after the interval it searches again", searches(), before + 2)
@@ -1521,7 +1521,7 @@ M.state.time = M.state.time + 30
 f:GetScript("OnUpdate")(f, 5)
 check("ticker: no search", searches(), n)
 check("ticker: nothing blocked", #lfg.blocked, 0)
-check("ticker updates the age", f.header.refresh.label:GetText(), "30 s ago")
+check("ticker updates the age", f.header.note:GetText(), "30 s ago")
 
 -- Keyed searches outside a click are blocked by the client: the window
 -- calls Search only from clicks (opening, ticking, chips, refresh).
@@ -2127,6 +2127,61 @@ check("size import clamped", (function() ns.Share.Import("FGF1:ts17:groupRoleIco
 Settings.ResetProfile()
 end
 
+-- The header as Forever Quest Log's (Tracker.lua): 32 high, shine and line,
+-- grip and title, the age as a grey note, flat 22 px icon buttons from the
+-- right edge, 5 in and 1 apart.
+do
+local H, hd = ns.Header, f.header
+check("header height", hd:GetHeight(), 32)
+check("header spans the top", hd._points.TOPLEFT ~= nil and hd._points.TOPRIGHT ~= nil, true)
+check("header shine under the rounded corners", (hd.shine._masks or 0) > 0, true)
+check("header shine gradient", hd.shine._gradient and hd.shine._gradient[1], "VERTICAL")
+check("header line", hd.line:IsShown() and hd.line._texColor[4], 0.45)
+Settings.Set("headerLine", false)
+check("header line follows the setting", hd.line:IsShown(), false)
+Settings.Set("headerLine", nil)
+check("buttons right to left", hd.buttons[1] == hd.close and hd.buttons[2] == hd.options and hd.buttons[3] == hd.lock
+    and hd.buttons[4] == hd.refresh, true)
+for i, b in ipairs(hd.buttons) do
+    check("header button " .. i .. " size", b:GetWidth() .. "x" .. b:GetHeight(), "22x22")
+    check("header button " .. i .. " place", b._points.RIGHT[3], -(5 + (i - 1) * 23))
+end
+check("options icon", hd.options.icon._texture, ns.Media.Icon("Gear"))
+check("refresh icon", hd.refresh.icon._texture, ns.Media.Icon("Reset"))
+check("icon size", hd.options.icon:GetWidth(), 14)
+check("close is a drawn cross", #hd.close.lines, 2)
+check("no gold box on the refresh button", hd.refresh.edges, nil)
+check("title in the header style", hd.title._font[2], 18)
+check("title after the grip while unlocked", hd.title._points.LEFT[3], 26)
+check("grip while unlocked", hd.grip:IsShown(), true)
+check("lock blue while unlocked", hd.lock.icon._vertex[1], ns.Controls.ACCENT[1])
+check("unlock icon", hd.lock.icon._texture, ns.Media.Icon("Unlock"))
+Settings.SetLocked(true)
+check("title at 10 when locked", hd.title._points.LEFT[3], 10)
+check("no grip when locked", hd.grip:IsShown(), false)
+check("lock dim when locked", hd.lock.icon._vertex[1], H.OFF[1])
+check("lock icon", hd.lock.icon._texture, ns.Media.Icon("Lock"))
+hd:GetScript("OnMouseDown")(hd, "LeftButton")
+check("locked: no drag", f.moving, nil)
+M.state.ctrl = true
+hd:GetScript("OnMouseDown")(hd, "LeftButton")
+check("locked: Ctrl drags", f.moving, true)
+hd:GetScript("OnMouseUp")(hd, "LeftButton")
+M.state.ctrl = nil
+Settings.SetLocked(false)
+check("note after the title", hd.note._points.BOTTOMLEFT[1], hd.title)
+check("note smaller than the title", hd.note._font[2], 15)
+check("note grey", hd.note._textColor[1], H.NOTE[1])
+check("refresh idle when not outdated", W.Outdated() and true or hd.refresh.icon._vertex[1], W.Outdated() and true or H.IDLE[1])
+hd.options:GetScript("OnEnter")(hd.options)
+check("hover colour", hd.options.icon._vertex[1], H.HOVER[1])
+hd.options:GetScript("OnLeave")(hd.options)
+check("idle again", hd.options.icon._vertex[1], H.IDLE[1])
+click(hd.options)
+check("gear opens the options", ns.Options.IsShown(), true)
+ns.Options.Toggle()
+end
+
 -- Layouts: the same parts, arranged three ways; switched live.
 do
 local Layouts, Column = ns.Layouts, ns.Column
@@ -2156,7 +2211,7 @@ Settings.Set("layout", "STACKED")
 check("switching does not search", searches(), k)
 check("stacked: own size", f:GetWidth() .. "x" .. f:GetHeight(), "480x560")
 check("stacked: activity column gone", f.side:IsShown(), false)
-check("stacked: activity button at the top", f.activity:IsShown() and f.activity._points.TOPLEFT[4], -(24 + 8))
+check("stacked: activity button at the top", f.activity:IsShown() and f.activity._points.TOPLEFT[4], -(ns.Header.HEIGHT + 8))
 check("stacked: button names the category and the ticks", f.activity.label:GetText(), "Dungeons (1)")
 check("stacked: list over the full width", f.listWidth, 480 - 16)
 check("stacked: listing below the button", f.listing._points.TOPLEFT[4] < f.activity._points.TOPLEFT[4], true)
@@ -2168,6 +2223,8 @@ check("the activity list shows in it", f.side:IsShown(), true)
 check("the list sits in the popup", f.side._points.TOPLEFT[1], f.popup)
 check("popup above the window's parts", f.side:GetFrameStrata(), "DIALOG")
 check("popup title", f.popup.header.title:GetText(), "Activities")
+check("popup header as the window's", f.popup.header:GetHeight() .. "/" .. f.popup.header.close:GetWidth(), "32/22")
+check("popup header shine clipped", (f.popup.header.shine._masks or 0) > 0, true)
 check("popup has the category selector and switch", Side.Panel().category:IsShown() and Side.Panel().level:IsShown(), true)
 check("popup list: the same items", visible():find("24,22", 1, true) ~= nil, true)
 M.state.time = M.state.time + 5
@@ -2196,6 +2253,10 @@ local gRow
 for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
 click(gRow)
 check("stacked: details in the floating panel", D.Frame():IsShown() and D.OpenID(), 1)
+check("detail header as the window's", D.Frame().header:GetHeight() .. "/" .. D.Frame().header.close:GetWidth(), "32/22")
+check("detail header title style", D.Frame().header.title._font[2], 18)
+check("detail close at the quest log's place", D.Frame().header.close._points.RIGHT[3], -5)
+check("detail shine clipped", (D.Frame().header.shine._masks or 0) > 0, true)
 check("stacked: detail click does not mark seen", Memory.IsSeen(gRow.entry.key), false)
 -- Sizes per layout: a resize writes the current layout's keys.
 f._rect = { 700, 200, 480, 560 }

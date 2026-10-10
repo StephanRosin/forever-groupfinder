@@ -85,7 +85,7 @@ Settings.DEFAULTS = {
 
     -- Text styles. Flags: "" none, OUTLINE, THICKOUTLINE, SHADOW.
     headerFont = "Friz Quadrata",
-    headerSize = 14,
+    headerSize = 18,        -- as Forever Quest Log
     headerFlag = "SHADOW",
     headerColor = { 1, 0.82, 0.29 },
     activityFont = "Friz Quadrata",

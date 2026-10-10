@@ -145,7 +145,7 @@ L.CATEGORY_120 = "Custom"
 
 -- The window
 L.WINDOW_TITLE = "Group Finder"
-L.REFRESH = "Search"
+L.TIP_OPTIONS = "Options"
 L.REFRESH_AGE = "%s ago"
 L.SEARCHING = "Searching..."
 L.AGE_SECONDS = "%d s"

@@ -16,7 +16,8 @@ local Detail = {}
 ns.Detail = Detail
 
 local NAME = "ForeverGroupFinderDetail"
-local WIDTH, HEADER_H, BUTTON_H = 270, 24, 18
+local WIDTH, BUTTON_H = 270, 18
+local HEADER_H = ns.Header.HEIGHT
 local TITLE_H = 22          -- the embedded host's title line
 local PAD, GAP = 8, 4
 local LINE_H, MEMBER_H, ICON = 16, 18, 14
@@ -252,7 +253,10 @@ function Detail.Refresh()
     if not (h and current and h:IsShown()) then return end
     Controls.Restyle(h.header.title)
     h.header.title:SetText(Rows.ActivityText(current.activityIDs))
-    if h == p then Detail.Layout(height) end
+    if h == p then
+        Detail.Layout(height)
+        ns.Header.Layout(p.header, WIDTH)
+    end
     updateButtons(h)
     render(h)
 end
@@ -358,17 +362,9 @@ local function create()
     p.bg = p:CreateTexture(nil, "BACKGROUND")
     p.bg:SetAllPoints()
     p.clip = {}
-    local h = CreateFrame("Frame", nil, p)
-    p.header = h
-    h:SetHeight(HEADER_H)
-    h:SetPoint("TOPLEFT")
-    h:SetPoint("TOPRIGHT")
-    Controls.HeaderGlow(h)
-    h.close = Controls.CloseButton(h, 16, function() Detail.Close() end, function() return L.TIP_CLOSE end)
-    h.close:SetPoint("RIGHT", h, "RIGHT", -4, 0)
-    h.title = Controls.Text(h, "header")
-    h.title:SetPoint("LEFT", h, "LEFT", 10, 0)
-    h.title:SetPoint("RIGHT", h.close, "LEFT", -4, 0)
+    -- The window's header look: shine, line, title, a close button.
+    local h = ns.Header.Create(p)
+    h.close = ns.Header.CloseButton(h, function() return L.TIP_CLOSE end, function() Detail.Close() end)
     buildContent(p, h)
     p:SetScript("OnHide", function()
         if ns.Layouts.EmbedsDetail() then return end
@@ -389,8 +385,9 @@ function Detail.CreateEmbedded(parent)
     h:SetHeight(TITLE_H)
     h:SetPoint("TOPLEFT", PAD, 0)
     h:SetPoint("TOPRIGHT", -PAD, 0)
-    h.close = Controls.CloseButton(h, 14, function() Detail.Close() end, function() return L.TIP_CLOSE end)
-    h.close:SetPoint("RIGHT", h, "RIGHT", 0, 0)
+    h.buttons = {}
+    h.close = ns.Header.CloseButton(h, function() return L.TIP_CLOSE end, function() Detail.Close() end)
+    h.close:SetPoint("RIGHT", h, "RIGHT", 4, 0)
     h.title = Controls.Text(h, "activity")
     h.title:SetPoint("LEFT", h, "LEFT", 0, 0)
     h.title:SetPoint("RIGHT", h.close, "LEFT", -4, 0)

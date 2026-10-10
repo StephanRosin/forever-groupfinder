@@ -124,7 +124,7 @@ L.CATEGORY_120 = "Benutzerdefiniert"
 
 -- Das Fenster
 L.WINDOW_TITLE = "Gruppensuche"
-L.REFRESH = "Suchen"
+L.TIP_OPTIONS = "Optionen"
 L.REFRESH_AGE = "vor %s"
 L.SEARCHING = "Suche läuft..."
 L.AGE_SECONDS = "%d s"
