@@ -1,6 +1,6 @@
 local ADDON, ns = ...
 
--- My listing: state and countdown, templates, the leader's missing roles and
+-- My listing: state and countdown, the leader's missing roles and
 -- the way a comment gets into Blizzard's own field. The addon never writes the
 -- comment itself: the client only lets the player do that, and only with an
 -- authenticator. No C_LFGList call here; Finder does that.
@@ -100,52 +100,6 @@ function Listing.OpenCommentEditor(text, categoryID)
     local box = LFGListingComment and LFGListingComment.EditBox
     if box and pcall(box.SetText, box, text) then return "PREFILLED" end
     return "COPY", text
-end
-
--- Templates -------------------------------------------------------------------------
-local function copyList(t)
-    local out = {}
-    for i, v in ipairs(t or {}) do out[i] = v end
-    return out
-end
-
-function Listing.Templates()
-    return ns.Settings.Get("templates")
-end
-
-local function findTemplate(list, name)
-    for i, t in ipairs(list) do
-        if t.name == name then return i, t end
-    end
-end
-
-function Listing.SaveTemplate(name, activityIDs, roles, comment)
-    if type(name) ~= "string" or name == "" then return false end
-    local list = Listing.Templates()
-    local t = {
-        name = name, activityIDs = copyList(activityIDs), comment = comment or "",   -- plain: the caller's own text
-        roles = { tank = roles and roles.tank and true or false, healer = roles and roles.healer and true or false,
-            dps = roles and roles.dps and true or false },
-    }
-    local i = findTemplate(list, name)
-    list[i or #list + 1] = t
-    ns.Settings.Set("templates", list)
-    return true
-end
-
-function Listing.DeleteTemplate(name)
-    local list = Listing.Templates()
-    local i = findTemplate(list, name)
-    if not i then return false end
-    table.remove(list, i)
-    ns.Settings.Set("templates", list)
-    return true
-end
-
-function Listing.ApplyTemplate(name)
-    local _, t = findTemplate(Listing.Templates(), name)
-    if not t then return nil end
-    return { activityIDs = copyList(t.activityIDs), roles = t.roles, comment = t.comment or "" }   -- plain: our own saved template
 end
 
 -- Whisper templates -------------------------------------------------------------------

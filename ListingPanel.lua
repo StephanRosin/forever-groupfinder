@@ -30,18 +30,14 @@ local ROLE_KEYS = { "tank", "healer", "dps" }
 local ROLE_LABEL = { tank = "ROLE_TANK", healer = "ROLE_HEALER", dps = "ROLE_DAMAGER" }
 
 local p
-local templateComment = "" -- the applied template's comment, ready to copy
 local warning = false      -- the expiry warning is showing
-local copyText = nil       -- the copy box is showing this
 
 -- State -------------------------------------------------------------------------------------
 
 -- My selected roles (ns.Roles), the same everywhere.
 function Panel.Roles() return ns.Roles.Selected() end
 
-function Panel.TemplateComment() return templateComment end
 function Panel.Warning() return warning end
-function Panel.CopyText() return copyText end
 function Panel.Frame() return p end
 
 local function solo()
@@ -139,87 +135,11 @@ function Panel.Remove()
     ns.Window.ListingChanged()
 end
 
+-- Blizzard's listing tab, where the comment is written (authenticator only).
 function Panel.OpenComment()
-    local result, text = Listing.OpenCommentEditor(templateComment)
-    if result == "COPY" then
-        copyText = text
-    end
+    local result = Listing.OpenCommentEditor()
     ns.Window.ListingChanged()
-    if result == "COPY" and p then
-        p.copy:SetText(copyText)
-        p.copy:SetFocus()
-        p.copy:HighlightText()
-    end
     return result
-end
-
-function Panel.CloseCopy()
-    copyText = nil
-    if p then p.copy:ClearFocus() end
-    ns.Window.ListingChanged()
-end
-
-function Panel.ApplyTemplate(name)
-    local t = Listing.ApplyTemplate(name)
-    if not t then return false end
-    ns.Window.SetCheckedList(t.activityIDs)
-    ns.Roles.Set(t.roles)
-    templateComment = type(t.comment) == "string" and t.comment or ""   -- plain: our own saved template
-    ns.Side.Refresh()
-    ns.Window.ListingChanged()
-    ns.Window.Search()
-    return true
-end
-
-function Panel.SaveTemplate(name)
-    return Listing.SaveTemplate(name, ns.Window.CheckedList(), Panel.Roles(), templateComment)
-end
-
-function Panel.DeleteTemplate(name)
-    return Listing.DeleteTemplate(name)
-end
-
-if StaticPopupDialogs then
-    StaticPopupDialogs["FOREVERGROUPFINDER_TEMPLATE_NAME"] = {
-        text = "",
-        button1 = SAVE or "Save",
-        button2 = CANCEL or "Cancel",
-        hasEditBox = 1,
-        maxLetters = 40,
-        OnAccept = function(dialog)
-            local box = dialog.GetEditBox and dialog:GetEditBox()
-            Panel.SaveTemplate(box and box:GetText())
-        end,
-        EditBoxOnEnterPressed = function(editBox)
-            Panel.SaveTemplate(editBox:GetText())
-            editBox:GetParent():Hide()
-        end,
-        EditBoxOnEscapePressed = function(editBox) editBox:GetParent():Hide() end,
-        timeout = 0, whileDead = true, hideOnEscape = true, exclusive = true,
-    }
-end
-
-function Panel.AskTemplateName()
-    if not StaticPopup_Show then return end
-    StaticPopupDialogs["FOREVERGROUPFINDER_TEMPLATE_NAME"].text = L.POPUP_TEMPLATE_NAME
-    StaticPopup_Show("FOREVERGROUPFINDER_TEMPLATE_NAME")
-end
-
-function Panel.BuildTemplateMenu(root)
-    local list = Listing.Templates()
-    root:CreateTitle(L.TEMPLATES)
-    if #list == 0 then root:CreateTitle(L.NO_TEMPLATES) end
-    for _, t in ipairs(list) do
-        root:CreateButton(t.name, function(name) Panel.ApplyTemplate(name) end, t.name)
-    end
-    root:CreateDivider()
-    root:CreateButton(L.SAVE_TEMPLATE, function() Panel.AskTemplateName() end)
-    if #list > 0 then
-        local delete = root:CreateButton(L.DELETE_TEMPLATE)
-        for _, t in ipairs(list) do
-            delete:CreateButton(t.name, function(name) Panel.DeleteTemplate(name) end, t.name)
-        end
-    end
 end
 
 -- Display --------------------------------------------------------------------------------------
@@ -292,7 +212,6 @@ function Panel.Refresh()
     p.roomOnly.text:SetText(L.FILTER_ROOM_FOR_ME)
     p.roomOnly.on = S("filterMyRole")
     p.roomOnly.box:SetChecked(p.roomOnly.on)
-    p.template:SetLabel(L.TEMPLATE)
     p.comment:SetLabel(L.COMMENT_BUTTON)
     p.comment:SetOff(not Listing.CanComment(), L.TIP_COMMENT_NEEDS_AUTH)
     p.extend:SetLabel(L.EXTEND)
@@ -302,7 +221,7 @@ function Panel.Refresh()
         p.commentText:SetText(comment)
     else
         Controls.Restyle(p.commentText, Controls.DIM)
-        p.commentText:SetText(templateComment ~= "" and L.TEMPLATE_COMMENT:format(templateComment) or L.NO_COMMENT)
+        p.commentText:SetText(L.NO_COMMENT)
     end
     local r = Panel.Roles()
     for _, k in ipairs(ROLE_KEYS) do
@@ -312,7 +231,6 @@ function Panel.Refresh()
     p.hint:SetText(L.HINT_TICK_ACTIVITIES)
     p.warningText:SetText(L.EXPIRY_WARNING)
     p.leader:SetText(Panel.LeaderText() or "")
-    p.copyHint:SetText(L.COPY_HINT)
 end
 
 -- Places everything for width; returns the panel's height.
@@ -322,7 +240,7 @@ function Panel.Layout(width)
     local y = 0
     -- Line 1: title and status pill; Template and the main button at the right.
     local x = width
-    for _, b in ipairs({ p.post, p.template }) do
+    for _, b in ipairs({ p.post }) do
         b:SetWidth(math.max(64, math.floor(b.label:GetStringWidth() + (b.icon and 30 or 22))))
         b:ClearAllPoints()
         b:SetPoint("TOPRIGHT", p, "TOPLEFT", x, -y)
@@ -426,21 +344,6 @@ function Panel.Layout(width)
         p.leader:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -y - 2)
         y = y + 16 + GAP
     end
-    -- The copy box.
-    local copying = copyText ~= nil
-    p.copy:SetShown(copying)
-    p.copyHint:SetShown(copying)
-    p.copyClose:SetShown(copying)
-    if copying then
-        p.copy:ClearAllPoints()
-        p.copy:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -y)
-        p.copy:SetWidth(math.max(60, width - 220))
-        p.copyHint:ClearAllPoints()
-        p.copyHint:SetPoint("LEFT", p.copy, "RIGHT", 6, 0)
-        p.copyClose:ClearAllPoints()
-        p.copyClose:SetPoint("TOPRIGHT", p, "TOPLEFT", width, -y)
-        y = y + ROW_H + 2 + GAP
-    end
     return y - GAP
 end
 
@@ -496,8 +399,6 @@ function Panel.Create(parent)
     p.status:SetPoint("CENTER")
     p.post = Controls.Button(p, { text = "", height = ROW_H, primary = true,
         onClick = function(_, mouse) Panel.Action(mouse) end })
-    p.template = Controls.Button(p, { text = "", height = ROW_H, icon = "ChevronDown", tip = function() return L.TIP_TEMPLATE end,
-        onClick = function(self) ns.Menu.Open(self, Panel.BuildTemplateMenu) end })
     p.rolesLabel = Controls.Text(p, "small")
     p.roles = {}
     for _, k in ipairs(ROLE_KEYS) do p.roles[k] = roleToggle(k) end
@@ -513,23 +414,6 @@ function Panel.Create(parent)
     p.extend = Controls.Button(p, { text = "", height = ROW_H, onClick = function() Panel.Extend() end, tip = function() return L.TIP_EXTEND end })
     p.leader = Controls.Text(p, "comment")
     Controls.Restyle(p.leader, Controls.GOLD)
-    -- Our own copy box: the template comment, highlighted for Ctrl+C.
-    p.copy = Controls.EditBox(p, "", 255)
-    p.copy:SetHeight(ROW_H + 2)
-    Controls.PaintOutline(p.copy.edges, Controls.GOLD)
-    p.copy.bg:SetColorTexture(0.2, 0.16, 0.05, 0.95)
-    p.copy:SetScript("OnEscapePressed", function() Panel.CloseCopy() end)
-    p.copy:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
-    p.copy:SetScript("OnEditFocusLost", function() end)
-    -- The text is not ours to edit: typing puts it back.
-    p.copy:SetScript("OnTextChanged", function(self, user)
-        if user and copyText then
-            self:SetText(copyText)
-            self:HighlightText()
-        end
-    end)
-    p.copyHint = Controls.Text(p, "small")
-    p.copyClose = Controls.Button(p, { text = L.CLOSE, width = 50, height = 18, onClick = function() Panel.CloseCopy() end })
     Panel.Refresh()
     return p
 end

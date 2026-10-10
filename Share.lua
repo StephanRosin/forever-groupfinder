@@ -14,7 +14,7 @@ addon knows, with the type of their default; numbers are clamped to their
 range by Settings.Set. Unknown keys are skipped, so a string from a newer
 version still imports what this one understands.
 
-Table settings (languages, templates, whisperTemplates) go through a cleaner
+Table settings (languages, whisperTemplates) go through a cleaner
 below: it receives the decoded data and returns what may be kept, or nil. Other
 files may register more with Share.RegisterTable.
 -----------------------------------------------------------------------------]]
@@ -141,7 +141,7 @@ function Share.RegisterTable(key, clean)
 end
 
 -- Limits for what a string may bring in; a string comes from someone else.
-local MAX_LIST, MAX_TEXT, MAX_ACTIVITIES = 50, 255, 20
+local MAX_LIST, MAX_TEXT = 50, 255
 
 local function text(v, max)
     if type(v) == "string" and #v <= max then return v end
@@ -159,34 +159,8 @@ local function stringList(v, maxItems, maxLength)
     return #list > 0 and list or nil
 end
 
-local function cleanTemplate(v)
-    if type(v) ~= "table" then return nil end
-    local name, comment = text(v.name, 40), text(v.comment, MAX_TEXT)
-    if not name or not comment then return nil end   -- plain: decoded strings, never game values
-    if type(v.roles) ~= "table" or type(v.activityIDs) ~= "table" then return nil end
-    local ids = {}
-    for i = 1, MAX_ACTIVITIES do
-        local id = v.activityIDs[i]
-        if type(id) ~= "number" or id ~= math.floor(id) or id < 0 then break end
-        ids[i] = id
-    end
-    return { name = name, activityIDs = ids, comment = comment, roles = {
-        tank = v.roles.tank == true, healer = v.roles.healer == true, dps = v.roles.dps == true } }
-end
-
 Share.RegisterTable("languages", function(v) return stringList(v, 16, 8) end)
 Share.RegisterTable("whisperTemplates", function(v) return stringList(v, MAX_LIST, MAX_TEXT) end)
-Share.RegisterTable("templates", function(v)
-    if type(v) ~= "table" then return nil end
-    local list = {}
-    for i = 1, MAX_LIST do
-        local template = cleanTemplate(v[i])
-        if not template then break end
-        list[i] = template
-    end
-    return #list > 0 and list or nil
-end)
-
 local function allowed(key, value)
     local enum = ENUMS[key]
     return not enum or enum[value] == true

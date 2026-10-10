@@ -358,8 +358,8 @@ local function listFilterRows()
     end, "OPT_HIDDEN_EMPTY"))
 end
 
--- Templates: my listing's warning, the saved listings (delete), the whisper
--- texts (edit; an emptied one is removed).
+-- Templates: my listing's expiry warning and the whisper texts (edit; an
+-- emptied one is removed).
 Options.WHISPER_SLOTS = 10
 local function whisperRow(i)
     return {
@@ -376,23 +376,10 @@ local function whisperRow(i)
 end
 
 local function templateRows()
-    local function templates() return ns.Listing.Templates() end
     local rows = {
         { type = "header", label = "OPT_LISTING" },
         num("expiryWarnMinutes", "OPT_EXPIRY_WARN", ""),
-        { type = "header", label = "OPT_TEMPLATES" },
-        { type = "text", label = "OPT_TEMPLATES_HINT", height = 40 },
     }
-    append(rows, listRows(templates, Options.LIST_SLOTS, function(i)
-        return {
-            key = "templates", type = "item", button = "OPT_PROFILE_DELETE",
-            label = function() local t = templates()[i]; return t and t.name or "" end,   -- plain: our own saved template
-            onClick = function()
-                local t = templates()[i]
-                if t then ns.Listing.DeleteTemplate(t.name) end
-            end,
-        }
-    end, "OPT_TEMPLATES_EMPTY"))
     append(rows, {
         { type = "header", label = "OPT_WHISPER_TEMPLATES" },
         { type = "text", label = "OPT_WHISPER_HINT", height = 40 },

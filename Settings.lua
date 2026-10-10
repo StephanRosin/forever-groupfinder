@@ -12,7 +12,7 @@ Settings.TEXT_STYLES = { "header", "activity", "name", "comment", "small", "leve
 -- The styles of the result list, on the "List look" page; the others on "Text".
 Settings.LIST_STYLES = { "activity", "name", "level", "location", "chip", "comment", "age" }
 
--- Tables (languages, templates, whisperTemplates) are stored whole, and
+-- Tables (languages, whisperTemplates) are stored whole, and
 -- only when they differ from the default.
 Settings.DEFAULTS = {
     -- General
@@ -67,8 +67,6 @@ Settings.DEFAULTS = {
 
     -- Listing
     expiryWarnMinutes = 5,
-    -- { name = "", activityIDs = {}, comment = "", roles = { tank = false, healer = true, dps = false } }
-    templates = {},
     whisperTemplates = { "Hi! Still looking for {role}? I'm a level {level} {class}." },
 
     -- Frame look (as the combat meter's FOREVER style)
