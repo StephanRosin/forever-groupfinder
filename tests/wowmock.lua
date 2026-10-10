@@ -71,6 +71,8 @@ local function newWidget(name, kind)
     function w:SetMovable(v) self._movable = v end
     function w:IsMovable() return self._movable end
     function w:EnableMouse(v) self._mouse = v end
+    function w:SetMouseMotionEnabled(v) self._motion = v end
+    function w:SetMouseClickEnabled(v) self._click = v end
     function w:IsMouseOver() return self._mouseOver or false end
     function w:RegisterForDrag(...) self._drag = select("#", ...) > 0 end
     function w:RegisterForClicks(...) self._clicks = { ... } end
@@ -202,7 +204,7 @@ function Minimap:GetCenter() return 1782, 897 end
 GameTooltip = newWidget("GameTooltip")
 function GameTooltip:AddLine(t) self._lines = self._lines or {}; self._lines[#self._lines + 1] = { t } end
 function GameTooltip:AddDoubleLine(l, r) self._lines = self._lines or {}; self._lines[#self._lines + 1] = { l, r } end
-function GameTooltip:SetOwner(o) self._lines = {}; self._owner = o end
+function GameTooltip:SetOwner(o, anchor) self._lines = {}; self._owner = o; self._anchor = anchor end
 function GameTooltip:ClearLines() self._lines = {} end
 function GameTooltip:Hide() self._shown = false; self._lines = {} end
 function GameTooltip:IsOwned() return true end

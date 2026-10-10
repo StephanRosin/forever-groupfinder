@@ -216,8 +216,39 @@ function Rows.TooltipLines(row, elapsed)
     return lines
 end
 
+-- Both row tooltips sit right of the mouse cursor (so the pointer never covers them).
+Rows.TOOLTIP_ANCHOR = "ANCHOR_CURSOR_RIGHT"
+
+-- A group slot's tooltip lines: the member's player info, or the free role.
+function Rows.SlotTooltipLines(slot)
+    if type(slot) ~= "table" then return {} end
+    local roleKey = type(slot.role) == "string" and ROLE_LABEL[slot.role]
+    local roleText = roleKey and L[roleKey] or nil   -- plain: our own lookup
+    if slot.free or type(slot.member) ~= "table" then
+        return { { text = roleText and L.DETAIL_FREE:format(roleText) or L.DETAIL_FREE_ANY, color = Controls.DIM } }
+    end
+    local m = slot.member
+    local r, g, b = Rows.ClassColor(m.classFile)
+    local lines = { { text = type(m.name) == "string" and m.name or L.UNKNOWN_PLAYER, color = { r, g, b } } }   -- plain: Finder converted the member
+    if type(m.level) == "number" then lines[#lines + 1] = { text = L.TIP_SLOT_LEVEL:format(m.level), color = Controls.TEXT } end
+    local class = Rows.ClassName(m.classFile)
+    if class then lines[#lines + 1] = { text = class, color = { r, g, b } } end   -- plain: our own class lookup
+    if roleText then lines[#lines + 1] = { text = roleText, color = Controls.TEXT } end
+    if type(m.area) == "string" and m.area ~= "" then lines[#lines + 1] = { text = m.area, color = Controls.DIM } end
+    return lines
+end
+
+function Rows.ShowSlotTooltip(owner, slot)
+    GameTooltip:SetOwner(owner, Rows.TOOLTIP_ANCHOR)
+    for _, line in ipairs(Rows.SlotTooltipLines(slot)) do
+        local c = line.color
+        GameTooltip:AddLine(line.text, c[1], c[2], c[3])
+    end
+    GameTooltip:Show()
+end
+
 function Rows.ShowTooltip(owner, row, elapsed)
-    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:SetOwner(owner, Rows.TOOLTIP_ANCHOR)
     for _, line in ipairs(Rows.TooltipLines(row, elapsed)) do
         local c = line.color
         if line.right then
@@ -445,6 +476,25 @@ function Rows.PaintSlot(sq, slot)
     end
 end
 
+-- A row slot answers hover with its own tooltip; clicks belong to the row.
+local function newSlot(row, sq)
+    sq:SetMouseMotionEnabled(true)
+    sq:SetMouseClickEnabled(false)   -- clicks fall through to the row (left: details, right: menu)
+    sq:SetScript("OnEnter", function(self)
+        row.hover:Show()
+        Rows.ShowInvite(row, true)
+        if self.slot then Rows.ShowSlotTooltip(self, self.slot) end
+    end)
+    sq:SetScript("OnLeave", function()
+        if row:IsMouseOver() and row.entry then
+            Rows.ShowTooltip(row, row.entry, ns.Window.Elapsed())
+        else
+            GameTooltip:Hide()
+        end
+    end)
+    return sq
+end
+
 local function newGroup(parent)
     local row = newBase(parent)
     row.activity = Controls.Text(row, "activity")
@@ -453,7 +503,7 @@ local function newGroup(parent)
     row.levels = Controls.Text(row, "small")
     row.count = Controls.Text(row, "small")
     row.squares = {}
-    for i = 1, MAX_SQUARES do row.squares[i] = newSquare(row) end
+    for i = 1, MAX_SQUARES do row.squares[i] = newSlot(row, newSquare(row)) end
     row.more = Controls.Text(row, "small")
     row.tag = Controls.Text(row, "small")
     row.comment = Controls.Text(row, "comment")
@@ -471,8 +521,10 @@ local function layoutSquares(row, entry, x)
         sq:SetPoint("LEFT", row, "LEFT", x + (i - 1) * (SQUARE + SQUARE_GAP), 0)
         if slots[i] then
             Rows.PaintSlot(sq, slots[i])
+            sq.slot = slots[i]
             sq:Show()
         else
+            sq.slot = nil
             sq:Hide()
         end
     end

@@ -84,7 +84,7 @@ for _, line in ipairs(tocLines()) do
 end
 check("Interface", toc.Interface, "16001")
 check("Title", toc.Title, "Forever Group Finder")
-check("Version", toc.Version, "1.0.0")
+check("Version", toc.Version, "1.0.1")
 check("saved variables (account)", toc.SavedVariables, "ForeverGroupFinderProfiles")
 check("saved variables (character)", toc.SavedVariablesPerCharacter, "ForeverGroupFinderChar")
 check("compartment click", toc.AddonCompartmentFunc, "ForeverGroupFinder_OnAddonCompartmentClick")
@@ -1868,6 +1868,36 @@ check("tooltip: every member", tipText:find("Grimnar (20)", 1, true) ~= nil and 
 check("tooltip: class and role", tipText:find("WARRIOR - DPS", 1, true) ~= nil, true)
 check("tooltip: comment", tipText:find("c1", 1, true) ~= nil, true)
 check("tooltip: age", tipText:find("Listed 1 min ago", 1, true) ~= nil, true)
+check("row tooltip anchored right of the cursor", GameTooltip._anchor, "ANCHOR_CURSOR_RIGHT")
+-- Slot tooltips.
+local memberSq, freeSq
+for _, sq in ipairs(groupRow.squares) do
+    if sq:IsShown() and sq.free and not freeSq then freeSq = sq end
+    if sq:IsShown() and not sq.free and not memberSq then memberSq = sq end
+end
+local function tipOf() local t = {} for _, l in ipairs(GameTooltip._lines or {}) do t[#t + 1] = l[1] end return table.concat(t, "|") end
+groupRow._mouseOver = true
+memberSq:GetScript("OnEnter")(memberSq)
+check("slot tooltip: anchored right of the cursor", GameTooltip._anchor, "ANCHOR_CURSOR_RIGHT")
+check("slot tooltip: owner is the slot", GameTooltip._owner, memberSq)
+check("slot tooltip: name, level, class, role", tipOf():find("^%w+|Level %d+|%u+|%a+") ~= nil, true)
+check("slot tooltip: not the row tooltip", tipOf():find("The Deadmines", 1, true), nil)
+check("slot tooltip keeps the row hover", groupRow.hover:IsShown(), true)
+memberSq:GetScript("OnLeave")(memberSq)
+check("back on the row: row tooltip again", tipOf():find("The Deadmines", 1, true) ~= nil and GameTooltip._anchor == "ANCHOR_CURSOR_RIGHT", true)
+freeSq:GetScript("OnEnter")(freeSq)
+check("free slot tooltip", tipOf(), "Free: Tank")
+groupRow._mouseOver = false
+freeSq:GetScript("OnLeave")(freeSq)
+check("leaving the row from a slot hides the tooltip", tipOf(), "")
+check("slot tooltip: member data", (function()
+    local lines = ns.Rows.SlotTooltipLines({ member = { name = "Zed", level = 31, classFile = "MAGE", area = "Ironforge" }, role = "DAMAGER" })
+    local t = {}
+    for _, l in ipairs(lines) do t[#t + 1] = l.text end
+    return table.concat(t, "|")
+end)(), "Zed|Level 31|MAGE|DPS|Ironforge")
+check("slot tooltip: garbage member survives", #ns.Rows.SlotTooltipLines({ member = { name = {}, level = "x" }, role = {} }), 1)
+check("slots take hover only; clicks fall through to the row", memberSq._motion == true and memberSq._click == false, true)
 groupRow:GetScript("OnLeave")(groupRow)
 local tl = ns.Rows.TooltipLines(W.Built().players[1], 0)
 check("player tooltip: area", (function()
