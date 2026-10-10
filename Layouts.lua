@@ -10,11 +10,10 @@ local S = Settings.Get
 --
 --   SIDEBAR  the activity list as a column on the left; listing, filters
 --            and list on the right; details float beside the window.
---   STACKED  narrow: an activity button at the top opens the activity list
---            in a popup; listing, filters, list below; details float.
---   DETAILS  as STACKED, wide; while a group is open a column on the right
---            shows its details (the list gives up the room, the window
---            keeps its width).
+--   DETAILS  an activity button at the top opens the activity list in a
+--            popup; listing, filters and list below; while a group is open
+--            a column on the right shows its details (the list gives up the
+--            room, the window keeps its width).
 --
 -- In every layout, while I lead a group, a line above the filters lists
 -- the solo players who fit a missing role (Column.lua).
@@ -23,12 +22,13 @@ local S = Settings.Get
 local Layouts = {}
 ns.Layouts = Layouts
 
-Layouts.ORDER = { "SIDEBAR", "STACKED", "DETAILS" }
+Layouts.ORDER = { "SIDEBAR", "DETAILS" }
 local SIZE_KEYS = {
     SIDEBAR = { "width", "height" },
-    STACKED = { "stackedWidth", "stackedHeight" },
     DETAILS = { "detailsWidth", "detailsHeight" },
 }
+-- Layouts that are gone and what replaces them (a saved or imported value).
+Layouts.RENAMED = { STACKED = "DETAILS" }
 Layouts.COLUMN_W = 300     -- the DETAILS layout's right column
 local PAD, GAP = 8, 6
 local POPUP_W, POPUP_H = 250, 380
@@ -37,7 +37,12 @@ local POPUP_NAME = "ForeverGroupFinderActivities"
 
 function Layouts.Current()
     local mode = S("layout")
-    return SIZE_KEYS[mode] and mode or "SIDEBAR"
+    if Layouts.RENAMED[mode] then
+        -- A profile saved with a layout that is gone: store its successor.
+        Settings.Set("layout", Layouts.RENAMED[mode])
+        mode = S("layout")
+    end
+    return SIZE_KEYS[mode] and mode or Settings.DEFAULTS.layout
 end
 
 function Layouts.EmbedsDetail() return Layouts.Current() == "DETAILS" end
@@ -56,7 +61,7 @@ function Layouts.Ranges()
     return Settings.RANGES[w], Settings.RANGES[h]
 end
 
--- The activity button and its popup (STACKED, DETAILS) -----------------------------------------
+-- The activity button and its popup (DETAILS) -----------------------------------------
 
 function Layouts.PopupShown(f)
     return f.popup ~= nil and f.popup:IsShown()

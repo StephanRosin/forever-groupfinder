@@ -128,7 +128,7 @@ local ENUMS = {
     category = { [2] = true, [114] = true, [116] = true, [118] = true, [120] = true },
     borderStyle = { NONE = true, FLAT = true, GOLD = true },
     bgMode = { SOLID = true, GRADIENT = true, TEXTURE = true },
-    layout = { SIDEBAR = true, STACKED = true, DETAILS = true },
+    layout = { SIDEBAR = true, DETAILS = true },
     playerSort = { ROLE = true, LEVEL = true, NEWEST = true },
 }
 for _, name in ipairs(Settings.TEXT_STYLES) do
@@ -172,6 +172,9 @@ Share.RegisterTable("playstyles", function(v)
     return #list > 0 and list or nil
 end)
 Share.RegisterTable("whisperTemplates", function(v) return stringList(v, MAX_LIST, MAX_TEXT) end)
+-- Values that were renamed: key -> { old = new }.
+local RENAMED = { layout = { STACKED = "DETAILS" } }
+
 local function allowed(key, value)
     local enum = ENUMS[key]
     return not enum or enum[value] == true
@@ -188,6 +191,9 @@ function Share.Decode(text)
     if type(value) ~= "table" or pos ~= #body + 1 then return nil, "format" end
     local clean = {}
     for key, v in pairs(value) do
+        -- A value renamed since (an old layout): its successor.
+        local renamed = RENAMED[key]
+        if renamed and renamed[v] then v = renamed[v] end
         local default = Settings.DEFAULTS[key]
         if tables[key] then
             clean[key] = tables[key](v)

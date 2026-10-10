@@ -23,7 +23,7 @@ local TITLE_H = 22          -- the embedded host's title line
 local PAD, GAP = 8, 4
 local LINE_H, MEMBER_H, ICON = 16, 18, 14
 
-local p            -- the floating panel (SIDEBAR, STACKED)
+local p            -- the floating panel (SIDEBAR)
 local e            -- the embedded host (the DETAILS layout's column)
 local current      -- the row shown (a row table of Window.Built())
 local height = 0

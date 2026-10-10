@@ -5,7 +5,7 @@ local S = Settings.Get
 -- The activity list: the categories as radio buttons, search box, the activity list with
 -- check boxes coloured by level fit, and at the bottom the switch "Only in
 -- my level range". One panel for every layout: the window's left column
--- (SIDEBAR) or the content of the activity dropdown (STACKED, DETAILS;
+-- (SIDEBAR) or the content of the activity dropdown (DETAILS;
 -- Layouts.lua places it). The checked activities are the window's
 -- (ns.Window.Checked); this file only shows and toggles them. Every click
 -- here is a user action and may search (ns.Window.Search); typing in the

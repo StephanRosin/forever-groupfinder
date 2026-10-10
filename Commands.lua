@@ -7,8 +7,7 @@ function ns.ToggleLock()
 end
 
 -- Back to the default place and size of the window (nothing else).
-local WINDOW_KEYS = { "point", "relPoint", "x", "y", "width", "height", "stackedWidth", "stackedHeight",
-    "detailsWidth", "detailsHeight", "scale" }
+local WINDOW_KEYS = { "point", "relPoint", "x", "y", "width", "height", "detailsWidth", "detailsHeight", "scale" }
 
 function ns.ResetWindowPlace()
     local values = {}

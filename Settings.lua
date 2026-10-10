@@ -17,7 +17,7 @@ Settings.LIST_STYLES = { "activity", "name", "level", "location", "chip", "comme
 Settings.DEFAULTS = {
     -- General
     replaceBlizzard = true, -- our window answers the keybinding and the micro menu
-    minimapShow = true,
+    minimapShow = false,
     minimapAngle = 215,
     compartment = true,     -- the addon list by the minimap
 
@@ -28,17 +28,15 @@ Settings.DEFAULTS = {
     y = 40,
     width = 720,
     height = 460,
-    scale = 100,            -- percent
+    scale = 104,            -- percent
     locked = false,
     sideWidth = 190,        -- the side panel of the window
-    -- The arrangement (Layouts.lua): SIDEBAR (activity column), STACKED
-    -- (narrow, activities in a dropdown) or DETAILS (list and a details
-    -- column). Each has its own size: width / height are the SIDEBAR's.
-    layout = "SIDEBAR",
-    stackedWidth = 480,
-    stackedHeight = 560,
-    detailsWidth = 880,
-    detailsHeight = 480,
+    -- The arrangement (Layouts.lua): SIDEBAR (activity column) or DETAILS
+    -- (activities in a dropdown, list and a details column). Each has its
+    -- own size: width / height are the SIDEBAR's.
+    layout = "DETAILS",
+    detailsWidth = 994,
+    detailsHeight = 574,
 
     -- Search and list
     minInterval = 1,        -- seconds between two searches (Blizzard: none, one in flight)
@@ -53,12 +51,12 @@ Settings.DEFAULTS = {
     playstyles = {},        -- the playstyle filter (1-4); empty: all
     markOpenSlot = true,
     showPlayers = true,
-    rowHeight = 28,
-    playerRowHeight = 34,
+    rowHeight = 26,
+    playerRowHeight = 35,
     -- List look
     playerRoleIconSize = 0, -- 0: the player row's height minus 6
     groupRoleIconSize = 24, -- a member slot in a group row (as large as the player rows' icons allow)
-    classIconSize = 14,
+    classIconSize = 15,
     classColorNames = true, -- else nameColor
     abbreviate = true,      -- short activity names in the player rows' chips (Abbrev.lua)
     chipBorderColor = { 0.2, 0.2, 0.2 },   -- a faint edge: the chips are tags, not buttons
@@ -72,7 +70,7 @@ Settings.DEFAULTS = {
     whisperTemplates = { "Hi! Still looking for {role}? I'm a level {level} {class}." },
 
     -- Frame look (as the combat meter's FOREVER style)
-    borderStyle = "NONE",   -- NONE, FLAT or GOLD
+    borderStyle = "GOLD",   -- NONE, FLAT or GOLD
     borderSize = 1,
     borderColor = { 0, 0, 0, 1 },
     cornerRadius = 10,
@@ -81,7 +79,7 @@ Settings.DEFAULTS = {
     shadowAlpha = 65,       -- percent
     bgMode = "SOLID",       -- SOLID, GRADIENT or TEXTURE
     bgColor = { 0.047, 0.047, 0.055 },
-    bgAlpha = 85,           -- percent
+    bgAlpha = 100,          -- percent
     bgTexture = "Blizzard Dialog Background Gold",
     headerLine = true,
     buttonHeight = 22,      -- every button of the window, panel and popup
@@ -90,15 +88,15 @@ Settings.DEFAULTS = {
 
     -- Text styles. Flags: "" none, OUTLINE, THICKOUTLINE, SHADOW.
     headerFont = "Friz Quadrata",
-    headerSize = 18,        -- as Forever Quest Log
+    headerSize = 17,
     headerFlag = "SHADOW",
     headerColor = { 1, 0.82, 0.29 },
     activityFont = "Friz Quadrata",
-    activitySize = 12,
+    activitySize = 16,
     activityFlag = "SHADOW",
     activityColor = { 1, 0.82, 0.29 },
     nameFont = "Friz Quadrata",
-    nameSize = 12,
+    nameSize = 11,
     nameFlag = "SHADOW",
     nameColor = { 1, 1, 1 },
     commentFont = "Friz Quadrata",
@@ -114,7 +112,7 @@ Settings.DEFAULTS = {
     locationFlag = "SHADOW",
     locationColor = { 1, 0.82, 0.29 },
     chipFont = "Friz Quadrata",
-    chipSize = 10,
+    chipSize = 12,
     chipFlag = "SHADOW",
     chipColor = { 0.79, 0.76, 0.69 },
     ageFont = "Friz Quadrata",
@@ -122,7 +120,7 @@ Settings.DEFAULTS = {
     ageFlag = "SHADOW",
     ageColor = { 0.55, 0.54, 0.5 },
     smallFont = "Friz Quadrata",
-    smallSize = 10,
+    smallSize = 11,
     smallFlag = "SHADOW",
     smallColor = { 0.55, 0.54, 0.5 },
 }
@@ -136,8 +134,6 @@ Settings.RANGES = {
     height = { 320, 800 },
     scale = { 50, 150 },
     sideWidth = { 150, 280 },
-    stackedWidth = { 420, 900 },
-    stackedHeight = { 360, 1000 },
     detailsWidth = { 720, 1300 },
     detailsHeight = { 360, 900 },
     minInterval = { 1, 15 },

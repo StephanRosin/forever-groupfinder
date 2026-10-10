@@ -111,28 +111,28 @@ check("default profile", ns.ActiveProfile(), "Default")
 section("Shipped defaults")
 local D = Settings.DEFAULTS
 local EXPECTED = {
-    replaceBlizzard = true, minimapShow = true, minimapAngle = 215, compartment = true,
+    replaceBlizzard = true, minimapShow = false, minimapAngle = 215, compartment = true,
     point = "CENTER", relPoint = "CENTER", x = 0, y = 40, width = 720, height = 460,
-    scale = 100, locked = false, sideWidth = 190,
-    layout = "SIDEBAR", stackedWidth = 480, stackedHeight = 560, detailsWidth = 880, detailsHeight = 480,
+    scale = 104, locked = false, sideWidth = 190,
+    layout = "DETAILS", detailsWidth = 994, detailsHeight = 574,
     minInterval = 1, levelRangeOnly = true, category = 2, sortFriendsFirst = true, playerSort = "ROLE",
     filterMyRole = true, filterLevelFits = false, hideSeen = false,
-    markOpenSlot = true, showPlayers = true, rowHeight = 28, playerRowHeight = 34,
+    markOpenSlot = true, showPlayers = true, rowHeight = 26, playerRowHeight = 35,
     memoryMinutes = 30,
     expiryWarnMinutes = 5,
-    borderStyle = "NONE", borderSize = 1, cornerRadius = 10,
+    borderStyle = "GOLD", borderSize = 1, cornerRadius = 10,
     shadowEnabled = true, shadowSize = 9, shadowAlpha = 65,
-    bgMode = "SOLID", bgAlpha = 85, bgTexture = "Blizzard Dialog Background Gold", headerLine = true,
-    headerFont = "Friz Quadrata", headerSize = 18, headerFlag = "SHADOW",
-    activityFont = "Friz Quadrata", activitySize = 12, activityFlag = "SHADOW",
-    nameFont = "Friz Quadrata", nameSize = 12, nameFlag = "SHADOW",
+    bgMode = "SOLID", bgAlpha = 100, bgTexture = "Blizzard Dialog Background Gold", headerLine = true,
+    headerFont = "Friz Quadrata", headerSize = 17, headerFlag = "SHADOW",
+    activityFont = "Friz Quadrata", activitySize = 16, activityFlag = "SHADOW",
+    nameFont = "Friz Quadrata", nameSize = 11, nameFlag = "SHADOW",
     commentFont = "Friz Quadrata", commentSize = 11, commentFlag = "SHADOW",
-    smallFont = "Friz Quadrata", smallSize = 10, smallFlag = "SHADOW",
+    smallFont = "Friz Quadrata", smallSize = 11, smallFlag = "SHADOW",
     levelFont = "Friz Quadrata", levelSize = 15, levelFlag = "SHADOW",
     locationFont = "Friz Quadrata", locationSize = 12, locationFlag = "SHADOW",
-    chipFont = "Friz Quadrata", chipSize = 10, chipFlag = "SHADOW",
+    chipFont = "Friz Quadrata", chipSize = 12, chipFlag = "SHADOW",
     ageFont = "Friz Quadrata", ageSize = 10, ageFlag = "SHADOW",
-    playerRoleIconSize = 0, groupRoleIconSize = 24, classIconSize = 14, classColorNames = true, seenAlpha = 45,
+    playerRoleIconSize = 0, groupRoleIconSize = 24, classIconSize = 15, classColorNames = true, seenAlpha = 45,
     abbreviate = true,
     noRoomAlpha = 45, buttonHeight = 22, chipHeight = 20, buttonTextSize = 12,
 }
@@ -161,7 +161,7 @@ for _ in pairs(D) do total = total + 1 end
 check("no other default (languages, playstyles and whisperTemplates are the three tables)", total, expectedCount + 3)
 local RANGES = {
     width = { 560, 1100 }, height = { 320, 800 }, scale = { 50, 150 }, sideWidth = { 150, 280 },
-    stackedWidth = { 420, 900 }, stackedHeight = { 360, 1000 }, detailsWidth = { 720, 1300 }, detailsHeight = { 360, 900 },
+    detailsWidth = { 720, 1300 }, detailsHeight = { 360, 900 },
     minInterval = { 1, 15 }, rowHeight = { 16, 36 }, playerRowHeight = { 26, 50 }, memoryMinutes = { 5, 240 },
     expiryWarnMinutes = { 1, 15 }, borderSize = { 1, 8 }, cornerRadius = { 0, 12 }, shadowSize = { 1, 20 },
     x = { -4000, 4000 }, y = { -4000, 4000 },
@@ -202,8 +202,8 @@ Settings.Set("width", 1)
 check("clamped to the minimum", S("width"), 560)
 Settings.Set("minInterval", 0)
 check("search interval never below 1 s", S("minInterval"), 1)
-Settings.Set("scale", 99.6)
-check("whole numbers", S("scale"), 100)
+Settings.Set("scale", 103.6)
+check("whole numbers", S("scale"), 104)
 check("rounded to the default is not stored", ns.DB().scale, nil)
 Settings.ResetProfile()
 check("only non-defaults are stored", next(ns.DB()), nil)
@@ -410,11 +410,14 @@ check("memory on List", reachable.memoryMinutes, "list")
 check("whispers on Templates", reachable.whisperTemplates, "templates")
 -- Window page.
 ns.Options.ShowPage("window")
+Settings.Set("layout", "SIDEBAR")   -- the side width shows for the sidebar layout
+ns.Options.ShowPage("window")
 local wRow = rowFor("Width of the side panel", "slider")
 check("side width slider", wRow ~= nil, true)
 wRow.slider:GetScript("OnValueChanged")(wRow.slider, 200, true)
 check("side width set", S("sideWidth"), 200)
 Settings.Set("sideWidth", nil)
+Settings.Set("layout", nil)
 local xRow = rowFor("Horizontal", "slider")
 xRow.slider:GetScript("OnValueChanged")(xRow.slider, 120, true)
 check("X slider: x", S("x"), 120)
@@ -553,10 +556,11 @@ mb:GetScript("OnClick")(mb, "LeftButton")
 check("left-click opens the window", ns.Window.IsShown(), true)
 mb:GetScript("OnClick")(mb, "LeftButton")
 check("left-click closes the window", ns.Window.IsShown(), false)
-Settings.Set("minimapShow", false)
-check("minimap button hidden by the setting", mb:IsShown(), false)
+check("minimap button hidden by default", mb:IsShown(), false)
+Settings.Set("minimapShow", true)
+check("shown by the setting", mb:IsShown(), true)
 Settings.Set("minimapShow", nil)
-check("shown again", mb:IsShown(), true)
+check("hidden again", mb:IsShown(), false)
 Settings.Set("minimapAngle", 100)
 check("angle is stored", ns.DB().minimapAngle, 100)
 Settings.Set("minimapAngle", nil)
@@ -612,7 +616,7 @@ Settings.SetMany({ x = 300, y = 5, width = 900, height = 700, scale = 120, point
 SlashCmdList["FOREVERGROUPFINDER"]("reset")
 check("/fgf reset: x", S("x"), 0)
 check("/fgf reset: y", S("y"), 40)
-check("/fgf reset: size", S("width") + S("height") + S("scale"), 720 + 460 + 100)
+check("/fgf reset: size", S("width") + S("height") + S("scale"), 720 + 460 + 104)
 check("/fgf reset: point", S("point"), "CENTER")
 check("/fgf reset keeps the rest", (function()
     Settings.Set("minimapShow", false)
@@ -1507,6 +1511,7 @@ LFGVanilla_ShowFrame, C_AddOns = nil, nil
 lfg.reset()
 
 section("Window")
+Settings.Set("layout", "SIDEBAR")   -- the tests below were written for the sidebar layout
 local W, Side, LP, Memory = ns.Window, ns.Side, ns.ListingPanel, ns.Memory
 lfg.reset()
 lfg.level = 20
@@ -2483,6 +2488,7 @@ check("bad colour import skipped", ns.Share.Import("FGF1:ts13:openEdgeColors3:re
 check("bad colour not stored", ns.DB().openEdgeColor, nil)
 check("size import clamped", (function() ns.Share.Import("FGF1:ts17:groupRoleIconSizen99;}"); return S("groupRoleIconSize") end)(), 28)
 Settings.ResetProfile()
+Settings.Set("layout", "SIDEBAR")   -- the tests below were written for the sidebar layout
 end
 
 -- A settings refresh keeps the names (and level, class, area) of solo
@@ -2802,6 +2808,7 @@ for _, mode in ipairs(Layouts.ORDER) do
 end
 Memory.Unignore("Somebody")
 Settings.ResetProfile()
+Settings.Set("layout", "SIDEBAR")   -- the tests below were written for the sidebar layout
 check("sizes back to the defaults", LP.Frame().comment:GetHeight(), 22)
 end
 
@@ -2944,7 +2951,7 @@ check("refresh first in the filter row", f.refresh._points.TOPLEFT[3], 0)
 check("refresh in the button size", f.refresh:GetHeight(), S("buttonHeight"))
 check("icon size", hd.options.icon:GetWidth(), 14)
 check("close is a drawn cross", #hd.close.lines, 2)
-check("title in the header style", hd.title._font[2], 18)
+check("title in the header style", hd.title._font[2], S("headerSize"))
 check("title after the grip while unlocked", hd.title._points.LEFT[3], 26)
 check("grip while unlocked", hd.grip:IsShown(), true)
 check("lock blue while unlocked", hd.lock.icon._vertex[1], ns.Controls.ACCENT[1])
@@ -2988,25 +2995,44 @@ check("sidebar: no activity button", f.activity:IsShown(), false)
 check("sidebar: no details column", f.detail:IsShown() or f.column:IsShown(), false)
 check("sidebar: list beside the column", f.listWidth, 720 - 190 - 1 - 16)
 check("sidebar: listing on the right", f.listing._points.TOPLEFT[3], 190 + 1 + 8)
-check("an unknown layout counts as the sidebar", (function()
+check("an unknown layout counts as the default (details)", (function()
     ns.DB().layout = "BOGUS"
     local m = Layouts.Current()
     ns.DB().layout = nil
     return m
-end)(), "SIDEBAR")
+end)(), "DETAILS")
+check("the removed STACKED layout becomes DETAILS", (function()
+    ns.DB().layout = "STACKED"
+    local m = Layouts.Current()
+    local stored = ns.DB().layout
+    Settings.Set("layout", "SIDEBAR")
+    return m .. "/" .. tostring(stored)
+end)(), "DETAILS/nil")
+check("only two layouts", table.concat(Layouts.ORDER, ","), "SIDEBAR,DETAILS")
+-- The floating details panel (sidebar layout) wears the window's header.
+local gRow
+for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
+click(gRow)
+check("sidebar: details in the floating panel", D.Frame():IsShown() and D.OpenID(), 1)
+check("detail header as the window's", D.Frame().header:GetHeight() .. "/" .. D.Frame().header.close:GetWidth(), "32/22")
+check("detail header title style", D.Frame().header.title._font[2], S("headerSize"))
+check("detail close at the quest log's place", D.Frame().header.close._points.RIGHT[3], -5)
+check("detail shine clipped", (D.Frame().header.shine._masks or 0) > 0, true)
+check("detail click does not mark seen", Memory.IsSeen(gRow.entry.key), false)
+D.Close()
 
--- Stacked: live, its own size, the activity list in a popup.
+-- Details layout: live, its own size, the activity list in a popup.
 local k = searches()
-Settings.Set("layout", "STACKED")
+Settings.Set("layout", "DETAILS")
 check("switching does not search", searches(), k)
-check("stacked: own size", f:GetWidth() .. "x" .. f:GetHeight(), "480x560")
-check("stacked: activity column gone", f.side:IsShown(), false)
-check("stacked: activity button at the top", f.activity:IsShown() and f.activity._points.TOPLEFT[4], -(ns.Header.HEIGHT + 8))
-check("stacked: button names the category and the ticks", f.activity.label:GetText(), "Dungeons (1)")
-check("stacked: list over the full width", f.listWidth, 480 - 16)
-check("stacked: listing below the button", f.listing._points.TOPLEFT[4] < f.activity._points.TOPLEFT[4], true)
-check("stacked: filters below the listing", f.filters._points.TOPLEFT[4] < f.listing._points.TOPLEFT[4], true)
-check("stacked: rows laid out for the width", f.pool.used[2]:GetWidth(), 480 - 16)
+check("details: own size", f:GetWidth() .. "x" .. f:GetHeight(), "994x574")
+check("details: activity column gone", f.side:IsShown(), false)
+check("details: activity button at the top", f.activity:IsShown() and f.activity._points.TOPLEFT[4], -(ns.Header.HEIGHT + 8))
+check("details: button names the category and the ticks", f.activity.label:GetText(), "Dungeons (1)")
+check("details: list over the full width (no group open)", f.listWidth, 994 - 16)
+check("details: listing below the button", f.listing._points.TOPLEFT[4] < f.activity._points.TOPLEFT[4], true)
+check("details: filters below the listing", f.filters._points.TOPLEFT[4] < f.listing._points.TOPLEFT[4], true)
+check("details: rows laid out for the width", f.pool.used[2]:GetWidth(), 994 - 16)
 click(f.activity)
 check("popup opens", f.popup:IsShown(), true)
 check("the activity list shows in it", f.side:IsShown(), true)
@@ -3038,35 +3064,29 @@ check("popup X closes it", f.popup:IsShown() or f.side:IsShown(), false)
 click(f.activity)
 click(f.activity)
 check("the button closes it again", f.popup:IsShown(), false)
--- Group details float as in the sidebar layout.
-local gRow
-for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
-click(gRow)
-check("stacked: details in the floating panel", D.Frame():IsShown() and D.OpenID(), 1)
-check("detail header as the window's", D.Frame().header:GetHeight() .. "/" .. D.Frame().header.close:GetWidth(), "32/22")
-check("detail header title style", D.Frame().header.title._font[2], 18)
-check("detail close at the quest log's place", D.Frame().header.close._points.RIGHT[3], -5)
-check("detail shine clipped", (D.Frame().header.shine._masks or 0) > 0, true)
-check("stacked: detail click does not mark seen", Memory.IsSeen(gRow.entry.key), false)
 -- Sizes per layout: a resize writes the current layout's keys.
-f._rect = { 700, 200, 480, 560 }
+f._rect = { 400, 200, 994, 574 }
 local grip = f.grips.BOTTOMRIGHT
-M.state.cursorX, M.state.cursorY = 1180, 200
+M.state.cursorX, M.state.cursorY = 1394, 200
 grip:GetScript("OnMouseDown")(grip, "LeftButton")
-M.state.cursorX, M.state.cursorY = 1200, 160
+M.state.cursorX, M.state.cursorY = 1414, 160
 grip:GetScript("OnUpdate")(grip, 0.1)
-check("dragging: live size", f:GetWidth(), 500)
+check("dragging: live size (scale 104 %)", f:GetWidth(), 1013)
 grip:GetScript("OnMouseUp")(grip, "LeftButton")
 f._rect = nil
-check("stacked size stored", S("stackedWidth") .. "x" .. S("stackedHeight"), "500x600")
+check("details size stored", S("detailsWidth") .. "x" .. S("detailsHeight"), "1013x612")
 check("sidebar size untouched", S("width") .. "x" .. S("height"), "720x460")
-check("stacked: window follows its size", f:GetWidth(), 500)
-check("stacked: width range", (Layouts.Ranges())[1], 420)
+check("details: window follows its size", f:GetWidth(), 1013)
+check("details: width range", (Layouts.Ranges())[1], 720)
+Settings.SetMany({ detailsWidth = 994, detailsHeight = 574 })
+Settings.Set("layout", "SIDEBAR")
+for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
+click(gRow)
 
 -- Details: listing, filters and list over the full width; a column with
 -- the open group's details only while one is open.
 Settings.Set("layout", "DETAILS")
-check("details: own size", f:GetWidth() .. "x" .. f:GetHeight(), "880x480")
+check("details: own size", f:GetWidth() .. "x" .. f:GetHeight(), "994x574")
 check("details: open group moves into the column", D.OpenID(), 1)
 check("details: floating panel closed", D.Frame():IsShown(), false)
 check("details: embedded shown", f.detail:IsShown(), true)
@@ -3078,10 +3098,10 @@ check("details: embedded no-room note", f.detail.header.note:GetText(), "No room
 D.Row().noRoom = false
 D.Refresh()
 check("details: embedded members (by role, free tank first)", f.detail.members[3]:IsShown() and f.detail.members[3].name:GetText(), "Grimnar")
-check("details: column at the right edge", f.detail._points.TOPLEFT[3], 880 - Layouts.COLUMN_W)
+check("details: column at the right edge", f.detail._points.TOPLEFT[3], 994 - Layouts.COLUMN_W)
 check("details: column from the header down", f.detail._points.TOPLEFT[4], -(ns.Header.HEIGHT + 8))
-check("details: column to the bottom", -f.detail._points.TOPLEFT[4] + f.detail:GetHeight(), 480)
-check("details: list left of the column", f.listWidth, 880 - Layouts.COLUMN_W - 1 - 16)
+check("details: column to the bottom", -f.detail._points.TOPLEFT[4] + f.detail:GetHeight(), 574)
+check("details: list left of the column", f.listWidth, 994 - Layouts.COLUMN_W - 1 - 16)
 check("details: activity button at the top left", f.activity:IsShown() and f.activity._points.TOPLEFT[3], 8)
 check("details: listing in the main area", f.listing._points.TOPLEFT[3], 8)
 check("details: listing below the activity button", f.listing._points.TOPLEFT[4] < f.activity._points.TOPLEFT[4], true)
@@ -3091,7 +3111,7 @@ check("details: detail buttons under the content", f.detail.whisper._points.TOPL
 for i, e in ipairs(D.ButtonExtents(f.detail)) do
     check("embedded button " .. i .. " inside the column", e.left >= 0 and e.right <= e.width, true)
 end
-check("details: rows laid out for the narrower list", f.pool.used[2]:GetWidth(), 880 - Layouts.COLUMN_W - 1 - 16)
+check("details: rows laid out for the narrower list", f.pool.used[2]:GetWidth(), 994 - Layouts.COLUMN_W - 1 - 16)
 local tells = #M.tells
 click(f.detail.whisper)
 check("embedded whisper", #M.tells, tells + 1)
@@ -3100,15 +3120,15 @@ check("embedded: five buttons", #D.ButtonExtents(f.detail), 5)
 for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
 click(gRow)
 check("same row again closes the column", D.OpenID() == nil and f.detail:IsShown(), false)
-check("no column: the list takes the full width", f.listWidth, 880 - 16)
-check("no column: rows laid out for it", f.pool.used[2]:GetWidth(), 880 - 16)
-check("no column: listing full width", f.listing:GetWidth(), 880 - 16)
-check("the window keeps its width", f:GetWidth(), 880)
+check("no column: the list takes the full width", f.listWidth, 994 - 16)
+check("no column: rows laid out for it", f.pool.used[2]:GetWidth(), 994 - 16)
+check("no column: listing full width", f.listing:GetWidth(), 994 - 16)
+check("the window keeps its width", f:GetWidth(), 994)
 for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 1 then gRow = row end end
 click(gRow)
-check("selecting shows the column again", f.detail:IsShown() and f.listWidth, 880 - Layouts.COLUMN_W - 1 - 16)
+check("selecting shows the column again", f.detail:IsShown() and f.listWidth, 994 - Layouts.COLUMN_W - 1 - 16)
 click(f.detail.header.close)
-check("embedded X closes the column", D.OpenID() == nil and f.listWidth, 880 - 16)
+check("embedded X closes the column", D.OpenID() == nil and f.listWidth, 994 - 16)
 -- Leading a group: a line with the fitting solo players above the filters.
 check("not leading: no leader line", f.column:IsShown(), false)
 UnitIsGroupLeader = function() return true end
@@ -3160,7 +3180,7 @@ click(sideItem(24))
 M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
 -- Back to the sidebar: popup closed, the column back, the size back.
 click(gRow)
-Settings.Set("layout", nil)
+Settings.Set("layout", "SIDEBAR")
 check("sidebar again: size", f:GetWidth() .. "x" .. f:GetHeight(), "720x460")
 check("sidebar again: popup closed", f.popup:IsShown(), false)
 check("sidebar again: activity column", f.side:IsShown() and f.side._points.TOPLEFT[1], f)
@@ -3180,7 +3200,7 @@ for _, mode in ipairs(Layouts.ORDER) do
     check(mode .. ": one listing button", LP.Frame().post:IsShown() and LP.Frame().remove == nil, true)
     check(mode .. ": window size from its keys", f:GetWidth(), S((Layouts.SizeKeys(mode))))
 end
-Settings.Set("layout", nil)
+Settings.Set("layout", "SIDEBAR")
 -- Options: the dropdown, the description, the size sliders of the layout.
 ns.Options.Open("window")
 check("layout dropdown on the Window page", rowFor("Layout", "button") ~= nil, true)
@@ -3190,23 +3210,27 @@ check("layout description", (function()
     end
     return false
 end)(), true)
-Settings.Set("layout", "STACKED")
+Settings.Set("layout", "DETAILS")
 check("description follows the layout", (function()
     for _, fr in ipairs(M.frames) do
-        if fr.text and fr.text._text and fr.text._text:find("Narrow:", 1, true) and fr:IsVisible() then return true end
+        if fr.text and fr.text._text and fr.text._text:find("Wide:", 1, true) and fr:IsVisible() then return true end
     end
     return false
 end)(), true)
-check("side width hidden for stacked", rowFor("Width of the side panel", "slider"), nil)
-Settings.Set("layout", nil)
+check("side width hidden for details", rowFor("Width of the side panel", "slider"), nil)
+Settings.Set("layout", "SIDEBAR")
 ns.Options.Toggle()
 -- Import validation of the layout.
-check("layout import: known value kept", ns.Share.Import("FGF1:ts6:layouts7:DETAILS}") and S("layout"), "DETAILS")
+check("layout import: known value kept", ns.Share.Import("FGF1:ts6:layouts7:SIDEBAR}") and S("layout"), "SIDEBAR")
 Settings.Set("layout", nil)
 check("layout import: unknown value skipped", ns.Share.Import("FGF1:ts6:layouts5:GRIDS}"), true)
 check("layout import: not stored", ns.DB().layout, nil)
-check("layout sizes clamped on import", ns.Share.Import("FGF1:ts12:stackedWidthn99999;}") and S("stackedWidth"), 900)
+check("layout import: STACKED becomes DETAILS", ns.Share.Import("FGF1:ts6:layouts7:SIDEBAR}") and ns.Share.Import("FGF1:ts6:layouts7:STACKED}")
+    and S("layout"), "DETAILS")
+check("layout sizes clamped on import", ns.Share.Import("FGF1:ts12:detailsWidthn99999;}") and S("detailsWidth"), 1300)
+check("a removed size key is skipped", ns.Share.Import("FGF1:ts12:stackedWidthn500;}") and ns.DB().stackedWidth, nil)
 Settings.ResetProfile()
+Settings.Set("layout", "SIDEBAR")   -- the tests below were written for the sidebar layout
 check("reset to the sidebar", f:GetWidth(), 720)
 end
 
