@@ -22,6 +22,8 @@ local CHIP_GAP = 3
 local DIVIDER_H = 18
 local TAG_COLOR = { 0.5, 0.82, 1 }
 local DELISTED_ALPHA = 0.5
+local FREE_ICON_ALPHA = 0.5                -- a free place's role icon
+local FREE_EDGE = { 0.78, 0.74, 0.62, 0.9 } -- and its outline
 local CLASS_SHEET = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes"
 local PIN_ATLAS = "Waypoint-MapPin-Untracked"
 -- Blizzard's own finder icons (Blizzard_LFGVanilla_Browse.lua).
@@ -359,14 +361,16 @@ function Rows.PaintSlot(sq, slot)
     sq.free = slot.free == true
     if slot.role then   -- plain: our own value
         sq.role:SetAtlas(ROLE_ATLAS[slot.role])
-        sq.role:SetAlpha(sq.free and 0.35 or 1)
+        sq.role:SetAlpha(sq.free and FREE_ICON_ALPHA or 1)
         sq.role:Show()
     else
         sq.role:Hide()
     end
     if sq.free then
-        sq.fill:Hide()
-        Controls.PaintOutline(sq.edges, { 0.4, 0.4, 0.4, 0.8 })
+        -- An empty place: a clear light outline on a faint fill.
+        sq.fill:SetColorTexture(1, 1, 1, 0.06)
+        sq.fill:Show()
+        Controls.PaintOutline(sq.edges, FREE_EDGE)
     else
         local r, g, b = Rows.ClassColor(slot.member and slot.member.classFile)
         sq.fill:SetColorTexture(r, g, b, 0.85)
@@ -393,7 +397,7 @@ end
 
 local function layoutSquares(row, entry, x)
     local slots = Rows.Slots(entry)
-    local SQUARE = S("groupRoleIconSize")
+    local SQUARE = math.min(S("groupRoleIconSize"), S("rowHeight") - 2)
     for i = 1, MAX_SQUARES do
         local sq = row.squares[i]
         sq:SetSize(SQUARE, SQUARE)

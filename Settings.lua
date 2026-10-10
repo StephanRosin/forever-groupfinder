@@ -51,11 +51,11 @@ Settings.DEFAULTS = {
     languages = {},         -- empty: all languages
     markOpenSlot = true,
     showPlayers = true,
-    rowHeight = 22,
+    rowHeight = 28,
     playerRowHeight = 34,
     -- List look
     playerRoleIconSize = 0, -- 0: the player row's height minus 6
-    groupRoleIconSize = 16, -- a member slot in a group row
+    groupRoleIconSize = 24, -- a member slot in a group row (as large as the player rows' icons allow)
     classIconSize = 14,
     classColorNames = true, -- else nameColor
     abbreviate = true,      -- short activity names in the player rows' chips (Abbrev.lua)

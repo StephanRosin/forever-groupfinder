@@ -117,7 +117,7 @@ local EXPECTED = {
     layout = "SIDEBAR", stackedWidth = 480, stackedHeight = 560, detailsWidth = 880, detailsHeight = 480,
     minInterval = 1, levelRangeOnly = true, category = 2, sortFriendsFirst = true,
     filterMyRole = true, filterLevelFits = false, hideSeen = false,
-    markOpenSlot = true, showPlayers = true, rowHeight = 22, playerRowHeight = 34,
+    markOpenSlot = true, showPlayers = true, rowHeight = 28, playerRowHeight = 34,
     memoryMinutes = 30,
     expiryWarnMinutes = 5,
     borderStyle = "NONE", borderSize = 1, cornerRadius = 10,
@@ -132,7 +132,7 @@ local EXPECTED = {
     locationFont = "Friz Quadrata", locationSize = 12, locationFlag = "SHADOW",
     chipFont = "Friz Quadrata", chipSize = 10, chipFlag = "SHADOW",
     ageFont = "Friz Quadrata", ageSize = 10, ageFlag = "SHADOW",
-    playerRoleIconSize = 0, groupRoleIconSize = 16, classIconSize = 14, classColorNames = true, seenAlpha = 45,
+    playerRoleIconSize = 0, groupRoleIconSize = 24, classIconSize = 14, classColorNames = true, seenAlpha = 45,
     abbreviate = true,
     noRoomAlpha = 45, buttonHeight = 22, chipHeight = 20, buttonTextSize = 12,
 }
@@ -1678,6 +1678,23 @@ check("group row: leader name", g.leaderName:GetText(), "Grimnar")
 check("group row: leader in class colour", g.leaderName._textColor[1], RAID_CLASS_COLORS.WARRIOR.r)
 check("group row: members' levels", g.levels:GetText(), "20")
 check("group row: how full", g.count:GetText(), "2/5")
+check("group slots 24 px by default", g.squares[1]:GetWidth(), 24)
+check("free slot: role icon at half alpha", (function()
+    for _, sq in ipairs(g.squares) do if sq:IsShown() and sq.free then return sq.role:GetAlpha() end end
+end)(), 0.5)
+check("free slot: light outline and a faint fill", (function()
+    for _, sq in ipairs(g.squares) do
+        if sq:IsShown() and sq.free then return sq.edges[1]._texColor[1] > 0.7 and sq.fill:IsShown() end
+    end
+end)(), true)
+check("slots never taller than the row", (function()
+    Settings.Set("rowHeight", 18)
+    local w
+    for _, row in ipairs(f.pool.used) do if row.kind == "GROUP" then w = row.squares[1]:GetWidth() end end
+    Settings.Set("rowHeight", nil)
+    return w
+end)(), 16)
+built = W.Built()
 check("group row: title no larger than a name", g.activity._font[2], S("nameSize"))
 check("GroupFacts: level range", (function()
     local fct = ns.Rows.GroupFacts({ leader = "A", activityIDs = { 22 }, members = {
