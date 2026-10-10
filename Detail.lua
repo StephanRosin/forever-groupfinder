@@ -203,14 +203,48 @@ function Detail.Layout(h)
     if not p then return end
     p:SetSize(WIDTH, height)
     ns.Window.ApplyLook(p, WIDTH, height)
+    Detail.Dock()
+    -- Two rows of three inside the panel; a label too long for its button
+    -- is cut off with "...", never past the button.
     local bw = math.floor((WIDTH - 2 * PAD - 2 * GAP) / 3)
     for i, b in ipairs(p.buttons) do
         local col, line = (i - 1) % 3, math.floor((i - 1) / 3)
         b:SetWidth(bw)
+        b.label:SetWidth(bw - (b.icon and 24 or 8))
+        b.layoutX = PAD + col * (bw + GAP)
         b:ClearAllPoints()
-        b:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", PAD + col * (bw + GAP), PAD + (1 - line) * (BUTTON_H + GAP))
+        b:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", b.layoutX, PAD + (1 - line) * (BUTTON_H + GAP))
     end
     p.body.viewHeight = math.max(0, height - HEADER_H - 2 * PAD - 2 * BUTTON_H - 2 * GAP)
+end
+
+-- Docked to the window's right edge; to its left edge when the screen has
+-- no room on the right.
+function Detail.Dock()
+    local window = ns.Window.Frame()
+    if not (p and window) then return end
+    local right = window:GetRight()
+    local scale = window:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    local roomRight = not right or (right + 4 + WIDTH) * scale <= UIParent:GetWidth()
+    p.side = roomRight and "RIGHT" or "LEFT"
+    p:ClearAllPoints()
+    if roomRight then
+        p:SetPoint("TOPLEFT", window, "TOPRIGHT", 4, 0)
+        p:SetPoint("BOTTOMLEFT", window, "BOTTOMRIGHT", 4, 0)
+    else
+        p:SetPoint("TOPRIGHT", window, "TOPLEFT", -4, 0)
+        p:SetPoint("BOTTOMRIGHT", window, "BOTTOMLEFT", -4, 0)
+    end
+end
+
+-- Every button's left and right edge inside the panel (for the tests).
+function Detail.ButtonExtents()
+    local out = {}
+    for _, b in ipairs(p and p.buttons or {}) do
+        local x = b.layoutX or 0
+        out[#out + 1] = { left = x, right = x + b:GetWidth(), width = WIDTH }
+    end
+    return out
 end
 
 -- Actions (clicks) --------------------------------------------------------------------------------
@@ -266,8 +300,6 @@ local function create()
     p = CreateFrame("Frame", NAME, window)
     p:SetFrameStrata("MEDIUM")
     p:EnableMouse(true)
-    p:SetPoint("TOPLEFT", window, "TOPRIGHT", 4, 0)
-    p:SetPoint("BOTTOMLEFT", window, "BOTTOMRIGHT", 4, 0)
     p.bg = p:CreateTexture(nil, "BACKGROUND")
     p.bg:SetAllPoints()
     p.clip = {}

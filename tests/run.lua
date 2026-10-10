@@ -1609,7 +1609,7 @@ lfg.results[firstID] = nil
 M.Fire("LFG_LIST_SEARCH_RESULT_UPDATED", firstID)
 check("vanished result: delisted", firstRow.delisted, true)
 check("delisted is struck through", used[2].strike:IsShown(), true)
-check("delisted is dimmed", used[2]:GetAlpha() < 1, true)
+check("delisted is dimmed", used[2].activity:GetAlpha() < 1, true)
 check("unknown id ignored", pcall(M.Fire, "LFG_LIST_SEARCH_RESULT_UPDATED", 999), true)
 result(firstID, firstID == 1 and "Grimnar" or "Thal", firstID == 1 and { member("Grimnar", "WARRIOR"), member("Ilvea", "MAGE") }
     or { member("Thal", "PRIEST"), member("Ra", "ROGUE"), member("Ho", "HUNTER") })
@@ -1646,6 +1646,20 @@ click(groupRow)
 check("group left click does not whisper", #M.tells, tells)
 check("detail panel open", D.IsShown(), true)
 check("detail shows this group", D.OpenID(), 1)
+check("opening details does not mark seen", Memory.IsSeen(groupRow.entry.key), false)
+check("not dimmed by opening", groupRow.activity:GetAlpha(), 1)
+check("green edge stays with the panel open", groupRow.edge:IsShown(), true)
+for i, e in ipairs(D.ButtonExtents()) do
+    check("detail button " .. i .. " inside the panel", e.left >= 0 and e.right <= e.width, true)
+    check("detail button " .. i .. " label fits", D.Frame().buttons[i].label._w <= D.Frame().buttons[i]:GetWidth(), true)
+end
+check("six detail buttons", #D.ButtonExtents(), 6)
+check("docked right with room", D.Frame().side, "RIGHT")
+f._rect = { 1500, 300, 720, 460 }
+D.Dock()
+check("docked left without room on the right", D.Frame().side, "LEFT")
+f._rect = nil
+D.Dock()
 check("detail docked to the window", D.Frame()._points.TOPLEFT[1], f)
 check("detail title", D.Frame().header.title:GetText(), "The Deadmines")
 check("selected row outlined", groupRow.selected[1]:IsShown(), true)
@@ -1670,7 +1684,9 @@ local pd = D.Frame()
 click(pd.whisper)
 check("detail whispers the leader", M.tells[#M.tells].name, "Grimnar")
 check("whispered row is seen", Memory.IsSeen(groupRow.entry.key), true)
-check("seen row dimmed", groupRow:GetAlpha(), 0.45)
+check("seen row dimmed", groupRow.activity:GetAlpha(), 0.45)
+check("seen row keeps its frame at full alpha", groupRow:GetAlpha(), 1)
+check("seen row keeps the green edge", groupRow.edge:IsShown() and groupRow.edge:GetAlpha(), 1)
 click(pd.invite)
 check("detail invites", M.invited[#M.invited], "Grimnar")
 click(pd.template)
@@ -2168,6 +2184,36 @@ Settings.SetMany({ replaceBlizzard = nil, category = nil, levelRangeOnly = nil }
 W.ResetChecked()
 check("no search was blocked", #lfg.blocked, 0)
 LFGVanilla_ShowFrame, LFGVanilla_ToggleFrame = nil, nil
+lfg.reset()
+
+section("Solo names")
+lfg.reset()
+lfg.results[5] = { searchResultID = 5, activityIDs = { 1 }, leaderName = "Lacey", numMembers = 1, age = 3 }
+lfg.members[5] = { { level = 20, classFilename = "WARRIOR" } }
+local r5 = ns.Finder.Result(5)
+check("solo: member without a name gets leaderName", r5.members[1].name, "Lacey")
+lfg.results[6] = { searchResultID = 6, activityIDs = { 1 }, numMembers = 1, age = 3 }
+lfg.members[6] = { { level = 20 } }
+lfg.leaders = { [6] = { name = "Ilvea", level = 20, classFilename = "MAGE", areaName = "Stormwind City" } }
+local r6 = ns.Finder.Result(6)
+check("solo: name from the leader info", r6.leaderName, "Ilvea")
+check("solo: member name from the leader info", r6.members[1].name, "Ilvea")
+check("solo: class from the leader info", r6.members[1].classFile, "MAGE")
+check("solo: area from the leader info", r6.members[1].area, "Stormwind City")
+check("solo row shows the name", ns.Results.Build({ r6 }, { filters = {} }).players[1].leader, "Ilvea")
+lfg.results[7] = { searchResultID = 7, activityIDs = { 1 }, numMembers = 1, age = 3 }
+lfg.members[7] = {}
+lfg.leaders = { [7] = { name = "Grim", level = 21, classFilename = "WARRIOR" } }
+check("solo without member info: member from the leader info", ns.Finder.Result(7).members[1].name, "Grim")
+lfg.results[8] = { searchResultID = 8, activityIDs = { 1 }, numMembers = 1, age = 3 }
+lfg.members[8] = { { level = 20 } }
+lfg.leaders = { [8] = { level = 20 } }
+check("no name anywhere: unknown (nil)", ns.Results.Build({ ns.Finder.Result(8) }, { filters = {} }).players[1].leader, nil)
+lfg.secret = true
+lfg.leaders = { [6] = { name = "Ilvea" } }
+check("secret leader name stays nil", ns.Finder.Result(6).leaderName, nil)
+lfg.secret = false
+lfg.leaders = nil
 lfg.reset()
 
 section("Source rules")

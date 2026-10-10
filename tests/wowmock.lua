@@ -468,6 +468,14 @@ C_LFGList = {
         if m.lfgRoles then out.lfgRoles = wrapAll(m.lfgRoles) end
         return out
     end,
+    -- M.lfg.leaders[id]: the leader info (falls back to the first member).
+    GetSearchResultLeaderInfo = function(id)
+        local m = (M.lfg.leaders and M.lfg.leaders[id]) or (M.lfg.members[id] and M.lfg.members[id][1])
+        if not m then return nil end
+        local out = wrapAll(m)
+        if m.lfgRoles then out.lfgRoles = wrapAll(m.lfgRoles) end
+        return out
+    end,
     GetSearchResultMemberCounts = function(id) return wrapAll(M.lfg.counts[id]) end,
     HasActiveEntryInfo = function() return M.lfg.active ~= nil end,
     GetActiveEntryInfo = function()

@@ -259,6 +259,21 @@ function Rows.Whisper(entry)
     ns.Window.RefreshRows()
 end
 
+-- The parts of a row that seen / delisted dim: text and icons. The green
+-- "room for me" edge, its tint and the selection outline keep full colour.
+local function dimmable(row)
+    local list = {}
+    for _, key in ipairs({ "activity", "more", "tag", "comment", "age", "strike", "level", "class", "name", "pin",
+        "area", "invite" }) do
+        if row[key] then list[#list + 1] = row[key] end
+    end
+    for _, group in ipairs({ row.squares, row.roles, row.chips }) do
+        for _, part in ipairs(group or {}) do list[#list + 1] = part end
+    end
+    return list
+end
+Rows.Dimmable = dimmable
+
 local function markers(row, entry)
     local open = entry.freeForMe == true and S("markOpenSlot") and entry.kind == "GROUP"
     row.edge:SetShown(open and true or false)
@@ -266,7 +281,9 @@ local function markers(row, entry)
     local alpha = 1
     if entry.seen == true then alpha = SEEN_ALPHA end
     if entry.delisted == true then alpha = math.min(alpha, DELISTED_ALPHA) end
-    row:SetAlpha(alpha)
+    row:SetAlpha(1)
+    row.dimmed = alpha
+    for _, part in ipairs(dimmable(row)) do part:SetAlpha(alpha) end
 end
 
 function Rows.SetAge(row, entry, elapsed)

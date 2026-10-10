@@ -137,11 +137,45 @@ function Finder.Result(id)
         members = {},
         counts = {},
     }
+    -- A solo listing may carry its name only in the leader info (Blizzard's
+    -- browse rows read GetSearchResultLeaderInfo too).
+    local leader
+    local function leaderInfo()
+        if leader == nil then
+            leader = (C_LFGList.GetSearchResultLeaderInfo and C_LFGList.GetSearchResultLeaderInfo(id)) or false
+        end
+        return leader or nil
+    end
+    if type(r.leaderName) ~= "string" then
+        local li = leaderInfo()
+        if li then r.leaderName = plain(li.name) end
+    end
     local n = r.numMembers
     if type(n) == "number" then
         for i = 1, math.min(n, MAX_MEMBERS) do
             local m = C_LFGList.GetSearchResultPlayerInfo(id, i)
             if m then r.members[#r.members + 1] = readMember(m) end
+        end
+    end
+    -- The first member without a name is the leader (solo listings).
+    local first = r.members[1]
+    if first and type(first.name) ~= "string" and type(r.leaderName) == "string" and r.numMembers == 1 then   -- plain: converted above
+        first.name = r.leaderName
+    end
+    if first and r.numMembers == 1 and type(first.classFile) ~= "string" then   -- plain: converted above
+        local li = leaderInfo()
+        if li then
+            local extra = readMember(li)
+            for k, v in pairs(extra) do
+                if first[k] == nil then first[k] = v end
+            end
+        end
+    end
+    if not first and r.numMembers == 1 then   -- plain: converted above
+        local li = leaderInfo()
+        if li then
+            r.members[1] = readMember(li)
+            if type(r.members[1].name) ~= "string" then r.members[1].name = r.leaderName end
         end
     end
     local counts = C_LFGList.GetSearchResultMemberCounts and C_LFGList.GetSearchResultMemberCounts(id)
