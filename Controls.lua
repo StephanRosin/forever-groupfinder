@@ -201,6 +201,45 @@ function Controls.Chip(parent, opts)
     return c
 end
 
+-- A tag: read-only information (an activity of my listing), not a
+-- button: a faint fill, no border, normal text. Hovering may show a tip;
+-- clicks go through. opts = { text, tip }. SetLabel, Fit like a chip.
+Controls.TAG_FILL = { 1, 1, 1, 0.08 }
+function Controls.Tag(parent, opts)
+    local t = CreateFrame("Frame", nil, parent)
+    t.size = "chip"
+    t:SetSize(40, Controls.ChipHeight())
+    sized[t] = true
+    t.bg = t:CreateTexture(nil, "BACKGROUND")
+    t.bg:SetAllPoints()
+    t.bg:SetColorTexture(Controls.TAG_FILL[1], Controls.TAG_FILL[2], Controls.TAG_FILL[3], Controls.TAG_FILL[4])
+    t.label = t:CreateFontString(nil, "OVERLAY")
+    t.label.styleName, t.label.sizeKey = "chip", "buttonTextSize"
+    t.label:SetWordWrap(false)
+    t.label:SetPoint("CENTER")
+    t.labelColor = Controls.TEXT
+    Controls.Restyle(t.label, t.labelColor)
+    t.tip = opts and opts.tip
+    function t.SetLabel(self, text) self.label:SetText(text or "") end
+    function t.Fit(self)
+        self.fitted = true
+        self:SetWidth(math.floor(self.label:GetStringWidth() + 12 + 0.5))
+        return self:GetWidth()
+    end
+    if t.SetMouseMotionEnabled then
+        t:SetMouseMotionEnabled(true)
+        if t.SetMouseClickEnabled then t:SetMouseClickEnabled(false) end
+    end
+    t:SetScript("OnEnter", function(self)
+        local tip = self.tip
+        if type(tip) == "function" then tip = tip(self) end
+        Controls.Tooltip(self, tip)
+    end)
+    t:SetScript("OnLeave", hideTooltip)
+    t:SetLabel(opts and opts.text)
+    return t
+end
+
 -- Check boxes ------------------------------------------------------------------------
 
 -- A square with a check mark; the whole row is the click target (the caller's).

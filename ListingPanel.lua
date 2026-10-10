@@ -175,11 +175,10 @@ local function chip(i)
     if c then return c end
     -- Display only: the activities are chosen in the activity list; the
     -- tooltip names the full activity.
-    c = Controls.Chip(p, { text = "", tip = function(self)
+    c = Controls.Tag(p, { text = "", tip = function(self)
         local name = self.activityID and Activities.Name(self.activityID) or L.UNKNOWN_ACTIVITY   -- plain: our chip's id
         return name .. "\n" .. L.TIP_ACTIVITY_CHIP
     end })
-    c:SetOn(true)
     p.chips[i] = c
     return c
 end

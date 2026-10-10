@@ -146,7 +146,7 @@ local COLORS = {
     activityColor = { 1, 0.82, 0.29 }, nameColor = { 1, 1, 1 }, commentColor = { 0.79, 0.76, 0.69 },
     smallColor = { 0.55, 0.54, 0.5 }, levelColor = { 1, 1, 1 }, locationColor = { 1, 0.82, 0.29 },
     chipColor = { 0.79, 0.76, 0.69 }, ageColor = { 0.55, 0.54, 0.5 },
-    chipBorderColor = { 0.36, 0.29, 0.13 }, openEdgeColor = { 0.25, 0.75, 0.37 },
+    chipBorderColor = { 0.2, 0.2, 0.2 }, openEdgeColor = { 0.25, 0.75, 0.37 },
 }
 for key, want in pairs(COLORS) do
     expectedCount = expectedCount + 1
@@ -1551,11 +1551,10 @@ click(Side.Items()[1])
 check("second tick inside the interval: no search", searches(), before + 1)
 check("still ticked", W.Checked()[24], true)
 check("my listing shows both", LP.Frame().chips[1]:IsShown() and LP.Frame().chips[2]:IsShown(), true)
-check("listing chips are display only", (function()
-    local n = searches()
-    click(LP.Frame().chips[1])
-    return W.Checked()[24] == true and W.Checked()[22] == true and searches() == n
-end)(), true)
+check("listing chips are tags, not buttons", LP.Frame().chips[1]:GetObjectType() ~= "Button"
+    and LP.Frame().chips[1]:GetScript("OnClick") == nil and LP.Frame().chips[1].edges == nil, true)
+check("tag: faint fill, normal text", LP.Frame().chips[1].bg._texColor[4] < 0.2
+    and LP.Frame().chips[1].label._textColor[1] == ns.Controls.TEXT[1], true)
 check("listing chip tooltip points to the activity list", (function()
     LP.Frame().chips[1]:GetScript("OnEnter")(LP.Frame().chips[1])
     local t = GameTooltip._text
@@ -1737,6 +1736,8 @@ check("player chips for the activities that fit", (function()
     return table.concat(t, ",")
 end)(), "DM,WC,SFK")
 check("abbreviated: all fit, nothing counted", p1.more:GetText(), "")
+check("row chips are tags: faint fill, no gold edge", p1.chips[1].bg._texColor[4] < 0.2
+    and p1.chips[1].edges[1]._texColor[1] < 0.3, true)
 p1.chips[1]:GetScript("OnEnter")(p1.chips[1])
 check("chip tooltip: full name", GameTooltip._lines and GameTooltip._lines[1] and GameTooltip._lines[1][1], "The Deadmines")
 check("chip tooltip: levels", GameTooltip._lines[2] and GameTooltip._lines[2][1], "Levels 18 to 23")
