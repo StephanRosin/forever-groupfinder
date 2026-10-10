@@ -161,6 +161,16 @@ local function stringList(v, maxItems, maxLength)
 end
 
 Share.RegisterTable("languages", function(v) return stringList(v, 16, 8) end)
+Share.RegisterTable("playstyles", function(v)
+    if type(v) ~= "table" then return nil end
+    local list = {}
+    for i = 1, 4 do
+        local x = v[i]
+        if not (type(x) == "number" and x >= 1 and x <= 4 and x == math.floor(x)) then break end
+        list[i] = x
+    end
+    return #list > 0 and list or nil
+end)
 Share.RegisterTable("whisperTemplates", function(v) return stringList(v, MAX_LIST, MAX_TEXT) end)
 local function allowed(key, value)
     local enum = ENUMS[key]

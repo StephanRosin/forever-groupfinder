@@ -134,7 +134,8 @@ local function context(withFilters)
     for id in pairs(checked) do activities[id] = true end
     return {
         filters = withFilters and { myRole = S("filterMyRole"), levelFits = S("filterLevelFits"),
-            hideSeen = S("hideSeen"), text = filterText, activities = activities, categoryID = S("category") } or {},
+            hideSeen = S("hideSeen"), text = filterText, activities = activities, categoryID = S("category"),
+            playstyles = Window.PlaystyleSet() } or {},
         activityCategory = function(id)
             local info = Activities.Info(id)
             return info and info.categoryID or nil
@@ -288,6 +289,33 @@ function Window.SetTextFilter(text)
     Window.Rebuild()
 end
 
+function Window.PlaystyleSet()
+    local set = {}
+    for _, v in ipairs(S("playstyles")) do set[v] = true end
+    return set
+end
+
+-- The playstyle filter is local: the list follows at once, no search.
+function Window.TogglePlaystyle(v)
+    local list, found = {}, false
+    for _, x in ipairs(S("playstyles")) do
+        if x == v then found = true else list[#list + 1] = x end
+    end
+    if not found then list[#list + 1] = v end
+    table.sort(list)
+    Settings.Set("playstyles", list)
+end
+
+local function openPlaystyleMenu(owner)
+    ns.Menu.Open(owner, function(root)
+        root:CreateTitle(L.FILTER_PLAYSTYLE)
+        for _, v in ipairs(ns.Playstyle.VALUES) do
+            root:CreateCheckbox(ns.Playstyle.Name(v), function(x) return Window.PlaystyleSet()[x] == true end,
+                function(x) Window.TogglePlaystyle(x) end, v)
+        end
+    end)
+end
+
 function Window.ToggleLanguage(code)
     local list, found = {}, false
     for _, c in ipairs(S("languages")) do
@@ -323,7 +351,10 @@ function Window.LayoutFilters()
     local n = #S("languages")
     chips.language:SetLabel(n > 0 and L.FILTER_LANGUAGE_N:format(n) or L.FILTER_LANGUAGE)
     chips.language:SetOn(n > 0)
-    local items = { chips.filterLevelFits, chips.hideSeen, chips.language }
+    local ps = #S("playstyles")
+    chips.playstyle:SetLabel(ps > 0 and L.FILTER_PLAYSTYLE_N:format(ps) or L.FILTER_PLAYSTYLE)
+    chips.playstyle:SetOn(ps > 0)
+    local items = { chips.filterLevelFits, chips.hideSeen, chips.language, chips.playstyle }
     for _, entry in ipairs({ { chips.ignored, #ns.Memory.IgnoreList(), L.CHIP_IGNORED },
         { chips.hidden, #ns.Memory.HiddenList(), L.CHIP_HIDDEN } }) do
         local c, count = entry[1], entry[2]
@@ -359,6 +390,8 @@ local function createFilters(parent)
     end
     bar.chips.language = Controls.Chip(bar, { text = "", icon = "ChevronDown",
         onClick = function(self) openLanguageMenu(self) end, tip = function() return L.TIP_LANGUAGES end })
+    bar.chips.playstyle = Controls.Chip(bar, { text = "", icon = "ChevronDown",
+        onClick = function(self) openPlaystyleMenu(self) end, tip = function() return L.TIP_FILTER_PLAYSTYLE end })
     -- The way back to ignored leaders and hidden groups: their lists in the
     -- options (only shown while there are any).
     bar.chips.ignored = Controls.Chip(bar, { text = "", onClick = function() ns.Options.Open("list", "OPT_IGNORE") end,

@@ -190,6 +190,7 @@ function Finder.Result(id)
         isDelisted = plain(info.isDelisted),
         voiceMode = plain(info.voiceMode),
         newPlayerFriendly = plain(info.newPlayerFriendly),
+        generalPlaystyle = plain(info.generalPlaystyle),
         members = {},
         counts = {},
     }
@@ -266,7 +267,14 @@ end
 function Finder.CategoryInfo(id)
     local info = C_LFGList.GetLfgCategoryInfo(id)
     if not info then return nil end
-    return { name = plain(info.name) }
+    return { name = plain(info.name), showPlaystyle = plain(info.showPlaystyleDropdown) }
+end
+
+-- The category asks for a playstyle with a listing (Blizzard's listing
+-- shows its playstyle dropdown and requires a choice).
+function Finder.ShowsPlaystyle(categoryID)
+    local info = type(categoryID) == "number" and Finder.CategoryInfo(categoryID)
+    return info ~= nil and info ~= false and info.showPlaystyle == true
 end
 
 function Finder.ActivityGroupName(groupID)
@@ -301,6 +309,7 @@ function Finder.ActiveEntry()
         duration = plain(e.duration),
         newPlayerFriendly = plain(e.newPlayerFriendly),
         voiceMode = plain(e.voiceMode),
+        generalPlaystyle = plain(e.generalPlaystyle),
     }
 end
 
@@ -308,9 +317,12 @@ end
 function Finder.CreateOrUpdate(entry)
     local ok
     if C_LFGList.HasActiveEntryInfo() then
+        -- UpdateListing takes the same create data, generalPlaystyle
+        -- included (it defaults to None): pass it, or an update clears it.
         ok = C_LFGList.UpdateListing({
             activityIDs = entry.activityIDs,
             newPlayerFriendly = entry.newPlayerFriendly,
+            generalPlaystyle = entry.generalPlaystyle or 0,   -- plain: ours
             voiceMode = entry.voiceMode,
         })
     else

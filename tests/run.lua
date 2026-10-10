@@ -158,7 +158,7 @@ check("default whisper templates", #D.whisperTemplates, 1)
 check("default whisper text", D.whisperTemplates[1], "Hi! Still looking for {role}? I'm a level {level} {class}.")
 local total = 0
 for _ in pairs(D) do total = total + 1 end
-check("no other default (languages and whisperTemplates are the two tables)", total, expectedCount + 2)
+check("no other default (languages, playstyles and whisperTemplates are the three tables)", total, expectedCount + 3)
 local RANGES = {
     width = { 560, 1100 }, height = { 320, 800 }, scale = { 50, 150 }, sideWidth = { 150, 280 },
     stackedWidth = { 420, 900 }, stackedHeight = { 360, 1000 }, detailsWidth = { 720, 1300 }, detailsHeight = { 360, 900 },
@@ -917,7 +917,7 @@ check("active entry flag", a.newPlayerFriendly, true)
 check("second call updates", lfg.click(F.CreateOrUpdate, { activityIDs = { 4 }, newPlayerFriendly = false }), true)
 check("no second create", #lfg.creates, 1)
 check("update called", #lfg.updates, 1)
-check("update has no playstyle key", lfg.updates[1].generalPlaystyle, nil)
+check("update keeps the playstyle key (UpdateListing takes the create data; it would default to None)", lfg.updates[1].generalPlaystyle, 0)
 check("roles untouched without entry.roles", lfg.roles.healer, true)
 lfg.secret = true
 local sa = F.ActiveEntry()
@@ -2535,6 +2535,92 @@ check("short area beside the name", pm[1]:GetHeight(), 18)
 check("long area on its own line", pm[2]:GetHeight() > 18 and pm[2].area._points.TOPLEFT ~= nil, true)
 check("second line dim", pm[2].area._textColor[1], ns.Controls.DIM[1])
 D.Close()
+end
+
+-- Playstyle: chosen in my listing (required where the category asks for
+-- it), sent with Post and Update, shown in rows, details and tooltips, and a
+-- local filter.
+do
+local PS = ns.Playstyle
+check("names from our locale without the client's", PS.Name(2), "Relaxed")
+GROUP_FINDER_GENERAL_PLAYSTYLE2 = "Fun (Relaxed)"
+check("the client's name when present", PS.Name(2), "Fun (Relaxed)")
+GROUP_FINDER_GENERAL_PLAYSTYLE2 = nil
+check("short label", PS.Short(3), "Competitive")
+check("no name for none", PS.Name(0), nil)
+ForeverGroupFinderChar.playstyle = nil
+lfg.active = nil
+lfg.createOK = true
+lfg.catPlaystyle = { [2] = true }
+lfg.results, lfg.members, lfg.counts = {}, {}, {}
+result(1, "Grimnar", { member("Grimnar", "WARRIOR"), member("Ilvea", "MAGE") }, { generalPlaystyle = 2 })
+result(2, "Thal", { member("Thal", "PRIEST"), member("Ra", "ROGUE") }, { generalPlaystyle = 4 })
+result(3, "Solo", { member("Solo", "MAGE", 21, "Stormwind City", { tank = true, healer = false, dps = true }) }, { generalPlaystyle = 1 })
+W.SetCheckedList({ 22 })
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+W.ListingChanged()
+local lp = LP.Frame()
+check("category asks: playstyle row", lp.labels.PLAYSTYLE:IsShown() and lp.styles[1]:IsShown(), true)
+check("playstyle labels", lp.styles[2].label:GetText(), "Relaxed")
+check("Post off until a playstyle is chosen", lp.post.off, true)
+check("its tooltip", lp.post.offTip, "Choose a playstyle")
+click(lp.styles[3])
+check("chosen and remembered per character", ForeverGroupFinderChar.playstyle, 3)
+check("chosen one marked", lp.styles[3].on and not lp.styles[2].on, true)
+check("Post on again", lp.post.off, false)
+click(lp.post)
+check("Post sends the playstyle", lfg.creates[#lfg.creates].generalPlaystyle, 3)
+M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+check("unchanged: Remove", lp.post.mode, "REMOVE")
+click(lp.styles[4])
+check("another playstyle: Update", lp.post.mode, "UPDATE")
+local nUpd = #lfg.updates
+click(lp.post)
+check("Update sends the new playstyle", #lfg.updates == nUpd + 1 and lfg.updates[#lfg.updates].generalPlaystyle, 4)
+click(lp.post, "RightButton")
+lfg.catPlaystyle = nil
+W.ListingChanged()
+check("category without playstyle: row hidden", lp.labels.PLAYSTYLE:IsShown() or lp.styles[1]:IsShown(), false)
+lfg.catPlaystyle = { [2] = true }
+-- Display.
+local g, pl
+for _, row in ipairs(f.pool.used) do
+    if row.entry and row.entry.id == 1 then g = row end
+    if row.kind == "PLAYER" then pl = row end
+end
+check("group row: playstyle tag", g.style:IsShown() and g.style:GetText(), "Relaxed")
+check("player row: playstyle tag", pl.style:IsShown() and pl.style:GetText(), "Learning")
+check("tooltip names the playstyle", (function()
+    for _, line in ipairs(ns.Rows.TooltipLines(g.entry, 0)) do if line.text == "Playstyle: Relaxed" then return true end end
+    return false
+end)(), true)
+click(g)
+check("details: Playstyle line", (function()
+    for _, line in ipairs(D.Lines(D.Row(), 0)) do if line.text == "Playstyle: Relaxed" then return true end end
+    return false
+end)(), true)
+D.Close()
+check("secret playstyle stays nil", (function()
+    lfg.secret = true
+    local r = ns.Finder.Result(1)
+    lfg.secret = false
+    return r.generalPlaystyle
+end)(), nil)
+-- The filter is local.
+local k0 = searches()
+W.TogglePlaystyle(4)
+check("filter: only the chosen playstyle", #W.Built().groups == 1 and W.Built().groups[1].id, 2)
+check("filter: players too", #W.Built().players, 0)
+check("filter does not search", searches(), k0)
+check("filter chip counts", f.filters.chips.playstyle.label:GetText(), "Playstyle (1)")
+click(f.filters.chips.playstyle)
+check("filter menu lists the playstyles", M.MenuTexts(M.LastMenu()), "Playstyle,Learning,Relaxed,Competitive,Expert")
+W.TogglePlaystyle(4)
+check("filter off: all", #W.Built().groups, 2)
+check("import: playstyles cleaned", ns.Share.Import("FGF1:ts10:playstylestn1;n2;n2;n9;}}") and table.concat(S("playstyles"), ","), "2")
+Settings.Set("playstyles", nil)
+lfg.catPlaystyle = nil
+ForeverGroupFinderChar.playstyle = nil
 end
 
 -- Button and chip sizes from the settings; nothing leaves its container at

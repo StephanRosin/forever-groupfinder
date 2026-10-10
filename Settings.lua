@@ -50,6 +50,7 @@ Settings.DEFAULTS = {
     filterLevelFits = false,
     hideSeen = false,
     languages = {},         -- empty: all languages
+    playstyles = {},        -- the playstyle filter (1-4); empty: all
     markOpenSlot = true,
     showPlayers = true,
     rowHeight = 28,

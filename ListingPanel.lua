@@ -95,7 +95,22 @@ function Panel.Changed()
     local ids = ns.Window.CheckedList()
     if #ids > 0 and not sameActivities(ids, state.activityIDs) then return true end
     if solo() and type(Listing.roles) == "table" and not ns.Roles.Same(Panel.Roles(), Listing.roles) then return true end
+    if ns.Playstyle.Required() then
+        local entry = ns.Finder.ActiveEntry()
+        local listed = entry and entry.generalPlaystyle   -- plain: Finder converted the entry
+        if listed ~= ns.Playstyle.Selected() then return true end
+    end
     return false
+end
+
+-- The playstyle to post: mine when the category asks for one.
+local function playstyle()
+    return ns.Playstyle.Required() and ns.Playstyle.Selected() or nil
+end
+
+function Panel.SetPlaystyle(v)
+    ns.Playstyle.Set(v)
+    ns.Window.ListingChanged()
 end
 
 -- The one listing button: Post without a listing, Update when something
@@ -112,7 +127,7 @@ end
 
 function Panel.Post()
     local ids = ns.Window.CheckedList()
-    local ok = Listing.Post(ids, solo() and Panel.Roles() or nil)
+    local ok = Listing.Post(ids, solo() and Panel.Roles() or nil, playstyle())
     if ok then warning = false end
     ns.Window.ListingChanged()
     return ok
@@ -121,7 +136,7 @@ end
 function Panel.Extend()
     local state = Listing.State()
     if not state.active then return false end
-    local ok = Listing.Post(state.activityIDs, Listing.roles)
+    local ok = Listing.Post(state.activityIDs, Listing.roles, playstyle())
     if ok then warning = false end
     ns.Window.ListingChanged()
     return ok
@@ -217,8 +232,18 @@ function Panel.Refresh()
     local mode = not state.active and "POST" or (Panel.Changed() and "UPDATE" or "REMOVE")
     p.post.mode = mode
     p.post:SetLabel(L[mode])
-    p.post:SetOff(mode == "POST" and #ids == 0, L.TIP_POST_NEEDS_ACTIVITY)
+    local needStyle = mode ~= "REMOVE" and ns.Playstyle.Required() and not ns.Playstyle.Selected()
+    if mode == "POST" and #ids == 0 then
+        p.post:SetOff(true, L.TIP_POST_NEEDS_ACTIVITY)
+    else
+        p.post:SetOff(needStyle, ns.Playstyle.RequiredText())
+    end
     p.post.tip = L["TIP_" .. mode]
+    local chosen = ns.Playstyle.Selected()
+    for v, b in pairs(p.styles) do
+        b:SetLabel(ns.Playstyle.Short(v))
+        b:SetOn(chosen == v)
+    end
     paintPill(pillState(state, mode))
     for key, fs in pairs(p.labels) do fs:SetText(L["LISTING_LABEL_" .. key]) end
     p.roomOnly:SetLabel(L.FILTER_ROOM_FOR_ME)
@@ -252,7 +277,7 @@ end
 --   Comment  comment text            [Comment...]
 --            [ Post / Update / Remove ]
 -- Values that do not fit wrap inside the value column. Returns the height.
-local LABEL_ORDER = { "STATUS", "ROLES", "FOR", "COMMENT" }
+local LABEL_ORDER = { "STATUS", "ROLES", "PLAYSTYLE", "FOR", "COMMENT" }
 
 local function label(key, y, h)
     local fs = p.labels[key]
@@ -315,6 +340,25 @@ function Panel.Layout(width)
     else
         p.roomOnly:SetPoint("LEFT", p, "TOPLEFT", vx + rx + 8, -y - roleSize / 2)
         y = y + roleSize + GAP
+    end
+    -- Playstyle, when the category asks for one: four toggles, one chosen.
+    local styleShown = ns.Playstyle.Required()
+    p.labels.PLAYSTYLE:SetShown(styleShown)
+    local sx, sl = 0, 0
+    for _, v in ipairs(ns.Playstyle.VALUES) do
+        local b = p.styles[v]
+        b:SetShown(styleShown)
+        if styleShown then
+            local w = math.min(b:Fit(), vw)
+            if sx > 0 and sx + w > vw then sx, sl = 0, sl + 1 end
+            b:ClearAllPoints()
+            b:SetPoint("TOPLEFT", p, "TOPLEFT", vx + sx, -y - sl * (ch + 2))
+            sx = sx + w + 2
+        end
+    end
+    if styleShown then
+        label("PLAYSTYLE", y, ch)
+        y = y + (sl + 1) * (ch + 2) - 2 + GAP
     end
     -- For: the ticked activities, wrapping inside the value column.
     label("FOR", y, ch)
@@ -415,6 +459,11 @@ function Panel.Create(parent)
         onClick = function(_, mouse) Panel.Action(mouse) end })
     p.roles = {}
     for _, k in ipairs(ROLE_KEYS) do p.roles[k] = roleToggle(k) end
+    p.styles = {}
+    for _, v in ipairs(ns.Playstyle.VALUES) do
+        p.styles[v] = Controls.Chip(p, { text = "", onClick = function() Panel.SetPlaystyle(v) end,
+            tip = function() return ns.Playstyle.Name(v) end })
+    end
     p.roomOnly = Controls.CheckLabel(p, { onClick = function() ns.Window.ToggleFilter("filterMyRole") end,
         tip = function() return L.TIP_FILTER_ROOM_FOR_ME end })
     p.chips = {}

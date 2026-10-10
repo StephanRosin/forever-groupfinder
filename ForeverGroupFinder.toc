@@ -29,6 +29,7 @@ Corners.lua
 Border.lua
 Finder.lua
 Roles.lua
+Playstyle.lua
 Activities.lua
 Abbrev.lua
 Memory.lua

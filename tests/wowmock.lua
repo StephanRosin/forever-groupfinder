@@ -491,13 +491,15 @@ C_LFGList = {
         M.lfg.creates[#M.lfg.creates + 1] = data
         if M.lfg.createOK then
             M.lfg.active = { activityIDs = data.activityIDs, comment = "", duration = 3600,
-                newPlayerFriendly = data.newPlayerFriendly, voiceMode = data.voiceMode }
+                newPlayerFriendly = data.newPlayerFriendly, voiceMode = data.voiceMode,
+                generalPlaystyle = data.generalPlaystyle }
         end
         return M.lfg.createOK
     end,
     UpdateListing = function(data)
         if not gated("UpdateListing") then return false end
         M.lfg.updates[#M.lfg.updates + 1] = data
+        if M.lfg.active then M.lfg.active.generalPlaystyle = data.generalPlaystyle end
         return true
     end,
     RemoveListing = function() M.lfg.removed = M.lfg.removed + 1; M.lfg.active = nil end,
@@ -512,7 +514,7 @@ C_LFGList.GetAvailableCategories = function() return wrapAll(M.lfg.cats) end
 C_LFGList.GetLfgCategoryInfo = function(id)
     local n = M.lfg.catNames[id]
     if n == nil then return nil end
-    return wrapAll({ name = n })
+    return wrapAll({ name = n, showPlaystyleDropdown = (M.lfg.catPlaystyle and M.lfg.catPlaystyle[id]) or false })
 end
 C_LFGList.GetAvailableActivityGroups = function(cat)
     local seen, out = {}, {}

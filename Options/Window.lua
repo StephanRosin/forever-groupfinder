@@ -293,6 +293,15 @@ local function listFilterRows()
         { type = "text", label = "OPT_LANGUAGES_HINT" },
     }
     for _, lang in ipairs(ns.Window.LANGUAGES) do rows[#rows + 1] = languageRow(lang) end
+    -- The playstyle filter, one tick per playstyle (none ticked: all).
+    rows[#rows + 1] = { type = "header", label = "FILTER_PLAYSTYLE" }
+    for _, v in ipairs(ns.Playstyle.VALUES) do
+        rows[#rows + 1] = {
+            key = "playstyles", type = "check", label = function() return ns.Playstyle.Name(v) end,
+            get = function() return ns.Window.PlaystyleSet()[v] == true end,
+            set = function() ns.Window.TogglePlaystyle(v) end,
+        }
+    end
     append(rows, {
         { type = "header", label = "OPT_MEMORY" },
         num("memoryMinutes", "OPT_MEMORY_MINUTES", ""),

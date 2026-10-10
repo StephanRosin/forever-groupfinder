@@ -79,6 +79,7 @@ function Detail.Lines(row, elapsed)
         text(L.DETAIL_VOICE, Controls.ACCENT, "small")
     end
     if row.newPlayerFriendly == true then text(L.DETAIL_NEW_PLAYERS, Controls.GREEN, "small") end
+    if row.playstyle then text(L.DETAIL_PLAYSTYLE:format(ns.Playstyle.Name(row.playstyle)), Controls.ACCENT, "small") end   -- plain: our own value
     if positive(row.friend) or positive(row.guild) then
         text(L.DETAIL_KNOWN:format(positive(row.friend) and row.friend or 0, positive(row.guild) and row.guild or 0),
             { 0.5, 0.82, 1 }, "small")

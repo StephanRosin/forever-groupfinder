@@ -70,9 +70,9 @@ Finder.On("EXPIRED", function() anchor, warned, Listing.roles = nil, false, nil 
 
 -- Posting ---------------------------------------------------------------------------
 -- Click path only. An existing listing is updated, which keeps its comment.
-function Listing.Post(activityIDs, roles)
+function Listing.Post(activityIDs, roles, playstyle)
     if type(activityIDs) ~= "table" or #activityIDs == 0 then return false end
-    local ok = Finder.CreateOrUpdate({ activityIDs = activityIDs, roles = roles })
+    local ok = Finder.CreateOrUpdate({ activityIDs = activityIDs, roles = roles, generalPlaystyle = playstyle })
     if ok then Listing.roles = roles end
     return ok
 end

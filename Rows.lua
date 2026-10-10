@@ -203,6 +203,7 @@ function Rows.TooltipLines(row, elapsed)
     local wanted = roleNames(row.roles)
     if #wanted > 0 then add(L.TIP_WANTED_ROLES:format(table.concat(wanted, ", ")), Controls.DIM) end
     if type(row.comment) == "string" and row.comment ~= "" then add(row.comment, { 1, 1, 1 }, nil, true) end
+    if row.playstyle then add(L.DETAIL_PLAYSTYLE:format(ns.Playstyle.Name(row.playstyle)), Controls.ACCENT) end   -- plain: our own value
     local age = Controls.Age(ageOf(row, elapsed))
     if age then add(L.TIP_AGE:format(age), Controls.DIM) end   -- plain: our formatted text
     if row.delisted == true then add(L.DELISTED, Controls.RED) end
@@ -248,6 +249,8 @@ local function newBase(parent)
     row.line:SetHeight(1)
     row.line:SetColorTexture(0.11, 0.13, 0.19, 1)
     row.age = Controls.Text(row, "age")
+    row.style = Controls.Text(row, "small")   -- the playstyle tag, left of the age
+    row.style:SetJustifyH("RIGHT")
     row.age:SetJustifyH("RIGHT")
     row.age:SetWidth(AGE_W)
     row.strike = row:CreateTexture(nil, "OVERLAY")
@@ -296,7 +299,7 @@ end
 -- "room for me" edge, its tint and the selection outline keep full colour.
 local function dimmable(row)
     local list = {}
-    for _, key in ipairs({ "activity", "leaderName", "levels", "count", "more", "tag", "comment", "age", "strike", "level", "class", "name", "pin",
+    for _, key in ipairs({ "activity", "leaderName", "levels", "count", "more", "tag", "comment", "age", "style", "strike", "level", "class", "name", "pin",
         "area", "invite" }) do
         if row[key] then list[#list + 1] = row[key] end
     end
@@ -324,6 +327,18 @@ local function markers(row, entry)
     row:SetAlpha(1)
     row.dimmed = alpha
     for _, part in ipairs(dimmable(row)) do part:SetAlpha(alpha) end
+end
+
+-- The playstyle tag left of the age; returns the room it takes.
+local function styleTag(row, entry)
+    local label = entry.playstyle and ns.Playstyle.Short(entry.playstyle)   -- plain: our own value
+    Controls.Restyle(row.style, Controls.ACCENT)
+    row.style:SetText(label or "")
+    row.style:ClearAllPoints()
+    row.style:SetPoint("RIGHT", row, "RIGHT", -PAD - AGE_W, 0)
+    row.style:SetShown(label ~= nil)
+    if not label then return 0 end
+    return math.floor(row.style:GetStringWidth() + 6)
 end
 
 function Rows.SetAge(row, entry, elapsed)
@@ -499,9 +514,10 @@ local function layoutGroup(row, entry, width, elapsed)
     row.tag:SetPoint("LEFT", row, "LEFT", x, 0)
     row.tag:SetText(tag)
     if tag ~= "" then x = x + row.tag:GetStringWidth() + 4 end
+    local styleW = styleTag(row, entry)
     row.comment:ClearAllPoints()
     row.comment:SetPoint("LEFT", row, "LEFT", x, 0)
-    row.comment:SetWidth(math.max(10, width - x - AGE_W - PAD))
+    row.comment:SetWidth(math.max(10, width - x - AGE_W - PAD - styleW))
     row.comment:SetText(type(entry.comment) == "string" and entry.comment or "")   -- plain: Finder converted the row
     row.age:ClearAllPoints()
     row.age:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
@@ -690,7 +706,7 @@ local function layoutPlayer(row, entry, width, elapsed)
     row.area:SetWidth(leftW - ICON - 4)
     -- Chips over the comment.
     local bx = x + leftW
-    local bw = math.max(40, width - bx - AGE_W - 2 * PAD)
+    local bw = math.max(40, width - bx - AGE_W - 2 * PAD - styleTag(row, entry))
     -- The comment after the chips on line 2 while room remains (cut off
     -- with "..."), else only in the tooltip.
     local used2 = layoutChips(row, entry, bx, top, bottom, bw) or 0

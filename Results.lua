@@ -80,6 +80,7 @@ local function buildRow(r, myRoles)
         roles = player and first.lfgRoles or nil,
         delisted = r.isDelisted,
         voice = r.voiceMode, newPlayerFriendly = r.newPlayerFriendly,
+        playstyle = ns.Playstyle.Valid(r.generalPlaystyle) and r.generalPlaystyle or nil,   -- plain: Finder converted the row
         key = key,
     }
 end
@@ -185,6 +186,9 @@ function Results.Build(results, ctx)
         if keep and filters.myRole and row.kind == "GROUP" and not row.freeForMe then keep = false end
         if keep and filters.levelFits and row.fit ~= nil and row.fit ~= "FITS" then keep = false end
         if keep and filters.hideSeen and row.seen then keep = false end
+        -- filters.playstyles: a set of playstyles; nil or empty keeps all.
+        if keep and type(filters.playstyles) == "table" and next(filters.playstyles) ~= nil
+            and not (row.playstyle and filters.playstyles[row.playstyle]) then keep = false end   -- plain: our own value
         if keep and text and not matchesText(row, text) then keep = false end
         if keep then
             local list = row.kind == "PLAYER" and out.players or out.groups
