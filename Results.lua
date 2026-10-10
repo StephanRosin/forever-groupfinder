@@ -172,6 +172,42 @@ function Results.PlayerSorter(mode, friendsFirst)
     end
 end
 
+-- Group rows in one section per activity: { id = activityID or false,
+-- rows = { ... } }. A group goes once, into the section of its first
+-- activity that is checked (its first activity when nothing is checked).
+-- Sections follow order (activity ids as the activity list shows them),
+-- unknown ones after, by id; rows keep their order. Pure.
+function Results.Sections(groups, checked, order)
+    local checkedSet = {}
+    for _, id in ipairs(checked or {}) do checkedSet[id] = true end
+    local anyChecked = next(checkedSet) ~= nil
+    local byID, sections = {}, {}
+    for _, row in ipairs(groups or {}) do
+        local ids = type(row.activityIDs) == "table" and row.activityIDs or {}   -- plain: Finder converted the row
+        local key = false
+        for _, id in ipairs(ids) do
+            if not anyChecked or checkedSet[id] then key = id; break end
+        end
+        if key == false and ids[1] then key = ids[1] end
+        local section = byID[key]
+        if not section then
+            section = { id = key, rows = {} }
+            byID[key] = section
+            sections[#sections + 1] = section
+        end
+        section.rows[#section.rows + 1] = row
+    end
+    local rank = {}
+    for i, id in ipairs(order or {}) do rank[id] = i end
+    table.sort(sections, function(a, b)
+        local ra, rb = rank[a.id] or math.huge, rank[b.id] or math.huge
+        if ra ~= rb then return ra < rb end
+        local ia, ib = a.id or math.huge, b.id or math.huge   -- plain: our own value
+        return ia < ib
+    end)
+    return sections
+end
+
 function Results.Build(results, ctx)
     local filters = ctx.filters or {}
     local text = type(filters.text) == "string" and filters.text ~= "" and filters.text:lower() or nil

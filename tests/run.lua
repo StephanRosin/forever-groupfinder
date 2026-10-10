@@ -1698,7 +1698,7 @@ check("groups built", #built.groups, 2)
 check("players built", #built.players, 1)
 local used = f.pool.used
 check("rows: divider, 2 groups, divider, 1 player", #used, 5)
-check("one activity ticked: the divider names it", used[1].text:GetText(), "The Deadmines – Groups (2)")
+check("one activity ticked: one section", used[1].text:GetText(), "The Deadmines – 2 groups")
 check("players divider", used[4].text:GetText(), "Players (1)")
 check("gap above the players divider", (select(5, used[3]:GetPoint())) - (select(5, used[4]:GetPoint()))
     > used[3]:GetHeight() + ns.Window.SECTION_GAP - 1, true)
@@ -1750,9 +1750,8 @@ check("GroupFacts: level range", (function()
 end)(), "MAGE 17-20 2/5")
 W.SetChecked(24, true)
 W.RenderList()
-check("two activities ticked: plain divider", f.pool.used[1].text:GetText(), "Groups (2)")
-check("two activities ticked: the activity in the rows", f.pool.used[2].activity:IsShown()
-    and f.pool.used[2].activity:GetText(), "The Deadmines")
+check("two activities ticked, both groups in Deadmines: one section", f.pool.used[1].text:GetText(), "The Deadmines – 2 groups")
+check("rows do not repeat the activity", f.pool.used[2].activity:IsShown(), false)
 W.SetChecked(24, false)
 W.RenderList()
 used = f.pool.used
@@ -2661,6 +2660,77 @@ lfg.cats = { 2, 114 }
 lfg.catNames = { [2] = "Dungeons", [114] = "Raids" }
 M.Fire("LFG_LIST_AVAILABILITY_UPDATE")
 Settings.Set("layout", nil)
+end
+
+-- Group sections, one per activity.
+do
+local R = ns.Results
+local function g(id, ids) return { id = id, activityIDs = ids } end
+local function shape(sections)
+    local t = {}
+    for _, sec in ipairs(sections) do
+        local ids = {}
+        for _, row in ipairs(sec.rows) do ids[#ids + 1] = row.id end
+        t[#t + 1] = tostring(sec.id) .. ":" .. table.concat(ids, ",")
+    end
+    return table.concat(t, " ")
+end
+local groups = { g(1, { 22 }), g(2, { 23 }), g(3, { 24, 22 }), g(4, { 22 }), g(5, { 23, 24 }), g(6, {}) }
+check("sections in the activity list's order, first checked activity", shape(R.Sections(groups, { 22, 24 }, { 24, 22, 23 })),
+    "24:3,5 22:1,4 23:2 false:6")
+check("each group exactly once", (function()
+    local n = 0
+    for _, sec in ipairs(R.Sections(groups, { 22, 24 }, { 24, 22, 23 })) do n = n + #sec.rows end
+    return n
+end)(), 6)
+check("nothing checked: each group's first activity", shape(R.Sections(groups, {}, { 22, 23, 24 })),
+    "22:1,4 23:2,5 24:3 false:6")
+check("rows keep their order inside a section", shape(R.Sections({ g(9, { 22 }), g(2, { 22 }) }, {}, { 22 })), "22:9,2")
+-- In the window.
+lfg.results, lfg.members, lfg.counts = {}, {}, {}
+result(1, "Grimnar", { member("Grimnar", "WARRIOR"), member("Ilvea", "MAGE") })
+result(2, "Thal", { member("Thal", "PRIEST"), member("Ra", "ROGUE") }, { activityIDs = { 24 } })
+result(4, "Duo", { member("Duo", "PRIEST"), member("D2", "ROGUE") }, { activityIDs = { 24, 22 } })
+W.SetCheckedList({ 22, 24 })
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+local function texts()
+    local t = {}
+    for _, row in ipairs(f.pool.used) do
+        if row.kind == "DIVIDER" then t[#t + 1] = row.text:GetText()
+        elseif row.entry then t[#t + 1] = row.entry.id end
+    end
+    return table.concat(t, "|")
+end
+local listed = texts()
+check("a section per activity, Wailing Caverns first (fits better)", listed:match("^Wailing Caverns – 2 groups|") ~= nil
+    and listed:find("|The Deadmines – 1 group|", 1, true) ~= nil, true)
+check("several activities: placed once, in its first checked activity", select(2, listed:gsub("|4|", "")) + select(2, listed:gsub("|4$", "")), 1)
+local multi
+for _, row in ipairs(f.pool.used) do if row.entry and row.entry.id == 4 then multi = row end end
+check("a group with more activities shows +n", multi.activity:IsShown() and multi.activity:GetText(), "+1")
+check("a small gap between sections", (function()
+    local secs = {}
+    for _, row in ipairs(f.pool.used) do if row.kind == "DIVIDER" then secs[#secs + 1] = row end end
+    local prev = secs[1]
+    local lastRow
+    for _, row in ipairs(f.pool.used) do if row.entry and row.entry.activityIDs and row._points.TOPLEFT[4] > secs[2]._points.TOPLEFT[4] then lastRow = row end end
+    return -secs[2]._points.TOPLEFT[4] - (-lastRow._points.TOPLEFT[4] + lastRow:GetHeight())
+end)(), 6)
+-- Collapse.
+local wc
+for _, row in ipairs(f.pool.used) do if row.kind == "DIVIDER" and row.text:GetText():find("Wailing", 1, true) then wc = row end end
+check("section header shows a chevron", wc.chev:IsShown(), true)
+local k0 = searches()
+wc:GetScript("OnMouseUp")(wc, "LeftButton")
+check("folded: its groups hidden", texts():find("|2|", 1, true) == nil and texts():find("|4|", 1, true) == nil, true)
+check("folded: header and count stay", texts():match("^Wailing Caverns – 2 groups") ~= nil, true)
+check("folding does not search", searches(), k0)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+check("stays folded after new results", W.Collapsed()[24], true)
+for _, row in ipairs(f.pool.used) do if row.kind == "DIVIDER" and row.text:GetText():find("Wailing", 1, true) then wc = row end end
+wc:GetScript("OnMouseUp")(wc, "LeftButton")
+check("unfolded again", texts():find("|2|", 1, true) ~= nil, true)
+check("players stay one list", select(2, texts():gsub("Players", "")), 1)
 end
 
 -- Button and chip sizes from the settings; nothing leaves its container at

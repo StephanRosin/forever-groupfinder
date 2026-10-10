@@ -1,5 +1,5 @@
 local ADDON, ns = ...
-local L, Settings, Controls, Activities = ns.L, ns.Settings, ns.Controls, ns.Activities
+local L, Settings, Controls, Activities, Media = ns.L, ns.Settings, ns.Controls, ns.Activities, ns.Media
 local S = Settings.Get
 
 -- The rows of the result list: dividers ("Groups (3)"), group rows (one
@@ -18,6 +18,7 @@ local PLAYER_LEFT_W = 150
 local LEVEL_W = 24
 local INVITE_W = 46
 local LEADER_W, LEVELS_W, COUNT_W = 96, 38, 30   -- a group row's leader, levels, "2/5"
+local MORE_ACT_W = 24                              -- "+n" more activities
 local CHIP_GAP = 3
 local DIVIDER_H = 18
 local TAG_COLOR = { 0.5, 0.82, 1 }
@@ -156,9 +157,6 @@ function Rows.GroupFacts(entry)
     return facts
 end
 
--- The list shows one activity only: group rows leave its name out (the
--- divider names it). Set by Window.RenderList.
-Rows.singleActivity = nil
 
 function Rows.MaxPlayers(ids)
     local max = 0
@@ -361,7 +359,16 @@ local function newDivider(parent)
     row.bg:SetAllPoints()
     row.bg:SetColorTexture(0.08, 0.1, 0.15, 1)
     row.text = Controls.Text(row, "small")
-    row.text:SetPoint("LEFT", PAD + 2, 0)
+    -- A section header collapses / expands with a click.
+    row.chev = row:CreateTexture(nil, "ARTWORK")
+    row.chev:SetSize(10, 10)
+    row.chev:SetPoint("LEFT", PAD, 0)
+    row.chev:SetVertexColor(0.78, 0.59, 0.12)
+    row:EnableMouse(true)
+    row:SetScript("OnMouseUp", function(self, mouse)
+        local e = self.divEntry
+        if mouse == "LeftButton" and e and e.onToggle then e.onToggle() end
+    end)
     -- The players' divider: "Sort: Role" with a menu of the orders.
     row.sort = Controls.Button(row, { text = "", size = "fixed", height = DIVIDER_H - 2, icon = "ChevronDown",
         onClick = function(self) Rows.OpenSortMenu(self) end, tip = function() return L.TIP_PLAYER_SORT end })
@@ -383,7 +390,13 @@ end
 local function layoutDivider(row, entry, width)
     Controls.Restyle(row.text, { 0.78, 0.59, 0.12 })
     row.text:SetText(entry.text)
+    row.divEntry = entry
     row:SetSize(width, DIVIDER_H)
+    local toggle = entry.onToggle ~= nil
+    row.chev:SetShown(toggle)
+    if toggle then row.chev:SetTexture(Media.Icon(entry.collapsed and "ChevronRight" or "ChevronDown")) end
+    row.text:ClearAllPoints()
+    row.text:SetPoint("LEFT", toggle and (PAD + 14) or (PAD + 2), 0)
     row.sort:SetShown(entry.sort == true)
     if entry.sort then
         row.sort:SetLabel(L.PLAYER_SORT_BUTTON:format(L["PLAYER_SORT_" .. S("playerSort")]))
@@ -484,17 +497,17 @@ local function layoutGroup(row, entry, width, elapsed)
     end
     Controls.Color(row.tag, TAG_COLOR)
     local x = EDGE_W + PAD
-    -- The activity, unless the list shows only one (then the divider names it).
-    local showActivity = not (Rows.singleActivity and type(entry.activityIDs) == "table" and #entry.activityIDs == 1)
-    row.activity:SetShown(showActivity)
+    -- The section header names the activity; a group listing more shows
+    -- "+n" (the tooltip lists them all).
+    local n = type(entry.activityIDs) == "table" and #entry.activityIDs or 0   -- plain: Finder converted the row
     row.activity:ClearAllPoints()
     row.activity:SetPoint("LEFT", row, "LEFT", x, 0)
-    if showActivity then
-        local actW = math.max(80, math.min(150, math.floor(width * 0.22)))
-        row.activity:SetWidth(actW)
-        row.activity:SetText(Rows.ActivityText(entry.activityIDs))
-        x = x + actW + PAD
+    row.activity:SetShown(n > 1)
+    if n > 1 then
+        row.activity:SetWidth(MORE_ACT_W)
+        row.activity:SetText(L.MORE_MEMBERS:format(n - 1))
     end
+    x = x + MORE_ACT_W + PAD
     -- Leader (class colour), the members' levels, how full.
     local facts = Rows.GroupFacts(entry)
     row.leaderName:ClearAllPoints()

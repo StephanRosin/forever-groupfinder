@@ -217,6 +217,20 @@ local function emptyText()
     return L.NO_RESULTS
 end
 
+Window.GROUP_SECTION_GAP = 6
+local collapsed = {}   -- activity id -> true: its group section is folded (this session)
+
+function Window.SectionTitle(name, n)
+    return (n == 1 and L.SECTION_GROUPS_ONE or L.SECTION_GROUPS):format(name, n)
+end
+
+function Window.Collapsed() return collapsed end
+
+function Window.ToggleSection(id)
+    collapsed[id] = not collapsed[id] or nil
+    Window.RenderList()
+end
+
 function Window.RenderList()
     if not f then return end
     local pool, child = f.pool, f.list.child
@@ -232,14 +246,24 @@ function Window.RenderList()
         y = y + Rows.Layout(row, entry, width, elapsed)
     end
     local total = #built.groups + #built.players
-    -- One activity ticked: its name heads the groups instead of every row.
-    local only = Window.CheckedList()
-    local single = #only == 1 and Activities.Name(only[1]) or nil
-    Rows.singleActivity = single
     if total > 0 then
-        place("DIVIDER", { text = single and L.DIVIDER_GROUPS_ACTIVITY:format(single, #built.groups)
-            or L.DIVIDER_GROUPS:format(#built.groups) })
-        for _, row in ipairs(built.groups) do place("GROUP", row) end
+        -- Groups in one section per activity, in the activity list's order;
+        -- a click on a section header folds it (remembered this session).
+        local order = {}
+        for _, a in ipairs(Activities.List(S("category"))) do order[#order + 1] = a.id end
+        local sections = Results.Sections(built.groups, Window.CheckedList(), order)
+        if #sections == 0 then place("DIVIDER", { text = L.DIVIDER_GROUPS:format(0) }) end
+        for i, section in ipairs(sections) do
+            if i > 1 then y = y + Window.GROUP_SECTION_GAP end
+            local id = section.id
+            local name = id and Activities.Name(id) or L.UNKNOWN_ACTIVITY   -- plain: our own value
+            local folded = collapsed[id] == true
+            place("DIVIDER", { text = Window.SectionTitle(name, #section.rows), collapsed = folded,
+                onToggle = function() Window.ToggleSection(id) end })
+            if not folded then
+                for _, row in ipairs(section.rows) do place("GROUP", row) end
+            end
+        end
         if S("showPlayers") then
             if #built.groups > 0 then y = y + Window.SECTION_GAP end   -- breathing room between the two lists
             place("DIVIDER", { text = L.DIVIDER_PLAYERS:format(#built.players), sort = true })
