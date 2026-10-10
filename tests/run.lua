@@ -434,6 +434,29 @@ check("reset button", resetButton ~= nil, true)
 resetButton:GetScript("OnClick")(resetButton)
 check("reset: back to the defaults", S("x") .. "/" .. S("point"), "0/CENTER")
 check("lock on the Window page", rowFor("Locked", "box") ~= nil, true)
+-- The options window keeps its place (and page) when the language changes.
+do
+local Locale = ns.Locale
+ns.Options.Open("look")
+local of = M.byName.ForeverGroupFinderOptions
+of._rect = { 300, 200, of:GetWidth(), of:GetHeight() }
+local bar = of.titleBar
+bar:GetScript("OnDragStart")(bar)
+bar:GetScript("OnDragStop")(bar)
+local saved = ns.AccountDB().optionsPosition
+check("options position stored on drag", saved ~= nil and saved.x .. "/" .. saved.y,
+    (300 + of:GetWidth() / 2 - 960) .. "/" .. (200 + of:GetHeight() - 1080))
+of._rect = { 500, 100, of:GetWidth(), of:GetHeight() }
+Locale.Set("deDE")
+local nf = M.byName.ForeverGroupFinderOptions
+check("a new window for the language", nf ~= of, true)
+check("still open", ns.Options.IsShown(), true)
+check("same page", M.byName.ForeverGroupFinderPagelook:IsShown(), true)
+check("where the old one was", nf._points.TOP and (nf._points.TOP[3] .. "/" .. nf._points.TOP[4]),
+    (500 + of:GetWidth() / 2 - 960) .. "/" .. (100 + of:GetHeight() - 1080))
+Locale.Set("AUTO")
+ns.AccountDB().optionsPosition = nil
+end
 -- Text page: five styles.
 ns.Options.ShowPage("text")
 local sizeRows = 0
@@ -1083,7 +1106,7 @@ check("name: case-insensitive", ab("THE DEADMINES"), "DM")
 check("name: unknown mapID falls back", ab("Molten Core", 99999), "MC")
 check("name: SM wing", ab("Scarlet Monastery: Library"), "SM Lib")
 check("name: Dire Maul wing", ab("Dire Maul North"), "DMN")
-for name, want in pairs({ ["Ruins of Lordaeron"] = "RoL", ["Hall of Thanes"] = "Thanes", ["Excavation Site"] = "Excav",
+for name, want in pairs({ ["Ruins of Lordaeron"] = "RoL", ["Hall of Thanes"] = "HoT", ["Excavation Site"] = "Excav",
     ["City of Dalaran"] = "Dala", ["The Drowned City"] = "Drowned", ["Krol'dok Stronghold"] = "Krol'dok",
     ["Alcaz Island Prison"] = "Alcaz", ["Blackmaw Hold"] = "Blackmaw", ["Shaper's Terrace"] = "Shaper's" }) do
     check("Forever: " .. name, ab(name), want)

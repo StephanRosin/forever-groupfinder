@@ -37,7 +37,7 @@ local BY_NAME = {
     ["ruins of ahn'qiraj"] = "AQ20", ["temple of ahn'qiraj"] = "AQ40", ["ahn'qiraj temple"] = "AQ40",
     ["naxxramas"] = "Naxx",
     -- WoW Forever's own dungeons (no community names yet).
-    ["ruins of lordaeron"] = "RoL", ["hall of thanes"] = "Thanes", ["excavation site"] = "Excav",
+    ["ruins of lordaeron"] = "RoL", ["hall of thanes"] = "HoT", ["excavation site"] = "Excav",
     ["city of dalaran"] = "Dala", ["the drowned city"] = "Drowned", ["krol'dok stronghold"] = "Krol'dok",
     ["alcaz island prison"] = "Alcaz", ["blackmaw hold"] = "Blackmaw", ["shaper's terrace"] = "Shaper's",
 }
@@ -54,7 +54,7 @@ local function wing(entry, name)
     return entry[1]
 end
 
--- "Hall of Thanes" -> "HT": the first letters of the significant words.
+-- "Hall of Kings" -> "HK": the first letters of the significant words.
 function Abbrev.Initials(name)
     local out = {}
     for word in name:gmatch("[^%s%-:,]+") do

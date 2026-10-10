@@ -858,7 +858,10 @@ local function createTitleBar(parent)
     bar:EnableMouse(true)
     bar:RegisterForDrag("LeftButton")
     bar:SetScript("OnDragStart", function() frame:StartMoving() end)
-    bar:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
+    bar:SetScript("OnDragStop", function()
+        frame:StopMovingOrSizing()
+        Options.SavePosition()
+    end)
     local title = Style.Text(bar, 16, "text")
     title:SetPoint("LEFT", bar, "LEFT", INSET, 0)
     title:SetText(L.ADDON_NAME)
@@ -872,10 +875,29 @@ end
 
 local WINDOW_NAME = "ForeverGroupFinderOptions"
 
+-- Where the options window was dragged to: account wide, outside the
+-- profiles ({ x, y }: centre from the screen's centre, top from the
+-- screen's top, as Position.Read gives them). A new window (another
+-- language) opens there too.
+function Options.SavePosition()
+    local x, y = ns.Position.Read(frame, "TOP")
+    if x then ns.AccountDB().optionsPosition = { x = x, y = y } end
+end
+
+local function placeWindow()
+    local pos = ns.AccountDB().optionsPosition
+    frame:ClearAllPoints()
+    if type(pos) == "table" and type(pos.x) == "number" and type(pos.y) == "number" then
+        frame:SetPoint("TOP", UIParent, "TOP", pos.x, pos.y)
+    else
+        frame:SetPoint("CENTER")
+    end
+end
+
 local function createWindow()
     frame = CreateFrame("Frame", WINDOW_NAME, UIParent)
     frame:SetSize(WIDTH, HEIGHT)
-    frame:SetPoint("CENTER")
+    placeWindow()
     frame:SetFrameStrata("HIGH")
     frame:SetToplevel(true)
     frame:SetMovable(true)
@@ -993,6 +1015,7 @@ end)
 ns.Locale.OnChange(function()
     if not frame then return end
     local wasOpen, page = frame:IsShown(), current
+    Options.SavePosition()   -- the new window opens where this one is
     frame:Hide()
     frame, pages = nil, {}
     if wasOpen then Options.Open(page) end
