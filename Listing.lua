@@ -95,7 +95,7 @@ function Listing.OpenCommentEditor(text, categoryID)
     if not Listing.CanComment(categoryID) then return "UNAVAILABLE" end
     if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_GroupFinder_VanillaStyle") end
     if type(LFGVanilla_ShowFrame) ~= "function" then return "UNAVAILABLE" end
-    pcall(LFGVanilla_ShowFrame, 1)
+    ns.Blizzard.PassThrough(LFGVanilla_ShowFrame, 1)   -- our own opening: the hooks stand aside
     if type(text) ~= "string" or text == "" then return "OPENED" end
     local box = LFGListingComment and LFGListingComment.EditBox
     if box and pcall(box.SetText, box, text) then return "PREFILLED" end

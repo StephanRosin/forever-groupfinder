@@ -526,6 +526,70 @@ C_LFGList.GetActivityInfoTable = function(id) return wrapAll(M.lfg.activities[id
 
 C_LFGListRoles = { SetRoles = function(roles) M.lfg.roles = roles; return true end }
 C_LFGInfo = { CanPlayerUsePremadeGroup = function() return M.lfg.canUse, M.lfg.failure end }
+-- hooksecurefunc as in the client: the original runs, then the hook, with
+-- the same arguments. M.hooks records each hook: "global" (a global
+-- function) or "method" (a function on a table such as a frame -- on the
+-- Forever client that breaks Blizzard's own calls, so the tests forbid it).
+M.hooks = {}
+function hooksecurefunc(a, b, c)
+    local tbl, name, fn = _G, a, b
+    if type(a) == "table" then tbl, name, fn = a, b, c end
+    local orig = tbl[name]
+    if type(orig) ~= "function" or type(fn) ~= "function" then error("hooksecurefunc: no function " .. tostring(name), 2) end
+    M.hooks[#M.hooks + 1] = { target = tbl == _G and "global" or "method", name = name }
+    tbl[name] = function(...)
+        local r = { orig(...) }
+        local secure = M.state.secure
+        M.state.secure = false   -- the hook is addon code
+        fn(...)
+        M.state.secure = secure
+        return unpack(r)
+    end
+end
+
+-- Blizzard's Vanilla-style finder as far as its open paths go
+-- (Blizzard_LFGVanilla_ParentFrame.lua): LFGVanilla_ShowFrame(tab) shows
+-- LFGParentFrame on a tab, LFGVanilla_ToggleFrame(tab) hides it when shown
+-- and (no tab or the tab shown), else calls ShowFrame. M.blizzard counts.
+-- A hide in combat is refused, as the panel manager refuses insecure callers.
+function M.LoadBlizzardFinder()
+    local p = CreateFrame("Frame", "LFGParentFrame", UIParent)
+    p:Hide()
+    p.selectedTab = 1
+    M.blizzard = { shows = 0, hides = 0, refused = 0, toggles = {} }
+    LFGVanilla_ShowFrame = function(tab)
+        M.blizzard.shows = M.blizzard.shows + 1
+        p:Show()
+        if tab == 1 or tab == 2 or tab == 3 then p.selectedTab = tab end
+    end
+    LFGVanilla_ToggleFrame = function(tab)
+        M.blizzard.toggles[#M.blizzard.toggles + 1] = tab or "none"
+        if p:IsShown() and (not tab or tab == p.selectedTab) then
+            if M.state.combat and not M.state.secure then
+                M.blizzard.refused = M.blizzard.refused + 1
+                return
+            end
+            M.blizzard.hides = M.blizzard.hides + 1
+            p:Hide()
+        else
+            LFGVanilla_ShowFrame(tab)
+        end
+    end
+    return p
+end
+
+-- A key binding or Blizzard button: Blizzard's code runs securely, with a
+-- hardware event; the hooks after it are ours (insecure).
+function M.SecurePress(fn, ...)
+    local args = { n = select("#", ...), ... }
+    return M.lfg.click(function()
+        M.state.secure = true
+        local ok, err = pcall(fn, unpack(args, 1, args.n))
+        M.state.secure = false
+        if not ok then error(err, 0) end
+    end)
+end
+
 M.invited, M.tells = {}, {}
 C_PartyInfo = { InviteUnit = function(name) M.invited[#M.invited + 1] = name end }
 ChatFrameUtil = {

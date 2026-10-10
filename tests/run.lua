@@ -5,7 +5,7 @@ M.validEvents = { ADDON_LOADED = true, PLAYER_LOGIN = true, PLAYER_ENTERING_WORL
     PLAYER_REGEN_ENABLED = true, PLAYER_REGEN_DISABLED = true, PLAYER_LEVEL_UP = true,
     LFG_LIST_SEARCH_RESULTS_RECEIVED = true, LFG_LIST_SEARCH_RESULT_UPDATED = true, LFG_LIST_SEARCH_FAILED = true,
     LFG_LIST_ACTIVE_ENTRY_UPDATE = true, LFG_LIST_AVAILABILITY_UPDATE = true, LFG_LIST_ENTRY_EXPIRED_TIMEOUT = true,
-    LFG_LIST_ENTRY_EXPIRED_TOO_MANY_PLAYERS = true }
+    LFG_LIST_ENTRY_EXPIRED_TOO_MANY_PLAYERS = true, LFG_LIST_SHOW_SEARCH = true }
 local ROOT = ADDONDIR
 local ADDON = "ForeverGroupFinder"
 
@@ -156,6 +156,7 @@ local RANGES = {
     x = { -4000, 4000 }, y = { -4000, 4000 },
     shadowAlpha = { 0, 100 }, bgAlpha = { 0, 100 }, headerSize = { 8, 24 }, activitySize = { 8, 20 },
     nameSize = { 8, 20 }, commentSize = { 8, 18 }, smallSize = { 7, 16 },
+    minimapAngle = { 0, 360 },   -- the options slider; dragging sets it too
 }
 local rangeCount = 0
 for key, want in pairs(RANGES) do
@@ -355,13 +356,13 @@ local function rowFor(label, field)
 end
 local pageIds = {}
 for _, page in ipairs(ns.Options.PAGES) do pageIds[#pageIds + 1] = page.id end
-check("pages", table.concat(pageIds, ","), "general,profiles")
+check("pages", table.concat(pageIds, ","), "general,window,appearance,text,list,templates,profiles")
 for _, page in ipairs(ns.Options.PAGES) do
     local ok, err = pcall(ns.Options.ShowPage, page.id)
     check("page " .. page.id .. " builds", ok, true)
     if not ok then print(err) end
 end
-check("nav buttons", M.byName["ForeverGroupFinderNavgeneral"] ~= nil and M.byName["ForeverGroupFinderNavprofiles"] ~= nil, true)
+for _, id in ipairs(pageIds) do check("nav button " .. id, M.byName["ForeverGroupFinderNav" .. id] ~= nil, true) end
 ns.Options.ShowPage("general")
 check("replace row", rowFor("Open this finder instead", "box") ~= nil, true)
 check("minimap row", rowFor("Minimap button", "box") ~= nil, true)
@@ -369,6 +370,134 @@ check("compartment row", rowFor("addon list", "box") ~= nil, true)
 check("language dropdown in the nav", ns.Options.languageRow ~= nil or rowFor("Language", "button") ~= nil, true)
 ns.Options.ShowPage("profiles")
 check("profile row", rowFor("Active profile", "button") ~= nil, true)
+-- Every setting has a row on some page (the X / Y sliders also write the
+-- anchor; minimapAngle is dragged too).
+local reachable = {}
+for _, page in ipairs(ns.Options.PAGES) do
+    local specs = page.rows()
+    for _, opt in ipairs(specs) do
+        if opt.key then reachable[opt.key] = page.id end
+        for _, key in ipairs(opt.keys or {}) do reachable[key] = page.id end
+    end
+    ns.Options.ShowPage(page.id)
+    local built = M.byName["ForeverGroupFinderPage" .. page.id]
+    check("page " .. page.id .. " has its rows", built ~= nil and #built.allRows, #specs)
+end
+for key in pairs(Settings.DEFAULTS) do check("setting " .. key .. " is on an options page", reachable[key] ~= nil, true) end
+check("replace Blizzard on General", reachable.replaceBlizzard, "general")
+check("compartment on General", reachable.compartment, "general")
+check("scale on Window", reachable.scale, "window")
+check("side width on Window", reachable.sideWidth, "window")
+check("border on Appearance", reachable.borderStyle, "appearance")
+check("comment colour on Text", reachable.commentColor, "text")
+check("role override on List", reachable.roleOverride, "list")
+check("memory on List", reachable.memoryMinutes, "list")
+check("whispers on Templates", reachable.whisperTemplates, "templates")
+check("templates on Templates", reachable.templates, "templates")
+-- Window page.
+ns.Options.ShowPage("window")
+local wRow = rowFor("Width of the side panel", "slider")
+check("side width slider", wRow ~= nil, true)
+wRow.slider:GetScript("OnValueChanged")(wRow.slider, 200, true)
+check("side width set", S("sideWidth"), 200)
+Settings.Set("sideWidth", nil)
+local xRow = rowFor("Horizontal", "slider")
+xRow.slider:GetScript("OnValueChanged")(xRow.slider, 120, true)
+check("X slider: x", S("x"), 120)
+check("X slider: anchored at the top", S("point") .. "/" .. S("relPoint"), "TOP/TOP")
+local resetButton
+for _, f in ipairs(M.frames) do
+    if f.text and f.text._text == "Reset position and size" and f:IsVisible() then resetButton = f end
+end
+check("reset button", resetButton ~= nil, true)
+resetButton:GetScript("OnClick")(resetButton)
+check("reset: back to the defaults", S("x") .. "/" .. S("point"), "0/CENTER")
+check("lock on the Window page", rowFor("Locked", "box") ~= nil, true)
+-- Text page: five styles.
+ns.Options.ShowPage("text")
+local sizeRows = 0
+for _, f in ipairs(M.frames) do
+    if f.slider and f.label and f.label._text == "Size" and f:IsVisible() then sizeRows = sizeRows + 1 end
+end
+check("five text styles", sizeRows, 5)
+-- Appearance: the flat colour only for a flat border.
+ns.Options.ShowPage("appearance")
+check("border colour hidden without a flat border", rowFor("Colour (flat)", "swatch") == nil, true)
+Settings.Set("borderStyle", "FLAT")
+check("border colour shown for a flat border", rowFor("Colour (flat)", "button") ~= nil or rowFor("Colour (flat)", "swatch") ~= nil, true)
+Settings.Set("borderStyle", nil)
+-- List & Filters: role, languages, the ignore list.
+local function itemFor(text)
+    for _, f in ipairs(M.frames) do
+        if f.button and f.text and f.text._text == text and f:IsVisible() then return f end
+    end
+end
+ns.Options.ShowPage("list")
+check("role override row", rowFor("My role", "button") ~= nil, true)
+check("ignore list empty hint", (function()
+    for _, f in ipairs(M.frames) do
+        if f.text and f.text._text == "No one is ignored." and f:IsVisible() then return true end
+    end
+    return false
+end)(), true)
+local addRow = rowFor("Add a name", "edit")
+check("ignore input", addRow ~= nil, true)
+addRow.edit:SetText("  Grumpy  ")
+addRow.edit:GetScript("OnEnterPressed")(addRow.edit)
+check("ignored from the options", ns.Memory.IsIgnored("Grumpy"), true)
+check("listed", itemFor("Grumpy") ~= nil, true)
+check("input empty again", addRow.edit:GetText(), "")
+addRow.edit:SetText("   ")
+addRow.edit:GetScript("OnEnterPressed")(addRow.edit)
+check("blank name ignored", #ns.Memory.IgnoreList(), 1)
+local item = itemFor("Grumpy")
+item.button:GetScript("OnClick")(item.button)
+check("removed from the ignore list", ns.Memory.IsIgnored("Grumpy"), false)
+check("its row gone", itemFor("Grumpy"), nil)
+for i = 1, ns.Options.LIST_SLOTS + 3 do ns.Memory.Ignore(("P%02d"):format(i)) end
+ns.Options.Refresh()
+check("more than the slots: a line says how many", (function()
+    for _, f in ipairs(M.frames) do
+        if f.text and f.text._text == "... and 3 more" and f:IsVisible() then return true end
+    end
+    return false
+end)(), true)
+for _, name in ipairs(ns.Memory.IgnoreList()) do ns.Memory.Unignore(name) end
+local deRow = rowFor("Deutsch", "box")
+check("language tick", deRow ~= nil, true)
+deRow.box:GetScript("OnClick")(deRow.box)
+check("language ticked", table.concat(S("languages"), ","), "deDE")
+deRow.box:GetScript("OnClick")(deRow.box)
+check("language unticked: nothing stored", ns.DB().languages, nil)
+-- Templates: delete a saved listing, edit the whispers.
+ns.Listing.SaveTemplate("RFC tank", { 21 }, { tank = true }, "LF tank")
+ns.Options.ShowPage("templates")
+local tItem = itemFor("RFC tank")
+check("saved listing listed", tItem ~= nil, true)
+tItem.button:GetScript("OnClick")(tItem.button)
+check("saved listing deleted", #ns.Listing.Templates(), 0)
+check("its row gone", itemFor("RFC tank"), nil)
+local w1 = rowFor("Whisper 1", "edit")
+check("default whisper shown", w1 ~= nil and w1.edit:GetText(), Settings.DEFAULTS.whisperTemplates[1])
+check("no second whisper row", rowFor("Whisper 2", "edit"), nil)
+local newW = rowFor("New whisper", "edit")
+newW.edit:SetText("Need a {role}?")
+newW.edit:GetScript("OnEnterPressed")(newW.edit)
+check("whisper added", S("whisperTemplates")[2], "Need a {role}?")
+check("second whisper row", rowFor("Whisper 2", "edit") ~= nil, true)
+w1.edit:SetText("Hello {class}")
+w1.edit:GetScript("OnEnterPressed")(w1.edit)
+check("whisper edited", S("whisperTemplates")[1], "Hello {class}")
+w1.edit:SetText("")
+w1.edit:GetScript("OnEnterPressed")(w1.edit)
+check("emptied whisper removed", table.concat(S("whisperTemplates"), "|"), "Need a {role}?")
+local defaultsButton
+for _, f in ipairs(M.frames) do
+    if f.text and f.text._text == "Default whispers" and f:IsVisible() then defaultsButton = f end
+end
+defaultsButton:GetScript("OnClick")(defaultsButton)
+check("whispers back to the default: nothing stored", ns.DB().whisperTemplates, nil)
+check("nothing left over in the profile", next(ns.DB()), nil)
 ns.Options.Toggle()
 check("closed", ns.Options.IsShown(), false)
 check("interface options page", M.registered[1], "Forever Group Finder")
@@ -456,9 +585,29 @@ check("/fgf reset keeps the rest", (function()
     return kept
 end)(), false)
 check("/fgf reset stores nothing", next(ns.DB()), nil)
+SlashCmdList["FOREVERGROUPFINDER"]("search")
+check("/fgf search opens the window", ns.Window.IsShown(), true)
+check("/fgf search again keeps it open", pcall(SlashCmdList["FOREVERGROUPFINDER"], "search") and ns.Window.IsShown(), true)
+ns.Window.Hide()
+M.chat = {}
+SlashCmdList["FOREVERGROUPFINDER"]("ignore Grumpy-Realm")
+check("/fgf ignore", ns.Memory.IsIgnored("Grumpy-Realm"), true)
+check("/fgf ignore keeps the case", ns.Memory.IsIgnored("grumpy-realm"), false)
+check("/fgf ignore says so", M.chat[1] ~= nil and M.chat[1]:find("Grumpy-Realm is ignored", 1, true) ~= nil, true)
+SlashCmdList["FOREVERGROUPFINDER"]("UNIGNORE Grumpy-Realm")
+check("/fgf unignore", ns.Memory.IsIgnored("Grumpy-Realm"), false)
+check("/fgf unignore says so", M.chat[2] ~= nil and M.chat[2]:find("no longer ignored", 1, true) ~= nil, true)
+SlashCmdList["FOREVERGROUPFINDER"]("unignore Grumpy-Realm")
+check("/fgf unignore of someone not ignored", M.chat[3] ~= nil and M.chat[3]:find("not on the ignore list", 1, true) ~= nil, true)
+SlashCmdList["FOREVERGROUPFINDER"]("ignore")
+check("/fgf ignore without a name", M.chat[4] ~= nil and M.chat[4]:find("/fgf ignore <name>", 1, true) ~= nil, true)
+SlashCmdList["FOREVERGROUPFINDER"]("unignore")
+check("/fgf unignore without a name", M.chat[5] ~= nil and M.chat[5]:find("/fgf unignore <name>", 1, true) ~= nil, true)
+check("nothing ignored", #ns.Memory.IgnoreList(), 0)
 M.chat = {}
 SlashCmdList["FOREVERGROUPFINDER"]("what")
 check("usage", M.chat[1] ~= nil and M.chat[1]:find("/fgf", 1, true) ~= nil, true)
+check("usage names the new commands", M.chat[1]:find("search, ignore <name>, unignore <name>", 1, true) ~= nil, true)
 
 M.lfg.canUse = true
 section("Events and combat")
@@ -1658,12 +1807,157 @@ check("no search was ever blocked", #lfg.blocked, 0)
 Settings.Set("roleOverride", nil)
 lfg.reset()
 
+section("Blizzard redirection")
+local B = ns.Blizzard
+lfg.reset()
+lfg.cats, lfg.catNames = { 2, 114 }, { [2] = "Dungeons", [114] = "Raids" }
+lfg.activities = {
+    [21] = { categoryID = 2, fullName = "Ragefire Chasm", shortName = "RFC", minLevelSuggestion = 13, maxLevelSuggestion = 18, maxNumPlayers = 5 },
+    [31] = { categoryID = 114, fullName = "Molten Core", shortName = "MC", minLevelSuggestion = 60, maxLevelSuggestion = 60, maxNumPlayers = 40 },
+}
+M.Fire("LFG_LIST_AVAILABILITY_UPDATE")
+LFGVanilla_ShowFrame, LFGVanilla_ToggleFrame = nil, nil
+W.Hide()
+-- A search may run again: the last one answered, the interval passed.
+local function nextSearch()
+    M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    M.state.time = M.state.time + 100
+end
+nextSearch()
+check("hooked names are strings", (function()
+    for _, name in ipairs(B.HOOKED) do if type(name) ~= "string" or name:find("[:%.]") then return false end end
+    return true
+end)(), true)
+check("the toggle and show globals are hooked", table.concat(B.HOOKED, ","), "LFGVanilla_ToggleFrame,LFGVanilla_ShowFrame")
+check("nothing hooked before Blizzard's finder loads", B.IsHooked("LFGVanilla_ToggleFrame"), false)
+local hooksBefore = #M.hooks
+local parent = M.LoadBlizzardFinder()
+M.Fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle")
+check("toggle hooked when it loads", B.IsHooked("LFGVanilla_ToggleFrame"), true)
+check("show hooked when it loads", B.IsHooked("LFGVanilla_ShowFrame"), true)
+B.Hook()
+M.Fire("ADDON_LOADED", "Blizzard_GroupFinder_VanillaStyle")
+check("each hooked once", #M.hooks - hooksBefore, 2)
+check("some hook exists", #M.hooks > 0, true)
+for i, h in ipairs(M.hooks) do check("hook " .. i .. " (" .. tostring(h.name) .. ") is on a global", h.target, "global") end
+
+-- The key binding: LFGVanilla_ToggleFrame(1).
+local n = searches()
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+check("binding opens ours", W.IsShown(), true)
+check("its search counts as the key press", searches(), n + 1)
+check("Blizzard's window closed again", parent:IsShown(), false)
+check("through Blizzard's own toggle, no tab", M.blizzard.toggles[2], "none")
+check("closed once", M.blizzard.hides, 1)
+nextSearch()
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+check("binding again closes ours", W.IsShown(), false)
+check("Blizzard's stays closed", parent:IsShown(), false)
+check("no search on closing", searches(), n + 1)
+-- The micro button and the eye: LFGVanilla_ToggleFrame().
+M.SecurePress(LFGVanilla_ToggleFrame)
+check("micro button opens ours", W.IsShown(), true)
+check("micro button: Blizzard's closed", parent:IsShown(), false)
+nextSearch()
+M.SecurePress(LFGVanilla_ToggleFrame)
+check("micro button closes ours", W.IsShown(), false)
+-- The queue status button / the eye's menu: LFGVanilla_ShowFrame(1).
+M.SecurePress(LFGVanilla_ShowFrame, 1)
+check("show opens ours", W.IsShown(), true)
+check("show: Blizzard's closed", parent:IsShown(), false)
+nextSearch()
+M.SecurePress(LFGVanilla_ShowFrame, 2)
+check("show keeps ours open", W.IsShown(), true)
+W.Hide()
+check("nothing refused out of combat", M.blizzard.refused, 0)
+-- The Who list (tab 3) is Blizzard's.
+M.SecurePress(LFGVanilla_ToggleFrame, 3)
+check("who tab: Blizzard's opens", parent:IsShown(), true)
+check("who tab: ours stays closed", W.IsShown(), false)
+M.SecurePress(LFGVanilla_ToggleFrame, 3)
+check("who tab: Blizzard's closes", parent:IsShown(), false)
+-- Switched off: Blizzard's finder as usual.
+Settings.Set("replaceBlizzard", false)
+nextSearch()
+n = searches()
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+check("off: Blizzard's opens", parent:IsShown(), true)
+check("off: ours stays closed", W.IsShown(), false)
+check("off: no search", searches(), n)
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+check("off: Blizzard's closes", parent:IsShown(), false)
+Settings.Set("replaceBlizzard", nil)
+-- Our comment editor opens Blizzard's listing tab on purpose.
+lfg.authenticated[2] = true
+local hidesBefore = M.blizzard.hides
+lfg.click(ns.Listing.OpenCommentEditor, "", 2)
+check("comment editor: Blizzard's tab stays open", parent:IsShown(), true)
+check("comment editor: not closed by us", M.blizzard.hides, hidesBefore)
+check("comment editor: ours not opened by it", W.IsShown(), false)
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+check("binding then closes Blizzard's", parent:IsShown(), false)
+check("and does not open ours", W.IsShown(), false)
+lfg.authenticated[2] = nil
+-- In combat the panel manager refuses us: both stay, Blizzard's closes after.
+nextSearch()
+M.state.combat = true
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+check("combat: ours opens", W.IsShown(), true)
+check("combat: Blizzard's left open", parent:IsShown(), true)
+check("combat: we did not try", M.blizzard.refused, 0)
+check("combat: closing waits", ns.PendingAfterCombat(), 1)
+M.state.combat = false
+M.Fire("PLAYER_REGEN_ENABLED")
+check("after combat: Blizzard's closed", parent:IsShown(), false)
+check("after combat: ours stays", W.IsShown(), true)
+M.state.combat = true
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+nextSearch()
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+check("combat: second press closes both", W.IsShown() or parent:IsShown(), false)
+M.state.combat = false
+M.Fire("PLAYER_REGEN_ENABLED")
+check("combat: nothing waits", ns.PendingAfterCombat(), 0)
+-- LFG_LIST_SHOW_SEARCH (a "find a group" link, inside its click).
+nextSearch()
+n = searches()
+lfg.click(M.Fire, "LFG_LIST_SHOW_SEARCH", { 31 }, true)
+check("show search opens ours", W.IsShown(), true)
+check("show search: its category", S("category"), 114)
+check("show search: its activities", table.concat(W.CheckedList(), ","), "31")
+check("show search: all levels", S("levelRangeOnly"), false)
+check("show search searches", searches(), n + 1)
+check("show search: the activity searched", lfg.searches[#lfg.searches][7] and lfg.searches[#lfg.searches][7][1], 31)
+nextSearch()
+lfg.click(M.Fire, "LFG_LIST_SHOW_SEARCH", nil, false)
+check("show search while open searches again", searches(), n + 2)
+W.Hide()
+nextSearch()
+n = searches()
+lfg.click(SlashCmdList["FOREVERGROUPFINDER"], "search")
+check("/fgf search from chat searches (a key press)", searches(), n + 1)
+nextSearch()
+lfg.click(SlashCmdList["FOREVERGROUPFINDER"], "search")
+check("/fgf search while open searches again", searches(), n + 2)
+W.Hide()
+Settings.Set("replaceBlizzard", false)
+lfg.click(M.Fire, "LFG_LIST_SHOW_SEARCH", { 21 }, false)
+check("show search off: ours stays closed", W.IsShown(), false)
+Settings.SetMany({ replaceBlizzard = nil, category = nil, levelRangeOnly = nil })
+W.ResetChecked()
+check("no search was blocked", #lfg.blocked, 0)
+LFGVanilla_ShowFrame, LFGVanilla_ToggleFrame = nil, nil
+lfg.reset()
+
 section("Source rules")
 -- Listing.lua may name exactly two Blizzard things: the comment box it prefills
 -- (inside a pcall) and the global that shows the finder.
 local function touchesBlizzardFinder(code, file)
     if file == "Listing.lua" then
         code = code:gsub("LFGListingComment", ""):gsub("LFGVanilla_ShowFrame", "")
+    elseif file == "Blizzard.lua" then
+        -- The one read of Blizzard's window: is it shown?
+        code = code:gsub('type%(LFGParentFrame%) == "table" and LFGParentFrame:IsShown%(%)', "")
     end
     return code:find("LFGParentFrame", 1, true) or code:find("GroupFinder[%w_]*Frame") or code:find("LFGListing", 1, true)
 end
@@ -1672,13 +1966,24 @@ check("lint: LFGVanilla_ShowFrame allowed in Listing.lua", touchesBlizzardFinder
 check("lint: LFGListingComment caught elsewhere", touchesBlizzardFinder("LFGListingComment.EditBox", "Window.lua") ~= nil, true)
 check("lint: other LFGListing frames caught in Listing.lua", touchesBlizzardFinder("LFGListingFrame:Hide()", "Listing.lua") ~= nil, true)
 check("lint: LFGParentFrame caught in Listing.lua", touchesBlizzardFinder("LFGParentFrame:Hide()", "Listing.lua") ~= nil, true)
+check("lint: the IsShown read allowed in Blizzard.lua", touchesBlizzardFinder('return type(LFGParentFrame) == "table" and LFGParentFrame:IsShown() == true', "Blizzard.lua"), nil)
+check("lint: other LFGParentFrame use caught in Blizzard.lua", touchesBlizzardFinder("LFGParentFrame:SetAlpha(0)", "Blizzard.lua") ~= nil, true)
+check("lint: IsShown read caught elsewhere", touchesBlizzardFinder('type(LFGParentFrame) == "table" and LFGParentFrame:IsShown()', "Window.lua") ~= nil, true)
+-- Blizzard.lua hooks by global name only (Blizzard.HOOKED, checked above).
+local function strayHooks(code, file)
+    if file == "Blizzard.lua" then code = code:gsub("hooksecurefunc%(name, function", "") end
+    return code:find("hooksecurefunc")
+end
+check("lint: the named hook allowed in Blizzard.lua", strayHooks("hooksecurefunc(name, function(tab) end)", "Blizzard.lua"), nil)
+check("lint: a method hook caught in Blizzard.lua", strayHooks("hooksecurefunc(LFGParentFrame, \"Show\", f)", "Blizzard.lua") ~= nil, true)
+check("lint: a hook caught elsewhere", strayHooks("hooksecurefunc(name, function() end)", "Window.lua") ~= nil, true)
 check("Listing.lua never calls SetText directly", (read("Listing.lua"):gsub("%-%-[^\n]*", "")):find("[:%.]SetText%s*%(") , nil)
 for _, f in ipairs(tocFiles()) do
     local code = read(f):gsub("%-%-%[%[.-%]%]", ""):gsub("%-%-[^\n]*", "")
     check("only Finder.lua calls C_LFGList (" .. f .. ")", f == "Finder.lua" or code:find("C_LFGList", 1, true) == nil, true)
     check("no CVar write in " .. f, code:find("SetCVar", 1, true), nil)
     check("no combat log event in " .. f, code:find("COMBAT_LOG_EVENT_UNFILTERED", 1, true), nil)
-    check("no hooksecurefunc call in " .. f, code:find("hooksecurefunc%("), nil)
+    check("no hooksecurefunc call in " .. f, strayHooks(code, f), nil)
     -- The one allowed call closes the Settings panel before our options open.
     local rest = code
     if f == "Options/Panel.lua" then rest = rest:gsub("HideUIPanel and SettingsPanel", ""):gsub("pcall%(HideUIPanel, SettingsPanel%)", "") end

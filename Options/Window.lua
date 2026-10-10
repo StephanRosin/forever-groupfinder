@@ -12,6 +12,15 @@ ns.Options = Options
 
 local Style, Widgets = ns.Style, ns.Widgets
 
+local function num(key, label, unit, step)
+    local range = Settings.RANGES[key]
+    return {
+        key = key, label = label, min = range[1], max = range[2], step = step or 1, unit = unit or "px",
+        get = function() return S(key) end,
+        set = function(v) Settings.Set(key, v) end,
+    }
+end
+
 local function check(key, label)
     return {
         key = key, type = "check", label = label,
@@ -20,17 +29,307 @@ local function check(key, label)
     }
 end
 
--- General: what opens the finder, the minimap, the lock.
+-- A dropdown over fixed values, labelled prefix .. value.
+local function choice(key, label, values, prefix)
+    return {
+        key = key, type = "select", label = label,
+        choices = function()
+            local list = {}
+            for _, v in ipairs(values) do list[#list + 1] = { label = L[prefix .. v], value = v } end
+            return list
+        end,
+        get = function() return S(key) end,
+        set = function(v) Settings.Set(key, v) end,
+    }
+end
+
+-- A dropdown over the media of a kind (Blizzard's and LibSharedMedia's).
+local function media(key, label, kind)
+    return {
+        key = key, type = "select", label = label,
+        choices = function()
+            local list = {}
+            for _, name in ipairs(ns.Media.Names(kind)) do
+                list[#list + 1] = { label = name, value = name, font = kind == "font" and name or nil }   -- plain: a media name
+            end
+            return list
+        end,
+        get = function() return S(key) end,
+        set = function(v) Settings.Set(key, v) end,
+    }
+end
+
+local function colorRow(key, label, noOpacity)
+    return {
+        key = key, type = "color", label = label, noOpacity = noOpacity,
+        get = function()
+            local c = S(key)
+            return { c[1], c[2], c[3], c[4] or 1 }
+        end,
+        set = function(c)
+            Settings.Set(key, noOpacity and { c[1], c[2], c[3] } or { c[1], c[2], c[3], c[4] })
+        end,
+    }
+end
+
+-- Shows the row only while cond() holds (the page closes up around it).
+local function visibleIf(row, cond)
+    row.visible = cond
+    return row
+end
+
+local function append(rows, more)
+    for _, r in ipairs(more) do rows[#rows + 1] = r end
+    return rows
+end
+
+local function trim(text)
+    return ((text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+-- General: what opens the finder, the minimap, the addon list. (The
+-- language is at the bottom of the navigation.)
 local function generalRows()
     return {
         { type = "header", label = "OPT_GENERAL" },
         check("replaceBlizzard", "OPT_REPLACE_BLIZZARD"),
-        { type = "text", label = "OPT_REPLACE_BLIZZARD_HINT", height = 40 },
-        check("locked", "OPT_LOCK"),
+        { type = "text", label = "OPT_REPLACE_BLIZZARD_HINT", height = 54 },
         { type = "header", label = "OPT_MINIMAP" },
         check("minimapShow", "OPT_MINIMAP_SHOW"),
+        visibleIf(num("minimapAngle", "OPT_MINIMAP_ANGLE", "°"), function() return S("minimapShow") end),
         check("compartment", "OPT_COMPARTMENT"),
     }
+end
+
+-- Window: place and size; the sliders write a TOP anchor as dragging does.
+local function windowRows()
+    local pos = ns.Position.Rows({ point = "point", x = "x", y = "y" }, ns.Window.Frame,
+        function() return "TOP" end, { relPoint = "TOP" })
+    pos[1].keys, pos[2].keys = { "x", "point", "relPoint" }, { "y", "point", "relPoint" }
+    return {
+        { type = "header", label = "OPT_POSITION" },
+        check("locked", "OPT_LOCK"),
+        { type = "text", label = "OPT_MOVE_HINT", height = 40 },
+        pos[1], pos[2],
+        num("width", "OPT_WIDTH"),
+        num("height", "OPT_HEIGHT"),
+        num("sideWidth", "OPT_SIDE_WIDTH"),
+        { type = "buttons", buttons = {
+            { label = "OPT_RESET_POSITION", width = 200, onClick = function() ns.ResetWindowPlace() end },
+        } },
+        { type = "header", label = "OPT_SCALE" },
+        num("scale", "OPT_SCALE", "%"),
+    }
+end
+
+-- Appearance: background, border, corners, shadow (as the combat meter).
+local function appearanceRows()
+    return {
+        { type = "header", label = "OPT_BACKGROUND" },
+        choice("bgMode", "OPT_BG_MODE", { "SOLID", "GRADIENT", "TEXTURE" }, "BG_"),
+        visibleIf(colorRow("bgColor", "OPT_BG_COLOR", true), function() return S("bgMode") ~= "TEXTURE" end),
+        visibleIf(media("bgTexture", "OPT_BG_TEXTURE", "background"), function() return S("bgMode") == "TEXTURE" end),
+        num("bgAlpha", "OPT_BG_ALPHA", "%"),
+        check("headerLine", "OPT_HEADER_LINE"),
+        { type = "header", label = "OPT_BORDER" },
+        choice("borderStyle", "OPT_BORDER_STYLE", { "GOLD", "FLAT", "NONE" }, "BORDER_"),
+        visibleIf(num("borderSize", "OPT_BORDER_SIZE"), function() return S("borderStyle") ~= "NONE" end),
+        visibleIf(colorRow("borderColor", "OPT_BORDER_COLOR"), function() return S("borderStyle") == "FLAT" end),
+        num("cornerRadius", "OPT_CORNER_RADIUS"),
+        { type = "header", label = "OPT_SHADOW" },
+        check("shadowEnabled", "OPT_SHADOW_SHOW"),
+        visibleIf(num("shadowSize", "OPT_SHADOW_SIZE"), function() return S("shadowEnabled") end),
+        visibleIf(num("shadowAlpha", "OPT_SHADOW_ALPHA", "%"), function() return S("shadowEnabled") end),
+    }
+end
+
+-- Font, size, outline and colour of the text style `key` under a header.
+local function textStyleRows(key, header)
+    return {
+        { type = "header", label = header },
+        media(key .. "Font", "OPT_FONT", "font"),
+        num(key .. "Size", "OPT_FONT_SIZE"),
+        {
+            key = key .. "Flag", type = "select", label = "OPT_OUTLINE",
+            choices = function()
+                return {
+                    { label = L.OUTLINE_NONE, value = "" },
+                    { label = L.OUTLINE_SHADOW, value = "SHADOW" },
+                    { label = L.OUTLINE_NORMAL, value = "OUTLINE" },
+                    { label = L.OUTLINE_THICK, value = "THICKOUTLINE" },
+                }
+            end,
+            get = function() return S(key .. "Flag") end,
+            set = function(v) Settings.Set(key .. "Flag", v) end,
+        },
+        colorRow(key .. "Color", "OPT_COLOR", true),
+    }
+end
+
+local function textRows()
+    local rows = {}
+    for _, name in ipairs(Settings.TEXT_STYLES) do append(rows, textStyleRows(name, "STYLE_" .. name:upper())) end
+    return rows
+end
+
+-- A list shown in fixed slots (frames cannot be destroyed): slot i shows
+-- the i-th entry while there is one, a hint when the list is empty, a
+-- line when it is longer than the slots.
+Options.LIST_SLOTS = 40
+local function listRows(list, slots, slotRow, emptyLabel)
+    local rows = {
+        visibleIf({ type = "text", label = emptyLabel }, function() return #list() == 0 end),
+    }
+    for i = 1, slots do rows[#rows + 1] = visibleIf(slotRow(i), function() return list()[i] ~= nil end) end
+    rows[#rows + 1] = visibleIf({ type = "text", label = function()
+        return L.OPT_LIST_MORE:format(#list() - slots)
+    end }, function() return #list() > slots end)
+    return rows
+end
+
+-- The language filter of the search, one tick per language.
+local function languageRow(lang)
+    local function has()
+        for _, code in ipairs(S("languages")) do if code == lang.code then return true end end
+        return false
+    end
+    return {
+        key = "languages", type = "check", label = function() return lang.label end,
+        get = has,
+        set = function(on)
+            local list = {}
+            for _, code in ipairs(S("languages")) do if code ~= lang.code then list[#list + 1] = code end end
+            if on then list[#list + 1] = lang.code end
+            Settings.Set("languages", list)
+        end,
+    }
+end
+
+-- List & Filters: rows, markers, sorting, my role, the search, memory and
+-- the ignore list.
+local function listFilterRows()
+    local rows = {
+        { type = "header", label = "OPT_LIST" },
+        num("rowHeight", "OPT_ROW_HEIGHT"),
+        num("playerRowHeight", "OPT_PLAYER_ROW_HEIGHT"),
+        check("markOpenSlot", "OPT_MARK_OPEN_SLOT"),
+        check("showPlayers", "OPT_SHOW_PLAYERS"),
+        check("sortFriendsFirst", "OPT_SORT_FRIENDS_FIRST"),
+        choice("roleOverride", "OPT_ROLE_OVERRIDE", Settings.ROLES, "ROLE_"),
+        { type = "header", label = "OPT_SEARCH" },
+        {
+            key = "category", type = "select", label = "OPT_CATEGORY",
+            choices = function()
+                local list = {}
+                for _, c in ipairs(ns.Activities.Categories()) do list[#list + 1] = { label = c.name, value = c.id } end
+                if #list == 0 then list[1] = { label = L["CATEGORY_" .. S("category")], value = S("category") } end
+                return list
+            end,
+            get = function() return S("category") end,
+            set = function(v)
+                if v == S("category") then return end
+                Settings.Set("category", v)
+                ns.Window.ResetChecked()
+            end,
+        },
+        check("levelRangeOnly", "OPT_LEVEL_RANGE_ONLY"),
+        check("filterMyRole", "OPT_FILTER_MY_ROLE"),
+        check("filterLevelFits", "OPT_FILTER_LEVEL_FITS"),
+        check("hideSeen", "OPT_HIDE_SEEN"),
+        num("minInterval", "OPT_MIN_INTERVAL", "s"),
+        { type = "header", label = "OPT_LANGUAGES" },
+        { type = "text", label = "OPT_LANGUAGES_HINT" },
+    }
+    for _, lang in ipairs(ns.Window.LANGUAGES) do rows[#rows + 1] = languageRow(lang) end
+    append(rows, {
+        { type = "header", label = "OPT_MEMORY" },
+        num("memoryMinutes", "OPT_MEMORY_MINUTES", ""),
+        { type = "header", label = "OPT_IGNORE" },
+        { type = "text", label = "OPT_IGNORE_HINT", height = 40 },
+        {
+            type = "input", label = "OPT_IGNORE_ADD", maxLetters = 64,
+            get = function() return "" end,
+            set = function(text)
+                local name = trim(text)
+                if name == "" then return end
+                ns.Memory.Ignore(name)
+                if ns.Window.IsShown() then ns.Window.Rebuild() end
+                Options.Refresh()
+            end,
+        },
+    })
+    local function ignored() return ns.Memory.IgnoreList() end
+    return append(rows, listRows(ignored, Options.LIST_SLOTS, function(i)
+        return {
+            type = "item", label = function() return ignored()[i] or "" end, button = "OPT_REMOVE",
+            onClick = function()
+                ns.Memory.Unignore(ignored()[i])
+                if ns.Window.IsShown() then ns.Window.Rebuild() end
+                Options.Refresh()
+            end,
+        }
+    end, "OPT_IGNORE_EMPTY"))
+end
+
+-- Templates: my listing's warning, the saved listings (delete), the whisper
+-- texts (edit; an emptied one is removed).
+Options.WHISPER_SLOTS = 10
+local function whisperRow(i)
+    return {
+        key = "whisperTemplates", type = "input", maxLetters = 255,
+        label = function() return L.OPT_WHISPER_N:format(i) end,
+        get = function() return S("whisperTemplates")[i] or "" end,
+        set = function(text)
+            local list = S("whisperTemplates")
+            text = trim(text)
+            if text == "" then table.remove(list, i) else list[i] = text end
+            Settings.Set("whisperTemplates", list)
+        end,
+    }
+end
+
+local function templateRows()
+    local function templates() return ns.Listing.Templates() end
+    local rows = {
+        { type = "header", label = "OPT_LISTING" },
+        num("expiryWarnMinutes", "OPT_EXPIRY_WARN", ""),
+        { type = "header", label = "OPT_TEMPLATES" },
+        { type = "text", label = "OPT_TEMPLATES_HINT", height = 40 },
+    }
+    append(rows, listRows(templates, Options.LIST_SLOTS, function(i)
+        return {
+            key = "templates", type = "item", button = "OPT_PROFILE_DELETE",
+            label = function() local t = templates()[i]; return t and t.name or "" end,   -- plain: our own saved template
+            onClick = function()
+                local t = templates()[i]
+                if t then ns.Listing.DeleteTemplate(t.name) end
+            end,
+        }
+    end, "OPT_TEMPLATES_EMPTY"))
+    append(rows, {
+        { type = "header", label = "OPT_WHISPER_TEMPLATES" },
+        { type = "text", label = "OPT_WHISPER_HINT", height = 40 },
+    })
+    for i = 1, Options.WHISPER_SLOTS do
+        rows[#rows + 1] = visibleIf(whisperRow(i), function() return S("whisperTemplates")[i] ~= nil end)
+    end
+    append(rows, {
+        visibleIf({
+            key = "whisperTemplates", type = "input", label = "OPT_WHISPER_ADD", maxLetters = 255,
+            get = function() return "" end,
+            set = function(text)
+                text = trim(text)
+                if text == "" then return end
+                local list = S("whisperTemplates")
+                list[#list + 1] = text
+                Settings.Set("whisperTemplates", list)
+            end,
+        }, function() return #S("whisperTemplates") < Options.WHISPER_SLOTS end),
+        { type = "buttons", buttons = {
+            { label = "OPT_WHISPER_DEFAULTS", width = 200, onClick = function() Settings.Set("whisperTemplates", nil) end },
+        } },
+    })
+    return rows
 end
 
 -- The export/import field; Options.shareField for the tests.
@@ -88,6 +387,11 @@ end
 
 Options.PAGES = {
     { id = "general", label = "PAGE_GENERAL", rows = generalRows },
+    { id = "window", label = "PAGE_WINDOW", rows = windowRows },
+    { id = "appearance", label = "PAGE_APPEARANCE", rows = appearanceRows },
+    { id = "text", label = "PAGE_TEXT", rows = textRows },
+    { id = "list", label = "PAGE_LIST", rows = listFilterRows },
+    { id = "templates", label = "PAGE_TEMPLATES", rows = templateRows },
     { id = "profiles", label = "PAGE_PROFILES", rows = profileRows },
 }
 
@@ -132,9 +436,26 @@ local function hintRow(page, opt)
     row.text:SetJustifyH("LEFT")
     row.text:SetWordWrap(true)
     row.text:SetText(labelText(opt.label))
-    function row:Refresh() end
+    function row:Refresh() row.text:SetText(labelText(opt.label)) end
     function row:SetEnabled() end
     return row, opt.height or HINT_ROW_H
+end
+
+-- One entry of a list: its text and a button at the right (remove, delete).
+local ITEM_BUTTON_W = 110
+local function itemRow(page, opt)
+    local row = CreateFrame("Frame", nil, page)
+    row.text = Style.Text(row, 12, "text")
+    row.text:SetPoint("LEFT", row, "LEFT", INSET, 0)
+    row.text:SetPoint("RIGHT", row, "RIGHT", -(2 * INSET + ITEM_BUTTON_W), 0)
+    row.text:SetJustifyH("LEFT")
+    row.text:SetWordWrap(false)
+    row.button = Widgets.Button(row, { text = labelText(opt.button), width = ITEM_BUTTON_W, onClick = opt.onClick })
+    row.button:SetPoint("RIGHT", row, "RIGHT", -INSET, 0)
+    function row:Refresh() row.text:SetText(labelText(opt.label)) end
+    function row:SetEnabled(on) row.button:SetEnabled(on) end
+    row:Refresh()
+    return row, BUTTON_H + 6
 end
 
 -- Several buttons side by side.
@@ -181,6 +502,8 @@ local function widgetFor(page, opt)
         return buttonsRow(page, opt)
     elseif kind == "edit" then
         return editRow(page, opt)
+    elseif kind == "item" then
+        return itemRow(page, opt)
     end
     local o = { label = labelText(opt.label), get = opt.get, set = opt.set }
     local row

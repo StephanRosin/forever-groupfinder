@@ -38,6 +38,7 @@ Rows.lua
 Side.lua
 ListingPanel.lua
 Window.lua
+Blizzard.lua
 Options\Style.lua
 Options\Widgets.lua
 Options\Window.lua

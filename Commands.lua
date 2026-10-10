@@ -16,12 +16,50 @@ function ns.ResetWindowPlace()
     ns.Print(L.MSG_RESET)
 end
 
+-- The chat line is a key press: the search counts as a click.
+local function search()
+    if ns.Window.IsShown() then ns.Window.Search() else ns.Window.Show() end
+end
+
+-- A player as typed ("Name" or "Name-Realm"); nil (with a hint) when missing.
+local function playerArg(args, usage)
+    local who = args[1]
+    if who == nil or who == "" then
+        ns.Print(usage)
+        return nil
+    end
+    return who
+end
+
+local function ignore(args)
+    local who = playerArg(args, L.MSG_IGNORE_USAGE)
+    if who == nil then return end
+    ns.Memory.Ignore(who)
+    if ns.Window.IsShown() then ns.Window.Rebuild() end
+    ns.Print(L.MSG_IGNORED, who)
+end
+
+local function unignore(args)
+    local who = playerArg(args, L.MSG_UNIGNORE_USAGE)
+    if who == nil then return end
+    if not ns.Memory.IsIgnored(who) then
+        ns.Print(L.MSG_NOT_IGNORED, who)
+        return
+    end
+    ns.Memory.Unignore(who)
+    if ns.Window.IsShown() then ns.Window.Rebuild() end
+    ns.Print(L.MSG_UNIGNORED, who)
+end
+
 local COMMANDS = {
     [""] = function() ns.Window.Toggle() end,
     options = function() ns.Options.Open() end,
     lock = function() Settings.SetLocked(true); ns.Print(L.MSG_LOCKED) end,
     unlock = function() Settings.SetLocked(false); ns.Print(L.MSG_UNLOCKED) end,
     reset = ns.ResetWindowPlace,
+    search = search,
+    ignore = ignore,
+    unignore = unignore,
 }
 
 -- The words of a command line, the command lower-cased.
