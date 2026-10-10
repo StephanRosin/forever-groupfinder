@@ -9,7 +9,7 @@ local Memory = {}
 ns.Memory = Memory
 
 -- The time source; tests replace it.
-Memory.now = time
+Memory.now = function() return time() end
 
 local function store()
     local db = ns.AccountDB()
@@ -38,21 +38,42 @@ function Memory.Key(result)
     return name .. "|" .. table.concat(ids, ",")
 end
 
+-- Younger than the limit. A timestamp in the future (the clock went back)
+-- counts as expired.
+local function fresh(at, now)
+    if type(at) ~= "number" then return false end
+    local age = now - at
+    return age >= 0 and age < ns.Settings.Get("memoryMinutes") * 60
+end
+
+-- Removes every expired seen/hidden entry.
+function Memory.Prune()
+    local m, now = store(), Memory.now()
+    for _, kind in ipairs({ "seen", "hidden" }) do
+        for key, at in pairs(m[kind]) do
+            if not fresh(at, now) then m[kind][key] = nil end
+        end
+    end
+end
+
 local function mark(kind, key)
     if type(key) ~= "string" then return end
+    Memory.Prune()
     store()[kind][key] = Memory.now()
 end
 
--- True while the entry is younger than the limit; an old one is removed.
+-- True while the entry is fresh; an old one is removed.
 local function holds(kind, key)
     if type(key) ~= "string" then return false end
     local list = store()[kind]
     local at = list[key]
     if not at then return false end
-    if Memory.now() - at < ns.Settings.Get("memoryMinutes") * 60 then return true end
+    if fresh(at, Memory.now()) then return true end
     list[key] = nil
     return false
 end
+
+ns.On("PLAYER_LOGIN", Memory.Prune)
 
 function Memory.MarkSeen(key) mark("seen", key) end
 function Memory.Hide(key) mark("hidden", key) end

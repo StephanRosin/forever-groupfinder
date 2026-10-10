@@ -109,8 +109,9 @@ function Results.Build(results, ctx)
     local filters = ctx.filters or {}
     local text = type(filters.text) == "string" and filters.text ~= "" and filters.text:lower() or nil
     local out = { groups = {}, players = {} }
+    local myRole = ctx.myRole or Results.MyRole()
     for _, r in ipairs(results or {}) do
-        local row = buildRow(r, ctx.myRole)
+        local row = buildRow(r, myRole)
         row.fit = bestFit(row.activityIDs, ctx.activityFit)
         local keep = not Memory.IsIgnored(row.leader) and not Memory.IsHidden(row.key)
         if keep and filters.myRole and row.kind == "GROUP" and not row.freeForMe then keep = false end

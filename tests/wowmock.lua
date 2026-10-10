@@ -399,6 +399,7 @@ end
 -- Clock ------------------------------------------------------------------------
 M.state.time = 1000
 function GetTime() return M.state.time end
+time = time or os.time
 
 -- C_LFGList -----------------------------------------------------------------------
 -- M.lfg is what the "server" holds; tests fill it. M.lfg.hardware is the

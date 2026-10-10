@@ -920,6 +920,26 @@ check("import leaves memory alone", (function()
 end)(), true)
 check("decoded profile drops memory", ns.Share.Decode("FGF1:ts6:memoryt}}").memory, nil)
 Mem.Unignore("Abe")
+do
+    local m = ns.AccountDB().memory
+    m.seen = {}; m.hidden = {}
+    Mem.MarkSeen("Old|1"); Mem.Hide("Old|2")
+    clock = clock + 31 * 60
+    Mem.MarkSeen("New|1")
+    check("marking prunes expired seen", m.seen["Old|1"], nil)
+    check("marking prunes expired hidden", m.hidden["Old|2"], nil)
+    check("marking keeps the new entry", m.seen["New|1"] ~= nil, true)
+    m.seen["Old|3"] = clock - 3600; m.hidden["Old|4"] = clock - 3600
+    M.Fire("PLAYER_LOGIN")
+    check("login prunes seen", m.seen["Old|3"], nil)
+    check("login prunes hidden", m.hidden["Old|4"], nil)
+    check("login keeps fresh entries", m.seen["New|1"] ~= nil, true)
+    clock = clock - 3600
+    check("future timestamp is expired (seen)", Mem.IsSeen("New|1"), false)
+    m.hidden["Fut|1"] = clock + 600
+    Mem.Prune()
+    check("future timestamp is pruned", m.hidden["Fut|1"], nil)
+end
 
 section("Results")
 local R = ns.Results
@@ -1003,9 +1023,10 @@ check("sort order", ids(sorted.groups), "5,7,4,8,3,2,6,1")
 local noFriends = R.Build({ group(1, "A", { 1 }, { age = 3 }), group(2, "B", { 1 }, { age = 1, friends = 1 }) }, ctx())
 check("friends first by default", ids(noFriends.groups), "2,1")
 Settings.Set("sortFriendsFirst", false)
-check("friends first can be off", ids(R.Build({ group(1, "A", { 1 }, { age = 3 }), group(2, "B", { 1 }, { age = 1, friends = 1 }) }, ctx()).groups), "2,1")
+check("friends first can be off (order differs)", ids(R.Build({ group(1, "A", { 1 }, { age = 1 }), group(2, "B", { 1 }, { age = 3, friends = 1 }) }, ctx()).groups), "1,2")
 check("friends off sorts by age", ids(R.Build({ group(1, "A", { 1 }, { age = 1 }), group(2, "B", { 1 }, { age = 3, friends = 1 }) }, ctx()).groups), "1,2")
 Settings.Set("sortFriendsFirst", nil)
+check("friends first back on", ids(R.Build({ group(1, "A", { 1 }, { age = 1 }), group(2, "B", { 1 }, { age = 3, friends = 1 }) }, ctx()).groups), "2,1")
 check("ties by id", ids(R.Build({ group(8, "A", { 1 }), group(3, "B", { 1 }), group(5, "C", { 1 }) }, ctx()).groups), "3,5,8")
 
 -- secret-nil fields
@@ -1016,6 +1037,16 @@ ok, res = pcall(R.Build, { holes, { id = 2 }, { id = 3, leaderName = "Z", member
 check("nil fields do not break sort and rows", ok, true)
 check("rows with holes are kept", #res.groups + #res.players, 4)
 check("nil input", pcall(R.Build, nil, ctx()), true)
+
+-- nil fit and default role
+local unknown = R.Build({ group(1, "A", { 99 }, { age = 1 }), group(2, "B", { 3 }, { age = 9 }), group(3, "C", { 1 }, { age = 5 }) }, ctx())
+check("unknown fit sorts last", ids(unknown.groups), "3,2,1")
+check("unknown fit has no fit", unknown.groups[3].fit, nil)
+check("levelFits keeps unknown activities", ids(R.Build({ group(1, "A", { 99 }), group(2, "B", { 3 }) }, ctx({ filters = { levelFits = true } })).groups), "1")
+Settings.Set("roleOverride", "DAMAGER")
+check("missing myRole defaults to MyRole", ids(R.Build({ group(1, "A", { 1 }, { healFree = 1, dpsFree = 0 }), group(2, "B", { 1 }, { healFree = 0, dpsFree = 1 }) },
+    { myLevel = 60, filters = { myRole = true }, activityFit = function() return "FITS" end }).groups), "2")
+Settings.Set("roleOverride", nil)
 
 -- my role
 check("role override", (function() Settings.Set("roleOverride", "TANK") return R.MyRole() end)(), "TANK")
