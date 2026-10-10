@@ -134,7 +134,7 @@ local EXPECTED = {
     ageFont = "Friz Quadrata", ageSize = 10, ageFlag = "SHADOW",
     playerRoleIconSize = 0, groupRoleIconSize = 16, classIconSize = 14, classColorNames = true, seenAlpha = 45,
     abbreviate = true,
-    noRoomAlpha = 45,
+    noRoomAlpha = 45, buttonHeight = 22, chipHeight = 20, buttonTextSize = 12,
 }
 local expectedCount = 0
 for key, want in pairs(EXPECTED) do
@@ -168,7 +168,7 @@ local RANGES = {
     shadowAlpha = { 0, 100 }, bgAlpha = { 0, 100 }, headerSize = { 8, 24 }, activitySize = { 8, 20 },
     nameSize = { 8, 20 }, commentSize = { 8, 18 }, smallSize = { 7, 16 },
     minimapAngle = { 0, 360 },   -- the options slider; dragging sets it too
-    playerRoleIconSize = { 0, 48 }, groupRoleIconSize = { 10, 28 }, classIconSize = { 8, 28 }, seenAlpha = { 10, 100 }, noRoomAlpha = { 10, 100 },
+    playerRoleIconSize = { 0, 48 }, groupRoleIconSize = { 10, 28 }, classIconSize = { 8, 28 }, seenAlpha = { 10, 100 }, noRoomAlpha = { 10, 100 }, buttonHeight = { 18, 32 }, chipHeight = { 14, 28 }, buttonTextSize = { 9, 18 },
     levelSize = { 8, 24 }, locationSize = { 8, 20 }, chipSize = { 7, 16 }, ageSize = { 7, 16 },
 }
 local rangeCount = 0
@@ -1960,6 +1960,11 @@ MenuUtil = menuUtil
 -- Filter chips toggle their settings.
 local chips = f.filters.chips
 check("no role chip in the filter bar", chips.filterMyRole, nil)
+check("Level fits is a check box", chips.filterLevelFits.box ~= nil and chips.filterLevelFits.text:GetText(), "Level fits")
+check("Hide seen is a check box", chips.hideSeen.box ~= nil, true)
+check("filter row order", chips.filterLevelFits._points.TOPLEFT[3] < chips.hideSeen._points.TOPLEFT[3]
+    and chips.hideSeen._points.TOPLEFT[3] < chips.language._points.TOPLEFT[3], true)
+check("text filter at the right end", f.filters.text._points.TOPRIGHT ~= nil and f.filters.text._points.TOPRIGHT[3], 0)
 local room = LP.Frame().roomOnly
 check("room check box with my roles", room:IsShown() and room.text:GetText(), "Only groups with room for me")
 check("room toggle on by default", room.on, true)
@@ -2064,12 +2069,28 @@ check("status not listed", lp.status:GetText(), "Not listed")
 check("no separate remove button", lp.remove, nil)
 check("roles shown", lp.roles.tank:IsShown(), true)
 check("my role preselected", LP.Roles().tank, true)
--- The layout of the block: title + pill + buttons, roles, "For:" + chips + comment.
+-- The block is a table: dim labels right-aligned in a column, the values beside them.
 check("status pill grey when not listed", lp.pill.kind == "NONE" and lp.status._textColor[1], ns.Controls.DIM[1])
 check("main button gold", lp.post.primary, true)
-check("title on line 1", lp.title._points.TOPLEFT[4], -3)
-check("roles label", lp.rolesLabel:GetText(), "My roles")
-check("role icons on line 2", lp.roles.tank._points.TOPLEFT[4] < -3 and lp.roles.tank:GetWidth(), 28)
+check("labels", lp.labels.STATUS:GetText() .. "," .. lp.labels.ROLES:GetText() .. "," .. lp.labels.FOR:GetText()
+    .. "," .. lp.labels.COMMENT:GetText(), "Status,Roles,For,Comment")
+check("labels right-aligned in one column", (function()
+    for _, key in ipairs({ "STATUS", "ROLES", "FOR", "COMMENT" }) do
+        local fs = lp.labels[key]
+        if fs._points.RIGHT[3] ~= lp.labelW then return key end
+    end
+    return true
+end)(), true)
+local vx = lp.labelW + 8
+check("pill in the value column", lp.pill._points.LEFT[3], vx)
+check("role icons in the value column", lp.roles.tank._points.TOPLEFT[3], vx)
+check("role icon size", lp.roles.tank:GetWidth(), 28)
+check("rows top to bottom", lp.labels.STATUS._points.RIGHT[4] > lp.labels.ROLES._points.RIGHT[4]
+    and lp.labels.ROLES._points.RIGHT[4] > lp.labels.FOR._points.RIGHT[4]
+    and lp.labels.FOR._points.RIGHT[4] > lp.labels.COMMENT._points.RIGHT[4], true)
+check("main button in the value column, under the comment", lp.post._points.TOPLEFT[3] == vx
+    and lp.post._points.TOPLEFT[4] < lp.comment._points.TOPRIGHT[4], true)
+check("main button larger", lp.post:GetHeight() > lp.comment:GetHeight(), true)
 check("role icon is the role atlas", lp.roles.tank.icon._atlas, "groupfinder-icon-role-large-tank")
 check("chosen role: full colour, gold ring", lp.roles.tank.icon._desaturated ~= true and lp.roles.tank.icon:GetAlpha() == 1
     and lp.roles.tank.ring[1]._texColor[1] == ns.Controls.GOLD[1], true)
@@ -2077,10 +2098,10 @@ check("unchosen role: grey and faint", lp.roles.healer.icon._desaturated == true
 lp.roles.healer:GetScript("OnEnter")(lp.roles.healer)
 check("role tooltip names the role", GameTooltip._lines and GameTooltip._lines[1] and GameTooltip._lines[1][1], "Healer")
 lp.roles.healer:GetScript("OnLeave")(lp.roles.healer)
-check("room check box beside the roles", lp.roomOnly._points.TOPLEFT[4], lp.roles.tank._points.TOPLEFT[4])
-check("For: label on line 3", lp.forLabel:GetText() == "For:" and lp.forLabel._points.TOPLEFT[4] < lp.roles.tank._points.TOPLEFT[4] - 27, true)
-check("chips abbreviated", lp.chips[1]:IsShown() and lp.chips[1].label:GetText(), "DM")
-check("comment button on line 3", lp.comment._points.TOPRIGHT[4], lp.chips[1]._points.TOPLEFT[4])
+check("room check box beside the roles", lp.roomOnly._points.LEFT[3] > vx, true)
+check("chips abbreviated, in the value column", lp.chips[1]:IsShown() and lp.chips[1]._points.TOPLEFT[3] == vx
+    and lp.chips[1].label:GetText(), "DM")
+check("Comment button at the value column's right end", lp.comment._points.TOPRIGHT[3], vx + (lp:GetWidth() - vx))
 click(lp.roles.healer)
 check("role toggled", LP.Roles().healer, true)
 click(lp.post)
@@ -2341,6 +2362,77 @@ check("and still the name", snapshot(), before)
 Settings.Set("nameSize", nil)
 lfg.results[41] = nil
 M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+end
+
+-- Button and chip sizes from the settings; nothing leaves its container at
+-- the smallest and the largest sizes, in every layout.
+do
+local C, Layouts = ns.Controls, ns.Layouts
+lfg.results, lfg.members, lfg.counts = {}, {}, {}
+result(1, "Grimnar", { member("Grimnar", "WARRIOR"), member("Ilvea", "MAGE") })
+result(3, "Solo", { member("Solo", "MAGE", 21, "Stormwind City", { tank = true, healer = false, dps = true }) })
+W.SetCheckedList({ 22 })
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+check("button height default", LP.Frame().comment:GetHeight(), 22)
+check("chip height default", f.filters.chips.language:GetHeight(), 20)
+check("button text size default", LP.Frame().comment.label._font[2], 12)
+local function x0(fr)
+    local pt = fr._points.TOPLEFT or fr._points.LEFT
+    return pt and pt[3]
+end
+local function insideListing()
+    local lp = LP.Frame()
+    local w = lp:GetWidth()
+    for _, fr in ipairs({ lp.post, lp.roomOnly, lp.roles.tank, lp.chips[1] }) do
+        if fr and fr:IsShown() and x0(fr) and x0(fr) + fr:GetWidth() > w + 0.5 then return false end
+    end
+    local cr = lp.comment._points.TOPRIGHT
+    return cr[3] <= w + 0.5 and cr[3] - lp.comment:GetWidth() >= lp.labelW
+end
+local function insideFilters()
+    local bar = f.filters
+    local w = bar:GetWidth()
+    for _, key in ipairs({ "filterLevelFits", "hideSeen", "language", "ignored", "hidden" }) do
+        local c = bar.chips[key]
+        if c:IsShown() then
+            local top = c._points.TOPLEFT[4]
+            local limit = top == 0 and (w - bar.text:GetWidth() - 8) or w
+            if c._points.TOPLEFT[3] + c:GetWidth() > limit + 0.5 then return key end
+        end
+    end
+    return true
+end
+Memory.Ignore("Somebody")
+for _, mode in ipairs(Layouts.ORDER) do
+    for _, sz in ipairs({ { 18, 14, 9 }, { 32, 28, 18 } }) do
+        Settings.SetMany({ layout = mode, buttonHeight = sz[1], chipHeight = sz[2], buttonTextSize = sz[3] })
+        local tag = mode .. " " .. sz[1] .. "/" .. sz[2] .. "/" .. sz[3] .. ": "
+        check(tag .. "button height applied", LP.Frame().comment:GetHeight(), sz[1])
+        check(tag .. "chip height applied", f.filters.chips.language:GetHeight(), sz[2])
+        check(tag .. "text size applied", f.filters.chips.language.label._font[2], sz[3])
+        check(tag .. "listing values inside", insideListing(), true)
+        check(tag .. "filter row inside, text box clear", insideFilters(), true)
+        check(tag .. "list below the filters", f.list._points.TOPLEFT[4] <= f.filters._points.TOPLEFT[4] - f.filters:GetHeight(), true)
+        local pr
+        for _, row in ipairs(f.pool.used) do if row.kind == "PLAYER" then pr = row end end
+        if pr then check(tag .. "row invite fits the row", pr.invite:GetHeight() <= S("playerRowHeight") - 8, true) end
+        for _, row in ipairs(f.pool.used) do
+            if row.kind == "GROUP" then click(row); break end
+        end
+        local host = mode == "DETAILS" and f.detail or D.Frame()
+        check(tag .. "a group is open", D.IsShown(), true)
+        if host and D.IsShown() then
+            for i, e in ipairs(D.ButtonExtents(host)) do
+                check(tag .. "detail button " .. i .. " inside", e.left >= 0 and e.right <= e.width, true)
+            end
+            check(tag .. "detail buttons take the set height", host.whisper:GetHeight(), sz[1])
+        end
+        D.Close()
+    end
+end
+Memory.Unignore("Somebody")
+Settings.ResetProfile()
+check("sizes back to the defaults", LP.Frame().comment:GetHeight(), 22)
 end
 
 -- Undo for hide / ignore; the counters lead to the lists in the options.

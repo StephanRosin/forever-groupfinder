@@ -11,7 +11,6 @@ local Undo = {}
 ns.Undo = Undo
 
 Undo.SECONDS = 8
-local BAR_H = 22
 
 local bar
 local pending   -- { kind = "IGNORE" | "HIDE", value = name | key, until = GetTime() + SECONDS }
@@ -26,6 +25,7 @@ local function show()
         return
     end
     bar.text:SetText(pending.kind == "IGNORE" and L.UNDO_IGNORED:format(pending.value) or L.UNDO_HIDDEN)
+    bar:SetHeight(Controls.ButtonHeight() + 4)
     bar.button:SetLabel(L.UNDO)
     bar.button:SetWidth(math.max(56, math.floor(bar.button.label:GetStringWidth() + 18)))
     bar:Show()
@@ -77,7 +77,7 @@ end
 -- Over the foot of the list (anchored to it, so every layout has it).
 function Undo.Create(list)
     bar = CreateFrame("Frame", nil, list)
-    bar:SetHeight(BAR_H)
+    bar:SetHeight(Controls.ButtonHeight() + 4)
     bar:SetPoint("BOTTOMLEFT", list, "BOTTOMLEFT", 0, 0)
     bar:SetPoint("BOTTOMRIGHT", list, "BOTTOMRIGHT", 0, 0)
     bar:SetFrameLevel(list:GetFrameLevel() + 20)
@@ -86,7 +86,7 @@ function Undo.Create(list)
     bar.bg:SetAllPoints()
     bar.bg:SetColorTexture(0.1, 0.08, 0.03, 0.95)
     bar.edges = Controls.Outline(bar, Controls.EDGE)
-    bar.button = Controls.Button(bar, { text = "", height = 16, onClick = function() Undo.Run() end,
+    bar.button = Controls.Button(bar, { text = "", size = "chip", onClick = function() Undo.Run() end,
         tip = function() return L.TIP_UNDO end })
     bar.button:SetPoint("RIGHT", bar, "RIGHT", -4, 0)
     bar.text = Controls.Text(bar, "comment")

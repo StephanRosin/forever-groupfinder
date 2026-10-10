@@ -82,6 +82,9 @@ Settings.DEFAULTS = {
     bgAlpha = 85,           -- percent
     bgTexture = "Blizzard Dialog Background Gold",
     headerLine = true,
+    buttonHeight = 22,      -- every button of the window, panel and popup
+    chipHeight = 20,        -- chips (filters, activities, players)
+    buttonTextSize = 12,    -- the text on buttons, chips and check boxes
 
     -- Text styles. Flags: "" none, OUTLINE, THICKOUTLINE, SHADOW.
     headerFont = "Friz Quadrata",
@@ -154,6 +157,9 @@ Settings.RANGES = {
     shadowSize = { 1, 20 },
     shadowAlpha = { 0, 100 },
     bgAlpha = { 0, 100 },
+    buttonHeight = { 18, 32 },
+    chipHeight = { 14, 28 },
+    buttonTextSize = { 9, 18 },
     headerSize = { 8, 24 },
     activitySize = { 8, 20 },
     nameSize = { 8, 20 },

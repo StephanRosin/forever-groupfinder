@@ -30,10 +30,12 @@ function Controls.Text(parent, styleName, layer)
     return fs
 end
 
--- color overrides the style's colour (kept until the next call).
+-- color overrides the style's colour (kept until the next call); a font
+-- string with sizeKey takes its size from that setting (button text).
 function Controls.Restyle(fs, color)
     local style = Settings.TextStyle(fs.styleName)
     if color then style.color = color end
+    if fs.sizeKey then style.size = Settings.Get(fs.sizeKey) end
     Media.ApplyText(fs, style)
 end
 
@@ -86,25 +88,62 @@ local function paintButton(b)
     b:SetAlpha(b.off and Controls.DISABLED_ALPHA or 1)
 end
 
--- opts = { text, width, height, icon, onClick(self, mouse), tip (string or function),
+-- Sizes: every button and chip takes its height and text size from the
+-- settings (buttonHeight, chipHeight, buttonTextSize; Appearance page) and
+-- follows them live (Controls.ApplySizes). size = "button" (default),
+-- "chip", "row" (in a list row: no taller than the row allows) or "fixed"
+-- (opts.height).
+local sized = setmetatable({}, { __mode = "k" })
+
+function Controls.ButtonHeight() return Settings.Get("buttonHeight") end
+function Controls.ChipHeight() return Settings.Get("chipHeight") end
+
+local function heightOf(b)
+    if b.size == "fixed" then return b.fixedHeight end
+    if b.size == "chip" then return Controls.ChipHeight() end
+    if b.size == "row" then return math.min(Controls.ButtonHeight(), Settings.Get("playerRowHeight") - 8) end
+    return Controls.ButtonHeight()
+end
+
+-- Height and text size from the settings; the label keeps its colour.
+function Controls.Resize(b)
+    b:SetHeight(heightOf(b))
+    Controls.Restyle(b.label, b.labelColor)
+    local icon = math.max(8, math.floor(Settings.Get("buttonTextSize") - 2))
+    if b.icon then b.icon:SetSize(icon, icon) end
+    if b.Fit and b.fitted then b:Fit() end
+end
+
+function Controls.ApplySizes()
+    for b in pairs(sized) do Controls.Resize(b) end
+end
+
+-- opts = { text, width, height, size, icon, onClick(self, mouse), tip (string or function),
 --         primary (the block's main action: a gold face) }.
 -- SetOff(true, tip) greys the button out: clicks do nothing, the tooltip
 -- still explains why (a disabled client button would not show it).
 function Controls.Button(parent, opts)
     local b = CreateFrame("Button", nil, parent)
-    b:SetSize(opts.width or 60, opts.height or 18)
+    b.size = opts.size or (opts.height and "fixed") or "button"
+    b.fixedHeight = opts.height
+    b:SetSize(opts.width or 60, heightOf(b))
+    sized[b] = true
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     b.bg = b:CreateTexture(nil, "BACKGROUND")
     b.bg:SetAllPoints()
     b.bg:SetTexture(WHITE)
     b.edges = Controls.Outline(b, Controls.EDGE)
-    b.label = Controls.Text(b, "small")
+    b.label = b:CreateFontString(nil, "OVERLAY")
+    b.label.styleName, b.label.sizeKey = "small", "buttonTextSize"
     b.label:SetJustifyH("CENTER")
+    b.label:SetWordWrap(false)
     b.label:SetPoint("CENTER", opts.icon and 6 or 0, 0)
-    Controls.Color(b.label, Controls.GOLD)
+    b.labelColor = Controls.GOLD
+    Controls.Restyle(b.label, b.labelColor)
     if opts.icon then
         b.icon = b:CreateTexture(nil, "ARTWORK")
-        b.icon:SetSize(10, 10)
+        local icon = math.max(8, math.floor(Settings.Get("buttonTextSize") - 2))
+        b.icon:SetSize(icon, icon)
         b.icon:SetTexture(Media.Icon(opts.icon))
         b.icon:SetVertexColor(Controls.GOLD[1], Controls.GOLD[2], Controls.GOLD[3])
     end
@@ -122,7 +161,8 @@ function Controls.Button(parent, opts)
     end
     function b.SetOn(self, on)
         self.on = on and true or false
-        Controls.Color(self.label, on and Controls.GOLD or Controls.TEXT)
+        self.labelColor = on and Controls.GOLD or Controls.TEXT
+        Controls.Color(self.label, self.labelColor)
         paintButton(self)
     end
     b:SetScript("OnClick", function(self, mouse)
@@ -148,10 +188,12 @@ end
 
 -- A chip: a small toggle with a gold edge when on. Width follows the text.
 function Controls.Chip(parent, opts)
-    local c = Controls.Button(parent, { text = opts.text, height = opts.height or 16, onClick = opts.onClick,
+    local c = Controls.Button(parent, { text = opts.text, size = opts.size or "chip", onClick = opts.onClick,
         tip = opts.tip, icon = opts.icon })
     function c.Fit(self)
-        self:SetWidth(math.floor(self.label:GetStringWidth() + (self.icon and 26 or 14) + 0.5))
+        self.fitted = true
+        local icon = self.icon and (self.icon:GetWidth() + 16) or 14
+        self:SetWidth(math.floor(self.label:GetStringWidth() + icon + 0.5))
         return self:GetWidth()
     end
     c:SetOn(false)
@@ -181,6 +223,41 @@ function Controls.CheckMark(parent, size)
     function box.GetChecked(self) return self.checked end
     box:SetChecked(false)
     return box
+end
+
+-- A check box with its label; the whole line is the click target.
+-- opts = { text, onClick, tip }. SetChecked / .on; Fit() sizes it.
+function Controls.CheckLabel(parent, opts)
+    local b = CreateFrame("Button", nil, parent)
+    b:RegisterForClicks("LeftButtonUp")
+    b.box = Controls.CheckMark(b, 11)
+    b.box:SetPoint("LEFT", 0, 0)
+    b.text = b:CreateFontString(nil, "OVERLAY")
+    b.text.styleName, b.text.sizeKey = "small", "buttonTextSize"
+    b.text:SetWordWrap(false)
+    b.text:SetPoint("LEFT", b.box, "RIGHT", 4, 0)
+    Controls.Restyle(b.text, Controls.TEXT)
+    b.text:SetText(opts.text or "")
+    b.tip = opts.tip
+    function b.SetChecked(self, on)
+        self.on = on and true or false
+        self.box:SetChecked(self.on)
+    end
+    function b.SetLabel(self, text) self.text:SetText(text or "") end
+    function b.Fit(self)
+        Controls.Restyle(self.text, Controls.TEXT)
+        self:SetSize(math.floor(11 + 4 + self.text:GetStringWidth() + 2 + 0.5), Controls.ChipHeight())
+        return self:GetWidth()
+    end
+    b:SetScript("OnClick", function(self, mouse) if opts.onClick then opts.onClick(self, mouse) end end)
+    b:SetScript("OnEnter", function(self)
+        local tip = self.tip
+        if type(tip) == "function" then tip = tip(self) end
+        Controls.Tooltip(self, tip)
+    end)
+    b:SetScript("OnLeave", hideTooltip)
+    b:Fit()
+    return b
 end
 
 -- Edit boxes -------------------------------------------------------------------------

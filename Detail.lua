@@ -16,7 +16,8 @@ local Detail = {}
 ns.Detail = Detail
 
 local NAME = "ForeverGroupFinderDetail"
-local WIDTH, BUTTON_H = 270, 18
+local WIDTH = 270
+local function buttonH() return Controls.ButtonHeight() end
 local HEADER_H = ns.Header.HEIGHT
 local TITLE_H = 22          -- the embedded host's title line
 local PAD, GAP = 8, 4
@@ -209,13 +210,14 @@ local function layoutButtons(host, width)
             b.label:SetWidth(bw - (b.icon and 24 or 8))
             b.layoutX = PAD + (col - 1) * (bw + GAP)
             b:ClearAllPoints()
-            b:SetPoint("BOTTOMLEFT", host, "BOTTOMLEFT", b.layoutX, PAD + (2 - line) * (BUTTON_H + GAP))
+            b:SetPoint("BOTTOMLEFT", host, "BOTTOMLEFT", b.layoutX, PAD + (2 - line) * (buttonH() + GAP))
         end
     end
+    host.body:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -PAD, PAD + 2 * buttonH() + 2 * GAP)
 end
 
 local function button(host, labelKey, tipKey, onClick, icon)
-    local b = Controls.Button(host, { text = L[labelKey], height = BUTTON_H, icon = icon, onClick = onClick,
+    local b = Controls.Button(host, { text = L[labelKey], icon = icon, onClick = onClick,
         tip = function() return L[tipKey] end })
     b.labelKey = labelKey
     host.buttons[#host.buttons + 1] = b
@@ -226,7 +228,7 @@ end
 local function buildContent(host, top)
     host.body = Controls.Scroll(host)
     host.body:SetPoint("TOPLEFT", top, "BOTTOMLEFT", PAD, -PAD)
-    host.body:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -PAD, PAD + 2 * BUTTON_H + 2 * GAP)
+    host.body:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -PAD, PAD + 2 * buttonH() + 2 * GAP)
     host.texts, host.members, host.buttons = {}, {}, {}
     host.whisper = button(host, "DETAIL_WHISPER", "TIP_DETAIL_WHISPER", function() Detail.Whisper() end)
     host.template = button(host, "DETAIL_TEMPLATE", "TIP_DETAIL_TEMPLATE", function(self)
@@ -271,7 +273,7 @@ function Detail.Layout(h)
     ns.Window.ApplyLook(p, WIDTH, height)
     Detail.Dock()
     layoutButtons(p, WIDTH)
-    p.body.viewHeight = math.max(0, height - HEADER_H - 2 * PAD - 2 * BUTTON_H - 2 * GAP)
+    p.body.viewHeight = math.max(0, height - HEADER_H - 2 * PAD - 2 * buttonH() - 2 * GAP)
 end
 
 -- The embedded host's size (Layouts.lua anchors it).
@@ -279,7 +281,7 @@ function Detail.LayoutEmbedded(w, h)
     if not e then return end
     e:SetSize(w, h)
     layoutButtons(e, w)
-    e.body.viewHeight = math.max(0, h - TITLE_H - 2 * PAD - 2 * BUTTON_H - 2 * GAP)
+    e.body.viewHeight = math.max(0, h - TITLE_H - 2 * PAD - 2 * buttonH() - 2 * GAP)
     if current and e:IsShown() then
         updateButtons(e)
         render(e)
@@ -393,7 +395,7 @@ function Detail.CreateEmbedded(parent)
     buildContent(e, h)
     e.body:ClearAllPoints()
     e.body:SetPoint("TOPLEFT", h, "BOTTOMLEFT", 0, -GAP)
-    e.body:SetPoint("BOTTOMRIGHT", e, "BOTTOMRIGHT", -PAD, PAD + 2 * BUTTON_H + 2 * GAP)
+    e.body:SetPoint("BOTTOMRIGHT", e, "BOTTOMRIGHT", -PAD, PAD + 2 * buttonH() + 2 * GAP)
     e:Hide()
     return e
 end

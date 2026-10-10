@@ -21,8 +21,6 @@ ns.Window = Window
 local NAME = "ForeverGroupFinderWindow"
 local HEADER_H = ns.Header.HEIGHT
 local PAD = 8
-local FILTER_H = 18
-Window.FILTER_H = FILTER_H
 local TICK = 1           -- seconds between two clock updates (ages, remaining time)
 local LANGUAGES = {      -- the language filter, each in its own name
     { code = "enUS", label = "English" }, { code = "deDE", label = "Deutsch" },
@@ -152,8 +150,7 @@ end
 function Window.Rebuild()
     built = Results.Build(results, context(true))
     Window.RenderList()
-    ns.Column.Refresh()   -- the leader's fitting players come from the list
-    if f then Window.LayoutFilters() end   -- the Ignored / Hidden counters
+    ns.Column.Refresh()   -- arranges again: the leader line and the counters may change
 end
 
 local function onResults()
@@ -306,46 +303,53 @@ local function openLanguageMenu(owner)
     end)
 end
 
+-- The filter row: [x] Level fits  [x] Hide seen  Language  Ignored (n)
+-- Hidden (n) ... and the text filter at the right end. Items that do not
+-- fit wrap to another line. Returns the row's height.
+local TEXT_W = 110
 function Window.LayoutFilters()
     local bar = f.filters
     local chips = bar.chips
+    local chipH = Controls.ChipHeight()
+    local width = bar:GetWidth()
     chips.filterLevelFits:SetLabel(L.FILTER_LEVEL_FITS)
     chips.hideSeen:SetLabel(L.FILTER_HIDE_SEEN)
+    for _, key in ipairs(FILTER_KEYS) do chips[key]:SetChecked(S(key)) end
     local n = #S("languages")
     chips.language:SetLabel(n > 0 and L.FILTER_LANGUAGE_N:format(n) or L.FILTER_LANGUAGE)
-    local x = 0
-    local order = { chips.filterLevelFits, bar.text, chips.hideSeen, chips.language }
-    for _, c in ipairs(order) do
-        c:ClearAllPoints()
-        c:SetPoint("LEFT", bar, "LEFT", x, 0)
-        local w = c == bar.text and 110 or c:Fit()
-        x = x + w + 4
-    end
-    for _, key in ipairs(FILTER_KEYS) do chips[key]:SetOn(S(key)) end
     chips.language:SetOn(n > 0)
-    -- The counters, while there are any and while they fit.
-    local width = bar:GetWidth()
+    local items = { chips.filterLevelFits, chips.hideSeen, chips.language }
     for _, entry in ipairs({ { chips.ignored, #ns.Memory.IgnoreList(), L.CHIP_IGNORED },
         { chips.hidden, #ns.Memory.HiddenList(), L.CHIP_HIDDEN } }) do
         local c, count = entry[1], entry[2]
         c:SetLabel(entry[3]:format(count))
-        local w = c:Fit()
-        local show = count > 0 and x + w <= width
-        c:SetShown(show)
-        if show then
-            c:ClearAllPoints()
-            c:SetPoint("LEFT", bar, "LEFT", x, 0)
-            x = x + w + 4
-        end
+        c:SetShown(count > 0)
+        if count > 0 then items[#items + 1] = c end
     end
+    bar.text:SetSize(TEXT_W, chipH)
+    bar.text.hint:SetText(L.FILTER_TEXT)
+    bar.text:ClearAllPoints()
+    bar.text:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, 0)
+    local x, line = 0, 0
+    for _, c in ipairs(items) do
+        local w = c:Fit()
+        local limit = line == 0 and (width - TEXT_W - 8) or width
+        if x > 0 and x + w > limit then x, line = 0, line + 1 end
+        c:ClearAllPoints()
+        c:SetPoint("TOPLEFT", bar, "TOPLEFT", x, -line * (chipH + 4))
+        c:Show()
+        x = x + w + 6
+    end
+    local h = (line + 1) * (chipH + 4) - 4
+    bar:SetHeight(h)
+    return h
 end
 
 local function createFilters(parent)
     local bar = CreateFrame("Frame", nil, parent)
-    bar:SetHeight(FILTER_H)
     bar.chips = {}
     for _, key in ipairs(FILTER_KEYS) do
-        bar.chips[key] = Controls.Chip(bar, { text = "", onClick = function() Window.ToggleFilter(key) end,
+        bar.chips[key] = Controls.CheckLabel(bar, { onClick = function() Window.ToggleFilter(key) end,
             tip = function() return L["TIP_" .. key:upper()] end })
     end
     bar.chips.language = Controls.Chip(bar, { text = "", icon = "ChevronDown",
@@ -357,8 +361,6 @@ local function createFilters(parent)
     bar.chips.hidden = Controls.Chip(bar, { text = "", onClick = function() ns.Options.Open("list", "OPT_HIDDEN") end,
         tip = function() return L.TIP_CHIP_HIDDEN end })
     bar.text = Controls.EditBox(bar, L.FILTER_TEXT, 40)
-    bar.text:SetWidth(110)
-    bar.text:SetHeight(16)
     bar.text:HookScript("OnTextChanged", function(self) Window.SetTextFilter(self:GetText()) end)
     bar.text:SetScript("OnEnterPressed", function(self)
         self:ClearFocus()
@@ -468,10 +470,10 @@ end
 
 local function layout(width, height)
     f.layoutWidth, f.layoutHeight = width, height
+    Controls.ApplySizes()   -- button / chip heights and text size from the settings
     f:SetSize(width, height)
     Controls.Restyle(f.header.title)
     f.header.title:SetText(L.WINDOW_TITLE)
-    f.filters.text.hint:SetText(L.FILTER_TEXT)
     for _, grip in pairs(f.grips) do grip:SetShown(not S("locked")) end
     Window.ApplyLook(f, width, height)
     resizeSpec.widthRange, resizeSpec.heightRange = Layouts.Ranges()

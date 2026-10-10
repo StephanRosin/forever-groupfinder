@@ -480,7 +480,7 @@ local function newPlayer(parent)
     row.chips = {}
     row.more = Controls.Text(row, "chip")
     row.comment = Controls.Text(row, "comment")
-    row.invite = Controls.Button(row, { text = L.INVITE, width = INVITE_W, height = 16,
+    row.invite = Controls.Button(row, { text = L.INVITE, width = INVITE_W, size = "row",
         onClick = function(self) if self.leader then ns.Finder.Invite(self.leader) end end })
     return row
 end

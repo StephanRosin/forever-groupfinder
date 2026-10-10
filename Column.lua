@@ -9,7 +9,8 @@ local L, Controls, Rows = ns.L, ns.Controls, ns.Rows
 local Column = {}
 ns.Column = Column
 
-local LINE_H, ICON, GAP = 20, 14, 4
+local ICON, GAP = 14, 4
+local function lineH() return Controls.ChipHeight() + 2 end
 local MORE_W = 28
 local ROLE_KEY = { TANK = "tank", HEALER = "healer", DAMAGER = "dps" }
 
@@ -51,7 +52,7 @@ end
 local function chip(i)
     local b = c.chips[i]
     if b then return b end
-    b = Controls.Button(c, { text = "", height = LINE_H - 2,
+    b = Controls.Button(c, { text = "", size = "chip",
         onClick = function(self) if self.row then Column.Invite(self.row) end end,
         tip = function(self) return self.row and L.TIP_COLUMN_INVITE:format(self.row.leader) or nil end })
     b.role = b:CreateTexture(nil, "ARTWORK")
@@ -96,7 +97,8 @@ function Column.Layout(width)
     c.more:ClearAllPoints()
     c.more:SetPoint("LEFT", c, "LEFT", x, 0)
     c:Show()
-    return LINE_H
+    c:SetHeight(lineH())
+    return lineH()
 end
 
 -- Called when the list or my group changed (Window.Rebuild): the line may
@@ -107,7 +109,7 @@ end
 
 function Column.Create(parent)
     c = CreateFrame("Frame", nil, parent)
-    c:SetHeight(LINE_H)
+    c:SetHeight(lineH())
     c.chips = {}
     c.title = Controls.Text(c, "small")
     Controls.Restyle(c.title, Controls.GOLD)

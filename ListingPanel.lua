@@ -2,29 +2,25 @@ local ADDON, ns = ...
 local L, Settings, Controls, Activities, Listing = ns.L, ns.Settings, ns.Controls, ns.Activities, ns.Listing
 local S = Settings.Get
 
--- "My listing" (Layouts.lua places it above the filters), three lines:
---   1. the title, a status pill (Not listed / Listed · 27 min / Changed –
---      click Update), Template and the one gold Post / Update / Remove button;
---   2. "My roles": a large role icon per role my class can play (ns.Roles),
---      and the "Only groups with room for me" check box;
---   3. "For:" with the ticked activities as read-only chips (abbreviated),
---      the comment (read-only; "Comment..." opens Blizzard's listing tab for
---      players with an authenticator).
--- Below: the expiry warning with "Extend", the leader line ("Missing: ...")
--- and the copy box for a template comment the client would not let us
--- prefill.
+-- "My listing" (Layouts.lua places it above the filters), as a table of
+-- dim labels and values: Status (a pill: Not listed / Listed · 27 min /
+-- Changed – click Update), Roles (a large icon per role my class can play,
+-- ns.Roles, and the "Only groups with room for me" check box), For (the
+-- ticked activities as read-only chips), Comment (read-only; "Comment..."
+-- opens Blizzard's listing tab for players with an authenticator), and the
+-- one gold Post / Update / Remove button in the value column. Below: the
+-- expiry warning with "Extend" and the leader line ("Missing: ...").
 --
--- Posting needs a click: Post, Extend, Remove and the template entries run
--- from OnClick handlers / menu clicks only.
+-- Posting needs a click: Post, Extend and Remove run from OnClick
+-- handlers only.
 local Panel = {}
 ns.ListingPanel = Panel
 
-local ROW_H, GAP = 18, 4
+local GAP = 4
 local PILL_H, PILL_PAD = 16, 6   -- the status pill
 local ROLE_SIZE = 28              -- a role icon toggle
-local CHECK = 11
+local LABEL_MIN, LABEL_MAX, COL_GAP = 44, 96, 8   -- the label column
 local ROLE_ATLAS = { tank = "TANK", healer = "HEALER", dps = "DAMAGER" }
-local MIN_COMMENT_W = 60  -- less room than this: the comment wraps to its own line
 local BUTTON_GAP = 4
 local ROLE_KEYS = { "tank", "healer", "dps" }
 local ROLE_LABEL = { tank = "ROLE_TANK", healer = "ROLE_HEALER", dps = "ROLE_DAMAGER" }
@@ -199,7 +195,6 @@ function Panel.Refresh()
     if not p then return end
     local state = Listing.State()
     if not state.active then warning = false end
-    p.title:SetText(L.MY_LISTING)
     local ids = ns.Window.CheckedList()
     local mode = not state.active and "POST" or (Panel.Changed() and "UPDATE" or "REMOVE")
     p.post.mode = mode
@@ -207,11 +202,9 @@ function Panel.Refresh()
     p.post:SetOff(mode == "POST" and #ids == 0, L.TIP_POST_NEEDS_ACTIVITY)
     p.post.tip = L["TIP_" .. mode]
     paintPill(pillState(state, mode))
-    p.rolesLabel:SetText(L.MY_ROLES)
-    p.forLabel:SetText(L.LISTING_FOR)
-    p.roomOnly.text:SetText(L.FILTER_ROOM_FOR_ME)
-    p.roomOnly.on = S("filterMyRole")
-    p.roomOnly.box:SetChecked(p.roomOnly.on)
+    for key, fs in pairs(p.labels) do fs:SetText(L["LISTING_LABEL_" .. key]) end
+    p.roomOnly:SetLabel(L.FILTER_ROOM_FOR_ME)
+    p.roomOnly:SetChecked(S("filterMyRole"))
     p.comment:SetLabel(L.COMMENT_BUTTON)
     p.comment:SetOff(not Listing.CanComment(), L.TIP_COMMENT_NEEDS_AUTH)
     p.extend:SetLabel(L.EXTEND)
@@ -233,115 +226,124 @@ function Panel.Refresh()
     p.leader:SetText(Panel.LeaderText() or "")
 end
 
--- Places everything for width; returns the panel's height.
+-- A table: dim labels right-aligned in a fixed column, the values beside
+-- them; the main button sits in the value column under the comment.
+--   Status   [pill]
+--   Roles    [role icons] [x] Only groups with room for me
+--   For      [activity chips] (or the hint)
+--   Comment  comment text            [Comment...]
+--            [ Post / Update / Remove ]
+-- Values that do not fit wrap inside the value column. Returns the height.
+local LABEL_ORDER = { "STATUS", "ROLES", "FOR", "COMMENT" }
+
+local function label(key, y, h)
+    local fs = p.labels[key]
+    fs:ClearAllPoints()
+    fs:SetPoint("RIGHT", p, "TOPLEFT", p.labelW, -y - h / 2)
+end
+
 function Panel.Layout(width)
     if not p then return 0 end
     Panel.Refresh()
+    local bh, ch = Controls.ButtonHeight(), Controls.ChipHeight()
+    local labelW = 0
+    for _, key in ipairs(LABEL_ORDER) do
+        local fs = p.labels[key]
+        Controls.Restyle(fs, Controls.DIM)
+        labelW = math.max(labelW, fs:GetStringWidth())
+    end
+    p.labelW = math.floor(math.min(LABEL_MAX, math.max(LABEL_MIN, labelW)) + 0.5)
+    local vx = p.labelW + COL_GAP          -- the value column's left edge
+    local vw = math.max(60, width - vx)    -- and its width
     local y = 0
-    -- Line 1: title and status pill; Template and the main button at the right.
-    local x = width
-    for _, b in ipairs({ p.post }) do
-        b:SetWidth(math.max(64, math.floor(b.label:GetStringWidth() + (b.icon and 30 or 22))))
-        b:ClearAllPoints()
-        b:SetPoint("TOPRIGHT", p, "TOPLEFT", x, -y)
-        x = x - b:GetWidth() - BUTTON_GAP
-    end
-    p.title:ClearAllPoints()
-    p.title:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -y - 3)
-    local pillBelow = p.title:GetStringWidth() + 8 + p.pill:GetWidth() + 8 > x
+    -- Status.
+    local h = math.max(PILL_H, ch)
+    label("STATUS", y, h)
     p.pill:ClearAllPoints()
-    if pillBelow then
-        -- A narrow panel puts the pill under the title.
-        p.pill:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -y - ROW_H - 2)
-        y = y + PILL_H + 2
-    else
-        p.pill:SetPoint("LEFT", p.title, "RIGHT", 8, 0)
-    end
-    y = y + ROW_H + GAP
-    -- Line 2: "My roles", a large icon per role my class can play, then the
-    -- "only groups with room for me" check box.
-    p.rolesLabel:ClearAllPoints()
-    p.rolesLabel:SetPoint("LEFT", p, "TOPLEFT", 0, -y - ROLE_SIZE / 2)
-    local rx = p.rolesLabel:GetStringWidth() + 6
+    p.pill:SetPoint("LEFT", p, "TOPLEFT", vx, -y - h / 2)
+    y = y + h + GAP
+    -- Roles: the icons my class can play, then the check box (next line when
+    -- it does not fit).
+    local roleSize = math.max(ROLE_SIZE, bh)
+    label("ROLES", y, roleSize)
+    local rx = 0
     local allowed = ns.Roles.Allowed()
     for _, k in ipairs(ROLE_KEYS) do
         local b = p.roles[k]
         b:SetShown(allowed[k])
         if allowed[k] then
+            b:SetSize(roleSize, roleSize)
             b:ClearAllPoints()
-            b:SetPoint("TOPLEFT", p, "TOPLEFT", rx, -y)
-            rx = rx + ROLE_SIZE + BUTTON_GAP
+            b:SetPoint("TOPLEFT", p, "TOPLEFT", vx + rx, -y)
+            rx = rx + roleSize + BUTTON_GAP
         end
     end
-    local roomW = math.floor(CHECK + 4 + p.roomOnly.text:GetStringWidth() + 0.5)
-    p.roomOnly:SetSize(roomW, ROLE_SIZE)
+    local roomW = p.roomOnly:Fit()
     p.roomOnly:ClearAllPoints()
-    if rx + 8 + roomW > width then
-        y = y + ROLE_SIZE + GAP
-        p.roomOnly:SetSize(roomW, ROW_H)
-        p.roomOnly:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -y)
-        y = y + ROW_H + GAP
+    if rx + 8 + roomW > vw then
+        y = y + roleSize + GAP
+        p.roomOnly:SetPoint("TOPLEFT", p, "TOPLEFT", vx, -y)
+        y = y + ch + GAP
     else
-        p.roomOnly:SetPoint("TOPLEFT", p, "TOPLEFT", rx + 8, -y)
-        y = y + ROLE_SIZE + GAP
+        p.roomOnly:SetPoint("LEFT", p, "TOPLEFT", vx + rx + 8, -y - roleSize / 2)
+        y = y + roleSize + GAP
     end
-    -- Line 3: "For:" and the ticked activities (read-only), then the
-    -- comment and "Comment..." at the right (a line of its own when narrow).
-    p.forLabel:ClearAllPoints()
-    p.forLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -y - 3)
-    local cx0 = p.forLabel:GetStringWidth() + 6
-    p.comment:SetWidth(math.max(70, math.floor(p.comment.label:GetStringWidth() + 18)))
+    -- For: the ticked activities, wrapping inside the value column.
+    label("FOR", y, ch)
     local ids = ns.Window.CheckedList()
-    local chipRoom = width - cx0 - p.comment:GetWidth() - MIN_COMMENT_W - 16
-    local wrapComment = chipRoom < 80
-    if wrapComment then chipRoom = width - cx0 end
-    local cx = cx0
+    local cx, lines = 0, 0
     for i, id in ipairs(ids) do
         local c = chip(i)
         c.activityID = id
         c:SetLabel(ns.Abbrev.Chip(id))
-        local w = c:Fit()
-        if cx + w > cx0 + chipRoom and i > 1 then
-            c:Hide()
-        else
-            c:ClearAllPoints()
-            c:SetPoint("TOPLEFT", p, "TOPLEFT", cx, -y)
-            c:Show()
-            cx = cx + w + BUTTON_GAP
-        end
+        local w = math.min(c:Fit(), vw)
+        c:SetWidth(w)
+        if cx > 0 and cx + w > vw then cx, lines = 0, lines + 1 end
+        c:ClearAllPoints()
+        c:SetPoint("TOPLEFT", p, "TOPLEFT", vx + cx, -y - lines * (ch + 2))
+        c:Show()
+        cx = cx + w + BUTTON_GAP
     end
     for i = #ids + 1, #p.chips do p.chips[i]:Hide() end
     p.hint:ClearAllPoints()
-    p.hint:SetPoint("TOPLEFT", p, "TOPLEFT", cx0, -y - 3)
+    p.hint:SetPoint("LEFT", p, "TOPLEFT", vx, -y - ch / 2)
+    p.hint:SetWidth(vw)
     p.hint:SetShown(#ids == 0)
-    if #ids == 0 then cx = cx0 + p.hint:GetStringWidth() + 8 end
-    if wrapComment then
-        y = y + ROW_H + GAP
-        cx = 0
-    end
+    y = y + (lines + 1) * (ch + 2) - 2 + GAP
+    -- Comment: the text, "Comment..." at the value column's right end.
+    h = math.max(bh, ch)
+    label("COMMENT", y, h)
+    p.comment:SetWidth(math.min(vw, math.max(70, math.floor(p.comment.label:GetStringWidth() + 18))))
     p.comment:ClearAllPoints()
-    p.comment:SetPoint("TOPRIGHT", p, "TOPLEFT", width, -y)
+    p.comment:SetPoint("TOPRIGHT", p, "TOPLEFT", vx + vw, -y)
     p.commentText:ClearAllPoints()
-    p.commentText:SetPoint("TOPLEFT", p, "TOPLEFT", cx + 4, -y - 3)
-    p.commentText:SetWidth(math.max(20, width - cx - 4 - p.comment:GetWidth() - 8))
-    y = y + ROW_H + GAP
+    p.commentText:SetPoint("LEFT", p, "TOPLEFT", vx, -y - h / 2)
+    p.commentText:SetWidth(math.max(10, vw - p.comment:GetWidth() - 8))
+    y = y + h + GAP
+    -- The main button, in the value column, larger and gold.
+    local ph = bh + 4
+    p.post:SetHeight(ph)
+    p.post:SetWidth(math.min(vw, math.max(110, math.floor(p.post.label:GetStringWidth() + 40))))
+    p.post:ClearAllPoints()
+    p.post:SetPoint("TOPLEFT", p, "TOPLEFT", vx, -y)
+    y = y + ph + GAP
     -- Expiry warning with "Extend".
     p.warningText:SetShown(warning)
     p.extend:SetShown(warning)
     if warning then
         p.warningText:ClearAllPoints()
-        p.warningText:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -y - 3)
+        p.warningText:SetPoint("LEFT", p, "TOPLEFT", vx, -y - bh / 2)
         p.extend:SetWidth(math.max(56, math.floor(p.extend.label:GetStringWidth() + 18)))
         p.extend:ClearAllPoints()
         p.extend:SetPoint("LEFT", p.warningText, "RIGHT", 8, 0)
-        y = y + ROW_H + GAP
+        y = y + bh + GAP
     end
     -- Leader line.
     local leader = Panel.LeaderText()
     p.leader:SetShown(leader ~= nil)
     if leader then
         p.leader:ClearAllPoints()
-        p.leader:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -y - 2)
+        p.leader:SetPoint("TOPLEFT", p, "TOPLEFT", vx, -y - 2)
         y = y + 16 + GAP
     end
     return y - GAP
@@ -372,46 +374,34 @@ local function roleToggle(k)
     return b
 end
 
--- "Only groups with room for me": a check box and its label; the whole
--- line is the click target.
-local function roomCheck()
-    local b = CreateFrame("Button", nil, p)
-    b:RegisterForClicks("LeftButtonUp")
-    b.box = Controls.CheckMark(b, CHECK)
-    b.box:SetPoint("LEFT", 0, 0)
-    b.text = Controls.Text(b, "small")
-    Controls.Restyle(b.text, Controls.TEXT)
-    b.text:SetPoint("LEFT", b.box, "RIGHT", 4, 0)
-    b:SetScript("OnClick", function() ns.Window.ToggleFilter("filterMyRole") end)
-    b:SetScript("OnEnter", function(self) Controls.Tooltip(self, L.TIP_FILTER_ROOM_FOR_ME) end)
-    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    return b
-end
-
 function Panel.Create(parent)
     p = CreateFrame("Frame", nil, parent)
-    p.title = Controls.Text(p, "activity")
+    p.labels = {}
+    for _, key in ipairs(LABEL_ORDER) do
+        local fs = Controls.Text(p, "small")
+        fs:SetJustifyH("RIGHT")
+        p.labels[key] = fs
+    end
     p.pill = CreateFrame("Frame", nil, p)
     p.pill.bg = p.pill:CreateTexture(nil, "BACKGROUND")
     p.pill.bg:SetAllPoints()
     p.pill.edges = Controls.Outline(p.pill, Controls.DIM)
     p.status = Controls.Text(p.pill, "small")
     p.status:SetPoint("CENTER")
-    p.post = Controls.Button(p, { text = "", height = ROW_H, primary = true,
+    p.post = Controls.Button(p, { text = "", primary = true,
         onClick = function(_, mouse) Panel.Action(mouse) end })
-    p.rolesLabel = Controls.Text(p, "small")
     p.roles = {}
     for _, k in ipairs(ROLE_KEYS) do p.roles[k] = roleToggle(k) end
-    p.roomOnly = roomCheck()
-    p.forLabel = Controls.Text(p, "small")
+    p.roomOnly = Controls.CheckLabel(p, { onClick = function() ns.Window.ToggleFilter("filterMyRole") end,
+        tip = function() return L.TIP_FILTER_ROOM_FOR_ME end })
     p.chips = {}
     p.hint = Controls.Text(p, "small")
     p.commentText = Controls.Text(p, "comment")
-    p.comment = Controls.Button(p, { text = "", height = ROW_H, onClick = function() Panel.OpenComment() end,
+    p.comment = Controls.Button(p, { text = "", onClick = function() Panel.OpenComment() end,
         tip = function() return L.TIP_COMMENT end })
     p.warningText = Controls.Text(p, "comment")
     Controls.Restyle(p.warningText, Controls.RED)
-    p.extend = Controls.Button(p, { text = "", height = ROW_H, onClick = function() Panel.Extend() end, tip = function() return L.TIP_EXTEND end })
+    p.extend = Controls.Button(p, { text = "", onClick = function() Panel.Extend() end, tip = function() return L.TIP_EXTEND end })
     p.leader = Controls.Text(p, "comment")
     Controls.Restyle(p.leader, Controls.GOLD)
     Panel.Refresh()

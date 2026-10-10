@@ -31,7 +31,6 @@ local SIZE_KEYS = {
 }
 Layouts.COLUMN_W = 300     -- the DETAILS layout's right column
 local PAD, GAP = 8, 6
-local BUTTON_H = 18        -- the activity button
 local POPUP_W, POPUP_H = 250, 380
 local POPUP_HEADER = ns.Header.HEIGHT
 local POPUP_NAME = "ForeverGroupFinderActivities"
@@ -118,7 +117,7 @@ end
 
 -- The button and the popup frame (the activity list is placed into it).
 function Layouts.Create(f)
-    f.activity = Controls.Button(f, { text = "", height = BUTTON_H, icon = "ChevronDown",
+    f.activity = Controls.Button(f, { text = "", icon = "ChevronDown",
         onClick = function() Layouts.TogglePopup(f) end, tip = function() return L.TIP_ACTIVITY_BUTTON end })
     local popup = CreateFrame("Frame", POPUP_NAME, f)
     popup:SetFrameStrata("DIALOG")
@@ -208,7 +207,7 @@ function Layouts.Arrange(f, width, height, top)
         at(f.activity, f, x0 + PAD, y)
         updateButton(f)
         placeSideInPopup(f, height)
-        y = y + BUTTON_H + GAP
+        y = y + Controls.ButtonHeight() + GAP
     end
     local listingH = ns.ListingPanel.Layout(inner)
     at(f.listing, f, x0 + PAD, y, inner, listingH)
@@ -224,8 +223,7 @@ function Layouts.Arrange(f, width, height, top)
         f.column:Hide()
     end
     at(f.filters, f, x0 + PAD, y, inner)
-    ns.Window.LayoutFilters()
-    y = y + ns.Window.FILTER_H + GAP
+    y = y + ns.Window.LayoutFilters() + GAP
     f.list:ClearAllPoints()
     f.list:SetPoint("TOPLEFT", f, "TOPLEFT", x0 + PAD, -y)
     f.list:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -(width - x0 - areaW + PAD), PAD)
