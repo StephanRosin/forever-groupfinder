@@ -374,15 +374,19 @@ check("closed", ns.Options.IsShown(), false)
 check("interface options page", M.registered[1], "Forever Group Finder")
 
 section("Minimap button, compartment and slash command")
+-- The window opens and would search; the finder is unavailable here, so no
+-- search is started before the Finder tests.
+M.lfg.canUse = false
 local mb = M.byName["ForeverGroupFinderMinimapButton"]
 check("minimap button", mb ~= nil, true)
 mb:GetScript("OnClick")(mb, "RightButton")
 check("right-click locks", S("locked"), true)
 mb:GetScript("OnClick")(mb, "RightButton")
 check("right-click unlocks", S("locked"), false)
-M.chat = {}
 mb:GetScript("OnClick")(mb, "LeftButton")
-check("left-click toggles the window (the stub says so)", M.chat[1] ~= nil and M.chat[1]:find("not built yet", 1, true) ~= nil, true)
+check("left-click opens the window", ns.Window.IsShown(), true)
+mb:GetScript("OnClick")(mb, "LeftButton")
+check("left-click closes the window", ns.Window.IsShown(), false)
 Settings.Set("minimapShow", false)
 check("minimap button hidden by the setting", mb:IsShown(), false)
 Settings.Set("minimapShow", nil)
@@ -393,9 +397,9 @@ Settings.Set("minimapAngle", nil)
 check("compartment click", type(ForeverGroupFinder_OnAddonCompartmentClick), "function")
 check("compartment enter", type(ForeverGroupFinder_OnAddonCompartmentEnter), "function")
 check("compartment leave", type(ForeverGroupFinder_OnAddonCompartmentLeave), "function")
-M.chat = {}
 ForeverGroupFinder_OnAddonCompartmentClick(nil, "LeftButton")
-check("compartment left-click toggles the window", M.chat[1] ~= nil, true)
+check("compartment left-click toggles the window", ns.Window.IsShown(), true)
+ns.Window.Hide()
 ForeverGroupFinder_OnAddonCompartmentClick(nil, "RightButton")
 check("compartment right-click locks", S("locked"), true)
 ForeverGroupFinder_OnAddonCompartmentClick(nil, "RightButton")
@@ -424,9 +428,10 @@ check("parse: nil", words(nil), "|")
 check("parse: spaces", words("   "), "|")
 check("parse: lower-cased", words("  LOCK  "), "lock|")
 check("parse: arguments", words("options  general now"), "options|general,now")
-M.chat = {}
 SlashCmdList["FOREVERGROUPFINDER"]("")
-check("/fgf toggles the window", M.chat[1] ~= nil and M.chat[1]:find("not built yet", 1, true) ~= nil, true)
+check("/fgf toggles the window", ns.Window.IsShown(), true)
+SlashCmdList["FOREVERGROUPFINDER"]("")
+check("/fgf toggles it back", ns.Window.IsShown(), false)
 SlashCmdList["FOREVERGROUPFINDER"]("options")
 check("/fgf options opens the options", ns.Options.IsShown(), true)
 ns.Options.Toggle()
@@ -455,6 +460,7 @@ M.chat = {}
 SlashCmdList["FOREVERGROUPFINDER"]("what")
 check("usage", M.chat[1] ~= nil and M.chat[1]:find("/fgf", 1, true) ~= nil, true)
 
+M.lfg.canUse = true
 section("Events and combat")
 local fired = 0
 check("the client would reject the event", pcall(CreateFrame("Frame").RegisterEvent, CreateFrame("Frame"), "SOME_UNKNOWN_EVENT"), false)
@@ -1231,6 +1237,425 @@ check("missing box falls back to copy", (Li.OpenCommentEditor("x", 2)), "COPY")
 LFGVanilla_ShowFrame = nil
 check("no Blizzard finder", Li.OpenCommentEditor("x", 2), "UNAVAILABLE")
 LFGVanilla_ShowFrame, C_AddOns = nil, nil
+lfg.reset()
+
+section("Window")
+local W, Side, LP, Memory = ns.Window, ns.Side, ns.ListingPanel, ns.Memory
+lfg.reset()
+lfg.level = 20
+lfg.cats = { 2, 114 }
+lfg.catNames = { [2] = "Dungeons", [114] = "Raids" }
+lfg.activities = {
+    [21] = { categoryID = 2, fullName = "Ragefire Chasm", shortName = "RFC", minLevelSuggestion = 13, maxLevelSuggestion = 18, maxNumPlayers = 5 },
+    [22] = { categoryID = 2, fullName = "The Deadmines", shortName = "DM", minLevelSuggestion = 18, maxLevelSuggestion = 23, maxNumPlayers = 5 },
+    [23] = { categoryID = 2, fullName = "Shadowfang Keep", shortName = "SFK", minLevelSuggestion = 22, maxLevelSuggestion = 30, maxNumPlayers = 5 },
+    [24] = { categoryID = 2, fullName = "Wailing Caverns", shortName = "WC", minLevelSuggestion = 17, maxLevelSuggestion = 24, maxNumPlayers = 5 },
+    [31] = { categoryID = 114, fullName = "Molten Core", shortName = "MC", minLevelSuggestion = 60, maxLevelSuggestion = 60, maxNumPlayers = 40 },
+}
+M.Fire("LFG_LIST_AVAILABILITY_UPDATE")   -- Activities forgets what it cached
+M.state.time = M.state.time + 100
+local function click(frame, button) return lfg.click(frame:GetScript("OnClick"), frame, button or "LeftButton") end
+local function searches() return #lfg.searches end
+-- A menu entry is clicked like a button: with a hardware event.
+local function menuClick(item) return lfg.click(M.MenuClick, item) end
+
+-- Opening by click searches once.
+lfg.click(W.Toggle)
+local f = W.Frame()
+check("window frame built", f ~= nil and f:GetName(), "ForeverGroupFinderWindow")
+check("window shown", W.IsShown(), true)
+check("ESC closes it", (function()
+    for _, n in ipairs(UISpecialFrames) do if n == "ForeverGroupFinderWindow" then return true end end
+    return false
+end)(), true)
+check("title", f.header.title:GetText(), "Group Finder")
+check("opening searches", searches(), 1)
+check("search in the category", lfg.searches[1][1], 2)
+check("no search blocked", #lfg.blocked, 0)
+check("window size from the settings", f:GetWidth() .. "x" .. f:GetHeight(), "720x460")
+check("nothing secure", (function()
+    for _, fr in ipairs(M.frames) do if fr._secure then return false end end
+    return true
+end)(), true)
+
+-- The activity list follows the level switch.
+local function visible()
+    local out = {}
+    for _, item in ipairs(Side.Items()) do
+        if item:IsShown() and item.activity then out[#out + 1] = item.activity.id end
+    end
+    return table.concat(out, ",")
+end
+check("switch on: fitting only", visible(), "24,22")
+check("switch box checked", Side.Panel().levelBox:GetChecked(), true)
+check("switch label", Side.Panel().levelText:GetText(), "Only in my level range")
+M.state.time = M.state.time + 5
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+click(Side.Panel().level)
+check("switch off: everything", visible(), "24,22,21,23")
+check("switch setting", S("levelRangeOnly"), false)
+check("the switch searched", searches(), 2)
+local rfc
+for _, item in ipairs(Side.Items()) do if item.activity and item.activity.id == 21 then rfc = item end end
+check("too low is grey", rfc and rfc.name._textColor[1], ns.Controls.GREY[1])
+check("range shown", rfc and rfc.range:GetText(), "13-18")
+click(Side.Panel().level)
+check("switch on again", visible(), "24,22")
+
+-- Ticking searches once; the throttle drops a second tick.
+M.state.time = M.state.time + 5
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+local before = searches()
+click(Side.Items()[2])
+check("ticking searches", searches(), before + 1)
+check("ticked activity searched", lfg.searches[#lfg.searches][7] and lfg.searches[#lfg.searches][7][1], 22)
+check("ticked", W.Checked()[22], true)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+click(Side.Items()[1])
+check("second tick inside the interval: no search", searches(), before + 1)
+check("still ticked", W.Checked()[24], true)
+check("my listing shows both", LP.Frame().chips[1]:IsShown() and LP.Frame().chips[2]:IsShown(), true)
+check("refresh shows the age", f.header.refresh.label:GetText(), "0 s ago")
+M.state.time = M.state.time + 4
+click(Side.Items()[1])
+check("after the interval it searches again", searches(), before + 2)
+check("unticked", W.Checked()[24], nil)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+
+-- The clock never searches.
+local n = searches()
+M.state.time = M.state.time + 30
+f:GetScript("OnUpdate")(f, 5)
+check("ticker: no search", searches(), n)
+check("ticker: nothing blocked", #lfg.blocked, 0)
+check("ticker updates the age", f.header.refresh.label:GetText(), "30 s ago")
+
+-- Keyed searches outside a click are blocked by the client: the window
+-- calls Search only from clicks (opening, ticking, chips, refresh).
+check("refresh button searches", (function()
+    M.state.time = M.state.time + 5
+    local k = searches()
+    click(f.header.refresh)
+    return searches() - k
+end)(), 1)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+
+-- Activities with the switch on: my active listing's stay.
+lfg.active = { activityIDs = { 23 }, comment = "", duration = 1800 }
+M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+check("listing activity out of range stays visible", visible():find("23", 1, true) ~= nil, true)
+lfg.active = nil
+M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+check("gone again without the listing", visible():find("23", 1, true), nil)
+
+-- Category switch through the selector menu.
+click(Side.Panel().category)
+local catMenu = M.LastMenu()
+check("category menu lists categories", M.MenuTexts(catMenu), "Dungeons,Raids")
+M.state.time = M.state.time + 5
+local k = searches()
+menuClick(M.MenuFind(catMenu, "Raids"))
+check("category stored", S("category"), 114)
+check("category switch clears ticks", next(W.Checked()), nil)
+check("raids: MC out of range hidden", visible(), "")
+Settings.Set("category", nil)
+W.SetChecked(22, true)
+Side.Refresh()
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+
+-- Rows from results.
+local function result(id, leader, members, extra)
+    local r = { searchResultID = id, activityIDs = { 22 }, leaderName = leader, comment = "c" .. id, numMembers = #members,
+        age = 60, numCharFriends = 0, numBNetFriends = 0, numGuildMates = 0, isDelisted = false }
+    for key, v in pairs(extra or {}) do r[key] = v end
+    lfg.results[id] = r
+    lfg.members[id] = members
+    lfg.counts[id] = { TANK = 0, HEALER = 0, DAMAGER = #members, TANK_REMAINING = 1, HEALER_REMAINING = 1, DAMAGER_REMAINING = 0 }
+end
+local function member(name, class, level, area, roles)
+    return { name = name, level = level or 20, classFilename = class, assignedRole = "DAMAGER", areaName = area,
+        lfgRoles = roles or { tank = false, healer = false, dps = true }, isLeader = true }
+end
+result(1, "Grimnar", { member("Grimnar", "WARRIOR"), member("Ilvea", "MAGE") }, { numGuildMates = 1 })
+result(2, "Thal", { member("Thal", "PRIEST"), member("Ra", "ROGUE"), member("Ho", "HUNTER") }, { age = 10 })
+result(3, "Solo", { member("Solo", "MAGE", 21, "Stormwind City", { tank = true, healer = false, dps = true }) },
+    { activityIDs = { 22, 24, 23 }, comment = "tank lf" })
+Settings.Set("roleOverride", "TANK")
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+local built = W.Built()
+check("groups built", #built.groups, 2)
+check("players built", #built.players, 1)
+local used = f.pool.used
+check("rows: divider, 2 groups, divider, 1 player", #used, 5)
+check("groups divider", used[1].text:GetText(), "Groups (2)")
+check("players divider", used[4].text:GetText(), "Players (1)")
+check("group row kind", used[2].kind, "GROUP")
+check("group activity name", used[2].activity:GetText(), "The Deadmines")
+check("guild tag", used[2].entry.id == 1 and used[2].tag:GetText() or used[3].tag:GetText(), "Guild")
+local g1 = used[2]
+check("free slots dashed up to five", (function()
+    local free = 0
+    for _, sq in ipairs(g1.squares) do if sq:IsShown() and sq.free then free = free + 1 end end
+    return free
+end)(), 5 - #g1.entry.members)
+check("green edge when there is room for my role", g1.edge:IsShown(), true)
+local p1 = used[5]
+check("player row kind", p1.kind, "PLAYER")
+check("player name", p1.name:GetText(), "Solo")
+check("player name in class colour", p1.name._textColor[1], RAID_CLASS_COLORS.MAGE.r)
+check("player level", p1.level:GetText(), "21")
+check("player location", p1.area:GetText(), "Stormwind City")
+check("player chips for the activities that fit", (function()
+    local t = {}
+    for i = 1, 3 do t[#t + 1] = p1.chips[i] and p1.chips[i]:IsShown() and p1.chips[i].text:GetText() or "-" end
+    return table.concat(t, ",")
+end)(), "The Deadmines,Wailing Caverns,-")
+check("the rest counted", p1.more:GetText(), "+1")
+check("player roles: tank shown", p1.roles[1]:IsShown(), true)
+check("player roles: healer hidden", p1.roles[2]:IsShown(), false)
+check("player comment", p1.comment:GetText(), "tank lf")
+check("player age", p1.age:GetText(), "1 min")
+check("player invite button", p1.invite:IsShown(), true)
+click(p1.invite)
+check("invite from the player row", M.invited[#M.invited], "Solo")
+
+-- In place: an update changes the row, not the order.
+local firstID = used[2].entry.id
+local firstRow = built.groups[1]
+lfg.results[firstID].comment = "now full"
+lfg.results[firstID].age = 9999
+M.Fire("LFG_LIST_SEARCH_RESULT_UPDATED", firstID)
+check("same row table", W.Built().groups[1], firstRow)
+check("row updated in place", firstRow.comment, "now full")
+check("widget shows the new comment", used[2].comment:GetText(), "now full")
+check("order kept", used[2].entry.id, firstID)
+lfg.results[firstID] = nil
+M.Fire("LFG_LIST_SEARCH_RESULT_UPDATED", firstID)
+check("vanished result: delisted", firstRow.delisted, true)
+check("delisted is struck through", used[2].strike:IsShown(), true)
+check("delisted is dimmed", used[2]:GetAlpha() < 1, true)
+check("unknown id ignored", pcall(M.Fire, "LFG_LIST_SEARCH_RESULT_UPDATED", 999), true)
+result(firstID, firstID == 1 and "Grimnar" or "Thal", firstID == 1 and { member("Grimnar", "WARRIOR"), member("Ilvea", "MAGE") }
+    or { member("Thal", "PRIEST"), member("Ra", "ROGUE"), member("Ho", "HUNTER") })
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+used = f.pool.used
+
+-- Tooltip.
+local groupRow
+for _, row in ipairs(used) do if row.entry and row.entry.id == 1 then groupRow = row end end
+groupRow:GetScript("OnEnter")(groupRow)
+local tipText = {}
+for _, line in ipairs(GameTooltip._lines or {}) do tipText[#tipText + 1] = table.concat(line, "|") end
+tipText = table.concat(tipText, "\n")
+check("tooltip: activity", tipText:find("The Deadmines", 1, true) ~= nil, true)
+check("tooltip: every member", tipText:find("Grimnar (20)", 1, true) ~= nil and tipText:find("Ilvea (20)", 1, true) ~= nil, true)
+check("tooltip: class and role", tipText:find("WARRIOR - Damage", 1, true) ~= nil, true)
+check("tooltip: comment", tipText:find("c1", 1, true) ~= nil, true)
+check("tooltip: age", tipText:find("Listed 1 min ago", 1, true) ~= nil, true)
+groupRow:GetScript("OnLeave")(groupRow)
+local tl = ns.Rows.TooltipLines(W.Built().players[1], 0)
+check("player tooltip: area", (function()
+    for _, line in ipairs(tl) do if (line.right or ""):find("Stormwind City", 1, true) then return true end end
+    return false
+end)(), true)
+check("player tooltip: wanted roles", (function()
+    for _, line in ipairs(tl) do if line.text == "Roles: Tank, Damage" then return true end end
+    return false
+end)(), true)
+
+-- Left click whispers and marks seen; the row dims in place.
+click(groupRow)
+check("left click whispers the leader", M.tells[#M.tells].name, "Grimnar")
+check("whispered row is seen", Memory.IsSeen(groupRow.entry.key), true)
+check("seen row dimmed", groupRow:GetAlpha(), 0.45)
+
+-- Right click menu.
+click(groupRow, "RightButton")
+local menu = M.LastMenu()
+check("menu entries", M.MenuTexts(menu), "Grimnar,Whisper,Whisper template,Invite,-,Mark as seen,Hide,Ignore the leader")
+M.MenuClick(M.MenuFind(menu, "Whisper"))
+check("menu whisper", M.tells[#M.tells].name, "Grimnar")
+UnitClass = function() return "Mage", "MAGE" end
+click(groupRow, "RightButton")
+menu = M.LastMenu()
+local tmpl = M.MenuFind(menu, "Whisper template")
+check("whisper templates expanded", tmpl.items[1] and tmpl.items[1].text, "Hi! Still looking for Tank? I'm a level 20 Mage.")
+M.MenuClick(tmpl.items[1])
+check("template whisper text", M.tells[#M.tells].text, "Hi! Still looking for Tank? I'm a level 20 Mage.")
+UnitClass = nil
+M.MenuClick(M.MenuFind(menu, "Invite"))
+check("menu invite", M.invited[#M.invited], "Grimnar")
+local key1 = groupRow.entry.key
+M.MenuClick(M.MenuFind(menu, "Hide"))
+check("hidden in memory", Memory.IsHidden(key1), true)
+check("hidden row gone", #W.Built().groups, 1)
+local other = W.Built().groups[1]
+click(f.pool.used[2], "RightButton")
+M.MenuClick(M.MenuFind(M.LastMenu(), "Ignore the leader"))
+check("leader ignored", Memory.IsIgnored(other.leader), true)
+check("ignored group gone", #W.Built().groups, 0)
+Memory.Unignore(other.leader)
+local store = ns.AccountDB().memory
+store.hidden, store.seen = {}, {}
+W.Rebuild()
+check("back after unhide/unignore", #W.Built().groups, 2)
+
+-- Our own menu when the client has no MenuUtil.
+local menuUtil = MenuUtil
+MenuUtil = nil
+local own = ns.Menu.OpenRowMenu(f.pool.used[2], f.pool.used[2].entry)
+check("own menu shown", own ~= nil and own:IsShown(), true)
+local inviteLine
+for _, line in ipairs(own.lines) do if line:IsShown() and line.text:GetText() == "Invite" then inviteLine = line end end
+check("own menu has Invite", inviteLine ~= nil, true)
+local invites = #M.invited
+inviteLine:GetScript("OnClick")(inviteLine)
+check("own menu invites", #M.invited, invites + 1)
+check("own menu closes", own:IsShown(), false)
+MenuUtil = menuUtil
+
+-- Filter chips toggle their settings.
+local chips = f.filters.chips
+check("role chip names my role", chips.filterMyRole.label:GetText(), "Room for Tank")
+M.state.time = M.state.time + 5
+k = searches()
+click(chips.filterMyRole)
+check("chip sets filterMyRole", S("filterMyRole"), true)
+check("chip searched", searches(), k + 1)
+check("chip shows on", chips.filterMyRole.on, true)
+click(chips.filterMyRole)
+check("chip clears it", S("filterMyRole"), false)
+click(chips.filterLevelFits)
+check("level chip", S("filterLevelFits"), true)
+click(chips.filterLevelFits)
+click(chips.hideSeen)
+check("hide seen chip", S("hideSeen"), true)
+click(chips.hideSeen)
+check("hide seen off", S("hideSeen"), false)
+click(chips.language)
+local langMenu = M.LastMenu()
+menuClick(M.MenuFind(langMenu, "Deutsch"))
+check("language stored", table.concat(S("languages"), ","), "deDE")
+check("language chip counts", chips.language.label:GetText(), "Language (1)")
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+M.state.time = M.state.time + 5
+click(f.header.refresh)
+check("language filter searched", lfg.searches[#lfg.searches][4] and lfg.searches[#lfg.searches][4].deDE, true)
+click(chips.language)
+menuClick(M.MenuFind(M.LastMenu(), "Deutsch"))
+check("language removed", #S("languages"), 0)
+check("nothing stored for no languages", ns.DB().languages, nil)
+W.SetTextFilter("thal")
+check("text filter", #W.Built().groups, 1)
+W.SetTextFilter("")
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+
+-- My listing: post, remove.
+local lp = LP.Frame()
+check("post label", lp.post.label:GetText(), "Post")
+check("status not listed", lp.status:GetText(), "not listed")
+check("remove greyed without listing", lp.remove.off, true)
+check("roles shown solo", lp.roles.tank:IsShown(), true)
+check("my role preselected", LP.Roles().tank, true)
+click(lp.roles.healer)
+check("role toggled", LP.Roles().healer, true)
+click(lp.post)
+check("post creates the listing", lfg.creates[#lfg.creates].activityIDs[1], 22)
+check("roles posted", lfg.roles and lfg.roles.healer, true)
+lfg.active.duration = 1800
+M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+check("update label", lp.post.label:GetText(), "Update")
+check("status listed", lp.status:GetText(), "listed, 30 min left")
+-- Expiry warning with Extend.
+M.state.time = M.state.time + 1600
+f:GetScript("OnUpdate")(f, 1)
+check("expiry warning shown", lp.warningText:IsShown() and lp.extend:IsShown(), true)
+local updates = #lfg.updates
+click(lp.extend)
+check("extend re-posts", #lfg.updates, updates + 1)
+check("warning gone after extend", LP.Warning(), false)
+click(lp.remove)
+check("remove", lfg.removed > 0, true)
+check("not listed after remove", lp.status:GetText(), "not listed")
+lp.post.off = false
+W.SetCheckedList({})
+W.ListingChanged()
+check("post greyed without activities", lp.post.off, true)
+W.SetChecked(22, true)
+W.ListingChanged()
+
+-- Comment: greyed without an authenticator; copy box on "COPY".
+lfg.authenticated = {}
+W.ListingChanged()
+check("comment button greyed", lp.comment.off, true)
+check("greyed tooltip", lp.comment.offTip, "Comments need an authenticator on your account")
+lp.comment:GetScript("OnEnter")(lp.comment)
+check("greyed tooltip shown", GameTooltip._text, "Comments need an authenticator on your account")
+lp.comment:GetScript("OnLeave")(lp.comment)
+click(lp.comment)
+check("greyed: no copy box", LP.CopyText(), nil)
+ns.Listing.SaveTemplate("Heal DM", { 22, 24 }, { tank = false, healer = true, dps = false }, "LF2M heal")
+click(lp.template)
+local tMenu = M.LastMenu()
+check("template menu", M.MenuFind(tMenu, "Heal DM") ~= nil and M.MenuFind(tMenu, "Save as template...") ~= nil, true)
+M.state.time = M.state.time + 5
+k = searches()
+menuClick(M.MenuFind(tMenu, "Heal DM"))
+check("template ticks its activities", table.concat(W.CheckedList(), ","), "22,24")
+check("template roles", LP.Roles().healer and not LP.Roles().tank, true)
+check("template comment ready", LP.TemplateComment(), "LF2M heal")
+check("applying searched", searches(), k + 1)
+lfg.authenticated[2] = true
+LFGVanilla_ShowFrame = function() end
+W.ListingChanged()
+check("comment button active", lp.comment.off, false)
+click(lp.comment)
+check("copy text", LP.CopyText(), "LF2M heal")
+check("copy box shown", lp.copy:IsShown(), true)
+check("copy box holds the text", lp.copy:GetText(), "LF2M heal")
+click(lp.copyClose)
+check("copy box closed", lp.copy:IsShown(), false)
+LFGVanilla_ShowFrame = nil
+StaticPopupDialogs.FOREVERGROUPFINDER_TEMPLATE_NAME.OnAccept({ GetEditBox = function() return { GetText = function() return "Mine" end } end })
+check("save template from the popup", ns.Listing.ApplyTemplate("Mine") ~= nil, true)
+click(lp.template)
+M.MenuClick(M.MenuFind(M.MenuFind(M.LastMenu(), "Delete"), "Mine"))
+check("delete template", ns.Listing.ApplyTemplate("Mine"), nil)
+
+-- Leader line only when leading.
+check("no leader line solo", lp.leader:IsShown(), false)
+UnitIsGroupLeader = function() return true end
+GetNumGroupMembers = function() return 2 end
+IsInRaid = function() return false end
+UnitGroupRolesAssigned = function(unit) return unit == "player" and "TANK" or "DAMAGER" end
+M.state.group = true
+W.ListingChanged()
+check("leader line shown", lp.leader:IsShown(), true)
+check("leader line text", lp.leader:GetText(), "Missing: 1 Healer, 2 Damage")
+check("no roles in a group", lp.roles.tank:IsShown(), false)
+UnitIsGroupLeader = function() return false end
+W.ListingChanged()
+check("leader line hidden when not leading", lp.leader:IsShown(), false)
+UnitIsGroupLeader, GetNumGroupMembers, IsInRaid, UnitGroupRolesAssigned = nil, nil, nil, nil
+M.state.group = nil
+
+-- Lock, resize arrows, combat.
+Settings.SetLocked(true)
+check("grips hidden when locked", f.grips.TOPLEFT:IsShown(), false)
+Settings.SetLocked(false)
+check("grips back", f.grips.TOPLEFT:IsShown(), true)
+Settings.Set("width", 800)
+check("width setting applied", f:GetWidth(), 800)
+Settings.Set("width", nil)
+M.state.combat = true
+check("closes in combat", pcall(W.Toggle), true)
+check("opens in combat", pcall(lfg.click, W.Toggle), true)
+check("nothing waits for combat", ns.PendingAfterCombat(), 0)
+M.state.combat = false
+click(f.header.close)
+check("close button", W.IsShown(), false)
+check("no search was ever blocked", #lfg.blocked, 0)
+Settings.Set("roleOverride", nil)
 lfg.reset()
 
 section("Source rules")

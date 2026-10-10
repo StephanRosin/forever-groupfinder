@@ -32,6 +32,11 @@ Activities.lua
 Memory.lua
 Listing.lua
 Results.lua
+Controls.lua
+Menu.lua
+Rows.lua
+Side.lua
+ListingPanel.lua
 Window.lua
 Options\Style.lua
 Options\Widgets.lua

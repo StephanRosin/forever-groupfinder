@@ -10,11 +10,10 @@ local L, Media = ns.L, ns.Media
 -- spec = {
 --   locked    = function() -> bool        no grips, no resizing
 --   width     = function() -> width       size now
---   rows      = function() -> rows
---   widthRange, rowsRange                 { min, max }
---   rowsFor   = function(height) -> rows  whole rows that fit a height
---   heightFor = function(rows) -> height
---   live      = function(f, r)            during the drag (f.resizing = r)
+--   height    = function() -> height
+--   widthRange, heightRange               { min, max }
+--   live      = function(f, r)            during the drag (f.resizing = r;
+--                                         r.width, r.height, r.x, r.y)
 --   commit    = function(f, r)            once, on release, if it changed
 --   done      = function(f)               after the drop
 -- }
@@ -36,9 +35,9 @@ local function cursor()
     return x / s, y / s
 end
 
-local function placement(spec, r, width, rows)
+local function placement(r, width, height)
     local s = r.scale
-    local w, h = width * s, spec.heightFor(rows) * s
+    local w, h = width * s, height * s
     local fixedLeft = r.corner:find("RIGHT") ~= nil
     local top = r.corner:find("BOTTOM") and r.top or (r.bottom + h)
     local centre = fixedLeft and (r.left + w / 2) or (r.right - w / 2)
@@ -56,11 +55,10 @@ local function follow(f, spec)
     local x, y = cursor()
     local dx, dy = (x - r.cursorX) / r.scale, (y - r.cursorY) / r.scale
     local width = clamp(r.width0 + (r.corner:find("RIGHT") and dx or -dx), spec.widthRange)
-    local rows = math.max(spec.rowsRange[1], math.min(spec.rowsRange[2],
-        spec.rowsFor(r.height0 + (r.corner:find("TOP") and dy or -dy))))
-    if width == r.width and rows == r.rows then return end
-    r.width, r.rows, r.moved = width, rows, true
-    r.x, r.y = placement(spec, r, width, rows)
+    local height = clamp(r.height0 + (r.corner:find("TOP") and dy or -dy), spec.heightRange)
+    if width == r.width and height == r.height then return end
+    r.width, r.height, r.moved = width, height, true
+    r.x, r.y = placement(r, width, height)
     spec.live(f, r)
 end
 
@@ -74,7 +72,7 @@ local function start(f, spec, grip, button)
         grip = grip, corner = grip.corner, scale = s, cursorX = x, cursorY = y,
         left = left * s, right = right * s, top = top * s, bottom = bottom * s,
         screenW = UIParent:GetWidth(), screenH = UIParent:GetHeight(),
-        width0 = spec.width(), height0 = f:GetHeight(), width = spec.width(), rows = spec.rows(),
+        width0 = spec.width(), height0 = spec.height(), width = spec.width(), height = spec.height(),
     }
     grip:SetScript("OnUpdate", function() follow(f, spec) end)
 end
