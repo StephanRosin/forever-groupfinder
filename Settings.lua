@@ -94,6 +94,8 @@ Settings.DEFAULTS = {
 
 -- Slider ranges, used by the options window and to clamp typed values.
 Settings.RANGES = {
+    x = { -4000, 4000 },
+    y = { -4000, 4000 },
     width = { 560, 1100 },
     height = { 320, 800 },
     scale = { 50, 150 },

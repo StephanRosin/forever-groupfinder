@@ -150,6 +150,7 @@ local RANGES = {
     width = { 560, 1100 }, height = { 320, 800 }, scale = { 50, 150 }, sideWidth = { 150, 280 },
     minInterval = { 3, 15 }, rowHeight = { 16, 36 }, playerRowHeight = { 26, 50 }, memoryMinutes = { 5, 240 },
     expiryWarnMinutes = { 1, 15 }, borderSize = { 1, 8 }, cornerRadius = { 0, 12 }, shadowSize = { 1, 20 },
+    x = { -4000, 4000 }, y = { -4000, 4000 },
     shadowAlpha = { 0, 100 }, bgAlpha = { 0, 100 }, headerSize = { 8, 24 }, activitySize = { 8, 20 },
     nameSize = { 8, 20 }, commentSize = { 8, 18 }, smallSize = { 7, 16 },
 }
@@ -301,6 +302,16 @@ check("flag imported", S("nameFlag"), "OUTLINE")
 check("wrong type skipped", ns.Share.Import("FGF1:ts5:widths3:abcs6:locked" .. "n1;}"), true)
 check("wrong type not stored", ns.DB().width, nil)
 check("wrong type (bool) not stored", ns.DB().locked, nil)
+check("bad anchors skipped", ns.Share.Import("FGF1:ts5:points6:MIDDLEs8:relPoints3:TOP}"), true)
+check("bad point not stored", ns.DB().point, nil)
+check("good relPoint kept", S("relPoint"), "TOP")
+check("good point kept", ns.Share.Import("FGF1:ts5:points10:BOTTOMLEFT}") and S("point"), "BOTTOMLEFT")
+check("x and y are clamped", ns.Share.Import("FGF1:ts1:xn99999;s1:yn-99999;}"), true)
+check("x clamped", S("x"), 4000)
+check("y clamped", S("y"), -4000)
+check("known category kept", ns.Share.Import("FGF1:ts8:categoryn114;}") and S("category"), 114)
+check("unknown category dropped", ns.Share.Import("FGF1:ts8:categoryn7;}"), true)
+check("unknown category not stored", ns.DB().category, nil)
 check("numbers are clamped", ns.Share.Import("FGF1:ts5:widthn99999;}"), true)
 check("clamped width", S("width"), 1100)
 check("a bad template list is dropped", ns.Share.Import("FGF1:ts9:templatest" .. "n1;s3:abc}}"), true)
@@ -545,7 +556,13 @@ for _, f in ipairs(tocFiles()) do
     check("no CVar write in " .. f, code:find("SetCVar", 1, true), nil)
     check("no combat log event in " .. f, code:find("COMBAT_LOG_EVENT_UNFILTERED", 1, true), nil)
     check("no hooksecurefunc call in " .. f, code:find("hooksecurefunc%("), nil)
-    check("no HideUIPanel call in " .. f, code:find("HideUIPanel%("), f == "Options/Panel.lua" and code:find("HideUIPanel%(") or nil)
+    -- The one allowed call closes the Settings panel before our options open.
+    local rest = code
+    if f == "Options/Panel.lua" then rest = rest:gsub("HideUIPanel and SettingsPanel", ""):gsub("pcall%(HideUIPanel, SettingsPanel%)", "") end
+    check("no HideUIPanel in " .. f, rest:find("HideUIPanel", 1, true), nil)
+    check("no SetParent in " .. f, rest:find("SetParent", 1, true), nil)
+    check("no LFG or GroupFinder frame touched in " .. f, rest:find("LFGParentFrame", 1, true)
+        or rest:find("GroupFinder[%w_]*Frame") or rest:find("LFGListing", 1, true), nil)
     check("no loadstring in " .. f, code:find("loadstring", 1, true), nil)
 end
 

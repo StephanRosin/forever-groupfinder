@@ -120,7 +120,12 @@ local function sameType(value, default)
 end
 
 -- Settings that take one of a fixed set of values; anything else is skipped.
+local ANCHORS = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true, RIGHT = true,
+    BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
 local ENUMS = {
+    point = ANCHORS,
+    relPoint = ANCHORS,
+    category = { [2] = true, [114] = true, [116] = true, [118] = true, [120] = true },
     roleOverride = { AUTO = true, TANK = true, HEALER = true, DAMAGER = true },
     borderStyle = { NONE = true, FLAT = true, GOLD = true },
     bgMode = { SOLID = true, GRADIENT = true, TEXTURE = true },
