@@ -2,7 +2,10 @@
 local M = dofile("wowmock.lua")
 -- Events the client knows: registering any other name throws, as in the game.
 M.validEvents = { ADDON_LOADED = true, PLAYER_LOGIN = true, PLAYER_ENTERING_WORLD = true,
-    PLAYER_REGEN_ENABLED = true, PLAYER_REGEN_DISABLED = true }
+    PLAYER_REGEN_ENABLED = true, PLAYER_REGEN_DISABLED = true,
+    LFG_LIST_SEARCH_RESULTS_RECEIVED = true, LFG_LIST_SEARCH_RESULT_UPDATED = true, LFG_LIST_SEARCH_FAILED = true,
+    LFG_LIST_ACTIVE_ENTRY_UPDATE = true, LFG_LIST_AVAILABILITY_UPDATE = true, LFG_LIST_ENTRY_EXPIRED_TIMEOUT = true,
+    LFG_LIST_ENTRY_EXPIRED_TOO_MANY_PLAYERS = true }
 local ROOT = ADDONDIR
 local ADDON = "ForeverGroupFinder"
 
@@ -548,6 +551,216 @@ end
 check("label keys are found in the code", keysUsed > 10, true)
 -- Every setting that will get a label has one.
 for _, name in ipairs(Settings.TEXT_STYLES) do check("style label " .. name, base["STYLE_" .. name:upper()] ~= nil, true) end
+
+section("Finder")
+local F, lfg = ns.Finder, M.lfg
+check("Finder exists", F ~= nil, true)
+lfg.reset()
+M.state.time = 5000
+local function res(id, extra)
+    local r = { searchResultID = id, activityIDs = { 4 }, leaderName = "Lead" .. id, comment = "tank pls", numMembers = 2,
+        age = 30, numCharFriends = 1, numBNetFriends = 2, numGuildMates = 3, isDelisted = false, voiceMode = 0,
+        newPlayerFriendly = true }
+    for k, v in pairs(extra or {}) do r[k] = v end
+    lfg.results[id] = r
+    lfg.members[id] = { { name = "Lead" .. id, level = 60, classFilename = "WARRIOR", assignedRole = "TANK",
+        lfgRoles = { tank = true, healer = false, dps = false }, areaName = "Ragefire Chasm", isLeader = true },
+        { name = "Mate", level = 58, classFilename = "MAGE", assignedRole = "DAMAGER",
+        lfgRoles = { tank = false, healer = false, dps = true }, areaName = "Orgrimmar", isLeader = false } }
+    lfg.counts[id] = { TANK = 1, HEALER = 0, DAMAGER = 1, TANK_REMAINING = 0, HEALER_REMAINING = 1, DAMAGER_REMAINING = 2 }
+end
+
+-- search: click gate, throttle, pending, language filter
+check("no search yet", F.LastSearchAge(), nil)
+check("not searching", F.IsSearching(), false)
+local ok, why = lfg.click(F.Search, { categoryID = 2, activityIDs = { 4, 5 } })
+check("search accepted", ok, true)
+check("search reached the client", #lfg.searches, 1)
+check("category passed", lfg.searches[1][1], 2)
+check("filters are 0", lfg.searches[1][2] == 0 and lfg.searches[1][3] == 0, true)
+check("no language filter when none given", lfg.searches[1][4], nil)
+check("cross faction off", lfg.searches[1][5], false)
+check("no advanced filter", lfg.searches[1][6], nil)
+check("activities passed", lfg.searches[1][7][2], 5)
+check("searching", F.IsSearching(), true)
+check("age 0 right after", F.LastSearchAge(), 0)
+ok, why = lfg.click(F.Search, { categoryID = 2, activityIDs = {} })
+check("pending refused", ok, false)
+check("pending reason", why, "pending")
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+check("results end the search", F.IsSearching(), false)
+M.state.time = 5002
+ok, why = lfg.click(F.Search, { categoryID = 2, activityIDs = {} })
+check("throttled refused", ok, false)
+check("throttled reason", why, "throttled")
+check("age counts up", F.LastSearchAge(), 2)
+M.state.time = 5003
+ok = lfg.click(F.Search, { categoryID = 114, activityIDs = {}, languages = {} })
+check("after the interval", ok, true)
+check("empty activity list searches the whole category", lfg.searches[2][7], nil)
+check("empty language set builds no filter", lfg.searches[2][4], nil)
+M.Fire("LFG_LIST_SEARCH_FAILED", "throttled")
+M.state.time = 5010
+ok = lfg.click(F.Search, { categoryID = 2, activityIDs = { 4 }, languages = { deDE = true, enUS = true } })
+check("language search accepted", ok, true)
+check("language filter is a table of bools", lfg.searches[3][4].deDE, true)
+check("language filter keeps every locale", lfg.searches[3][4].enUS, true)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+M.state.time = 5020
+ok = F.Search({ categoryID = 2, activityIDs = { 4 } })
+check("a search without a click does nothing in the client", #lfg.searches, 3)
+check("... and is recorded as blocked", lfg.blocked[#lfg.blocked], "Search")
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+M.state.time = 5100
+ok = lfg.click(F.Search, { categoryID = 2, activityIDs = { 4 } })
+M.state.time = 5101
+ok, why = lfg.click(F.Search, { categoryID = 2, activityIDs = { 4 } })
+check("pending", why, "pending")
+M.state.time = 5120
+ok = lfg.click(F.Search, { categoryID = 2, activityIDs = { 4 } })
+check("a search the client swallowed does not block forever", ok, true)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+
+-- results
+lfg.reset()
+res(11); res(12, { numMembers = 1 }); lfg.results[13] = nil
+local got = F.Results()
+check("two results", #got, 2)
+local r = got[1]
+check("id", r.id, 11)
+check("activities", r.activityIDs[1], 4)
+check("leader", r.leaderName, "Lead11")
+check("comment", r.comment, "tank pls")
+check("members count", r.numMembers, 2)
+check("age", r.age, 30)
+check("friends = char + bnet", r.friends, 3)
+check("guild", r.guild, 3)
+check("delisted", r.isDelisted, false)
+check("voice", r.voiceMode, 0)
+check("new player friendly", r.newPlayerFriendly, true)
+check("two members", #r.members, 2)
+check("member name", r.members[1].name, "Lead11")
+check("member level", r.members[2].level, 58)
+check("member class", r.members[1].classFilename, "WARRIOR")
+check("member role", r.members[1].role, "TANK")
+check("member wanted roles", r.members[2].lfgRoles.dps, true)
+check("member area", r.members[2].area, "Orgrimmar")
+check("member leader", r.members[1].isLeader, true)
+check("counts", r.counts.TANK, 1)
+check("counts remaining", r.counts.DAMAGER_REMAINING, 2)
+check("members follow numMembers", #got[2].members, 1)
+lfg.members[12] = { lfg.members[12][1] }
+check("Result(id)", F.Result(12).members[1].name, "Lead12")
+check("Result(gone)", F.Result(99), nil)
+lfg.results[14] = { searchResultID = 14 }
+check("sparse result survives", F.Result(14).leaderName, nil)
+check("sparse result has a friends number", F.Result(14).friends, 0)
+lfg.results[14] = nil
+
+-- secret mode
+lfg.secret = true
+local sr = F.Result(11)
+check("secret mode still gives a table", sr ~= nil, true)
+check("secret leader becomes nil", sr.leaderName, nil)
+check("secret comment becomes nil", sr.comment, nil)
+check("secret age becomes nil", sr.age, nil)
+check("secret friends nil", sr.friends, nil)
+check("secret members: none can be listed", #sr.members, 0)
+check("secret counts nil", sr.counts.TANK, nil)
+check("secret mode, whole list", #F.Results(), 2)
+check("no secret leaks into the data", M.FindSecretKey(F.Results()), nil)
+check("no secret value anywhere", (function()
+    local function walk(t) for _, v in pairs(t) do if M.IsSecret(v) or (type(v) == "table" and walk(v)) then return true end end end
+    return walk(F.Results()) or false
+end)(), false)
+lfg.secret = false
+-- events
+local seen = {}
+for _, e in ipairs({ "RESULTS", "RESULT_UPDATED", "FAILED", "ACTIVE_ENTRY", "AVAILABILITY", "EXPIRED" }) do
+    F.On(e, function(...) seen[#seen + 1] = { e, ... } end)
+end
+F.On("RESULTS", function() seen[#seen + 1] = { "second" } end)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+check("RESULTS", seen[1][1], "RESULTS")
+check("every listener hears it", seen[2][1], "second")
+M.Fire("LFG_LIST_SEARCH_RESULT_UPDATED", 11)
+check("RESULT_UPDATED id", seen[3][2], 11)
+M.Fire("LFG_LIST_SEARCH_FAILED", "boom")
+check("FAILED reason", seen[4][2], "boom")
+M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE", true)
+check("ACTIVE_ENTRY", seen[5][1], "ACTIVE_ENTRY")
+M.Fire("LFG_LIST_AVAILABILITY_UPDATE")
+check("AVAILABILITY", seen[6][1], "AVAILABILITY")
+M.Fire("LFG_LIST_ENTRY_EXPIRED_TIMEOUT")
+check("EXPIRED (timeout)", seen[7][1], "EXPIRED")
+M.Fire("LFG_LIST_ENTRY_EXPIRED_TOO_MANY_PLAYERS")
+check("EXPIRED (too many)", seen[8][1], "EXPIRED")
+check("a throwing listener does not stop the others", (function()
+    F.On("RESULTS", function() error("bad listener") end)
+    local n = #seen
+    M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    return #seen - n
+end)(), 2)
+
+-- listing
+lfg.reset()
+check("no active entry", F.ActiveEntry(), nil)
+local entry = { activityIDs = { 4, 5 }, newPlayerFriendly = true, generalPlaystyle = 0, voiceMode = 1,
+    roles = { tank = false, healer = true, dps = false } }
+check("create outside a click fails", F.CreateOrUpdate(entry), false)
+check("create blocked is recorded", lfg.blocked[#lfg.blocked], "CreateListing")
+check("roles not saved when it failed", lfg.roles, nil)
+check("create in a click", lfg.click(F.CreateOrUpdate, entry), true)
+check("create called", #lfg.creates, 1)
+check("create activities", lfg.creates[1].activityIDs[2], 5)
+check("create flags", lfg.creates[1].newPlayerFriendly, true)
+check("create playstyle", lfg.creates[1].generalPlaystyle, 0)
+check("create voice", lfg.creates[1].voiceMode, 1)
+check("roles saved", lfg.roles.healer, true)
+local a = F.ActiveEntry()
+check("active entry activities", a.activityIDs[1], 4)
+check("active entry duration", a.duration, 3600)
+check("active entry comment", a.comment, "")
+check("active entry flag", a.newPlayerFriendly, true)
+check("second call updates", lfg.click(F.CreateOrUpdate, { activityIDs = { 4 }, newPlayerFriendly = false }), true)
+check("no second create", #lfg.creates, 1)
+check("update called", #lfg.updates, 1)
+check("update has no playstyle key", lfg.updates[1].generalPlaystyle, nil)
+check("roles untouched without entry.roles", lfg.roles.healer, true)
+lfg.secret = true
+local sa = F.ActiveEntry()
+check("secret active entry: activities (never secret)", sa.activityIDs[1], 4)
+check("secret active entry: duration nil", sa.duration, nil)
+check("secret active entry: no secret inside", M.IsSecret(sa.comment), false)
+lfg.secret = false
+F.Remove()
+check("remove", lfg.removed, 1)
+check("entry gone", F.ActiveEntry(), nil)
+lfg.createOK = false
+check("a refused create reports false", lfg.click(F.CreateOrUpdate, entry), false)
+lfg.createOK = true
+
+-- misc
+check("invite", (function() F.Invite("Bob-Realm"); return M.invited[#M.invited] end)(), "Bob-Realm")
+F.Whisper("Bob", "hi there")
+check("whisper with text", M.tells[#M.tells].text, "hi there")
+check("whisper name", M.tells[#M.tells].name, "Bob")
+F.Whisper("Ann")
+check("whisper without text", M.tells[#M.tells].name .. ":" .. tostring(M.tells[#M.tells].text), "Ann:nil")
+check("CanUse", select(1, F.CanUse()), true)
+lfg.canUse, lfg.failure = false, "Too low"
+local cu, cr = F.CanUse()
+check("CanUse false", cu, false)
+check("CanUse reason", cr, "Too low")
+lfg.canUse = true
+check("CanComment false", F.CanComment(2), false)
+lfg.authenticated[2] = true
+check("CanComment true", F.CanComment(2), true)
+local saved = C_LFGList.IsPlayerAuthenticatedForLFG
+C_LFGList.IsPlayerAuthenticatedForLFG = nil
+check("CanComment guarded when the API is missing", F.CanComment(2), false)
+C_LFGList.IsPlayerAuthenticatedForLFG = saved
+lfg.reset()
 
 section("Source rules")
 for _, f in ipairs(tocFiles()) do

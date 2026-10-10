@@ -396,4 +396,102 @@ function M.MenuTexts(root)
 end
 
 
+-- Clock ------------------------------------------------------------------------
+M.state.time = 1000
+function GetTime() return M.state.time end
+
+-- C_LFGList -----------------------------------------------------------------------
+-- M.lfg is what the "server" holds; tests fill it. M.lfg.hardware is the
+-- hardware-event flag: Search / CreateListing / UpdateListing without it do
+-- nothing and are recorded in M.lfg.blocked (the client prints "Interface
+-- action failed"). M.lfg.secret makes every info getter hand out secrets.
+M.lfg = {}
+function M.lfg.reset()
+    local l = M.lfg
+    l.blocked, l.searches, l.creates, l.updates, l.removed, l.roles = {}, {}, {}, {}, 0, nil
+    l.hardware, l.secret, l.results, l.members, l.counts, l.active = false, false, {}, {}, {}, nil
+    l.authenticated, l.canUse, l.failure, l.createOK = {}, true, nil, true
+end
+M.lfg.reset()
+-- Runs fn as a click handler would: with a hardware event.
+function M.lfg.click(fn, ...)
+    M.lfg.hardware = true
+    local r = { pcall(fn, ...) }
+    M.lfg.hardware = false
+    if not r[1] then error(r[2], 0) end
+    return unpack(r, 2)
+end
+local function wrap(v)
+    if M.lfg.secret and v ~= nil and type(v) ~= "table" then return M.Secret(v) end
+    return v
+end
+local function wrapAll(t)
+    if not t then return nil end
+    local out = {}
+    for k, v in pairs(t) do out[k] = wrap(v) end
+    return out
+end
+local function gated(kind)
+    if not M.lfg.hardware then
+        M.lfg.blocked[#M.lfg.blocked + 1] = kind
+        return false
+    end
+    return true
+end
+C_LFGList = {
+    Search = function(...)
+        if not gated("Search") then return end
+        M.lfg.searches[#M.lfg.searches + 1] = { n = select("#", ...), ... }
+    end,
+    GetSearchResults = function()
+        local ids = {}
+        for id in pairs(M.lfg.results) do ids[#ids + 1] = id end
+        table.sort(ids)
+        return #ids, ids
+    end,
+    HasSearchResultInfo = function(id) return M.lfg.results[id] ~= nil end,
+    GetSearchResultInfo = function(id) return wrapAll(M.lfg.results[id]) end,
+    GetSearchResultPlayerInfo = function(id, i)
+        local list = M.lfg.members[id]
+        local m = list and list[i]
+        if not m then return nil end
+        local out = wrapAll(m)
+        if m.lfgRoles then out.lfgRoles = wrapAll(m.lfgRoles) end
+        return out
+    end,
+    GetSearchResultMemberCounts = function(id) return wrapAll(M.lfg.counts[id]) end,
+    HasActiveEntryInfo = function() return M.lfg.active ~= nil end,
+    GetActiveEntryInfo = function()
+        local a = M.lfg.active
+        if not a then return nil end
+        local out = wrapAll(a)
+        out.activityIDs = a.activityIDs   -- NeverSecret
+        return out
+    end,
+    CreateListing = function(data)
+        if not gated("CreateListing") then return false end
+        M.lfg.creates[#M.lfg.creates + 1] = data
+        if M.lfg.createOK then
+            M.lfg.active = { activityIDs = data.activityIDs, comment = "", duration = 3600,
+                newPlayerFriendly = data.newPlayerFriendly, voiceMode = data.voiceMode }
+        end
+        return M.lfg.createOK
+    end,
+    UpdateListing = function(data)
+        if not gated("UpdateListing") then return false end
+        M.lfg.updates[#M.lfg.updates + 1] = data
+        return true
+    end,
+    RemoveListing = function() M.lfg.removed = M.lfg.removed + 1; M.lfg.active = nil end,
+    IsPlayerAuthenticatedForLFG = function(cat) return M.lfg.authenticated[cat] or false end,
+}
+C_LFGListRoles = { SetRoles = function(roles) M.lfg.roles = roles; return true end }
+C_LFGInfo = { CanPlayerUsePremadeGroup = function() return M.lfg.canUse, M.lfg.failure end }
+M.invited, M.tells = {}, {}
+C_PartyInfo = { InviteUnit = function(name) M.invited[#M.invited + 1] = name end }
+ChatFrameUtil = {
+    SendTell = function(name) M.tells[#M.tells + 1] = { name = name } end,
+    SendTellWithMessage = function(name, text) M.tells[#M.tells + 1] = { name = name, text = text } end,
+}
+
 return M

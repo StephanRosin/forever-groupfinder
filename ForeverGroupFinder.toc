@@ -27,6 +27,7 @@ Position.lua
 Resize.lua
 Corners.lua
 Border.lua
+Finder.lua
 Window.lua
 Options\Style.lua
 Options\Widgets.lua
