@@ -34,6 +34,7 @@ local built = { groups = {}, players = {} }
 local receivedAt = nil     -- GetTime() of the last full result set
 local status = "idle"      -- idle, searching, failed, unavailable
 local filterText = ""
+local receivedQuery = nil  -- Finder.QueryKey of the results on screen
 
 -- Checked activities ----------------------------------------------------------------------
 
@@ -83,16 +84,31 @@ local function languageSet()
     return set
 end
 
--- Click or key press only. Returns Finder.Search's ok, reason.
+function Window.Query()
+    return { categoryID = S("category"), activityIDs = Window.CheckedList(), languages = languageSet() }
+end
+
+-- The list does not show results for the current selection: the search
+-- for it was dropped (interval, one in flight) or results came back for an
+-- older query. The refresh button glows; the next click that may search
+-- runs the current query.
+function Window.Outdated()
+    local current = Finder.QueryKey(Window.Query())
+    if Finder.IsSearching() then return Finder.LastQuery() ~= current end
+    return receivedQuery ~= current
+end
+
+-- Click or key press only. Returns Finder.Search's ok, reason. The list is
+-- filtered to the checked activities at once, searched or not.
 function Window.Search()
+    Window.Rebuild()
     local canUse = Finder.CanUse()
     if not canUse then
         status = "unavailable"
         Window.RenderList()
         return false, "unavailable"
     end
-    local ok, reason = Finder.Search({ categoryID = S("category"), activityIDs = Window.CheckedList(),
-        languages = languageSet() })
+    local ok, reason = Finder.Search(Window.Query())
     if ok then status = "searching" end
     Window.UpdateHeader()
     Window.RenderList()
@@ -112,9 +128,15 @@ end
 
 local function context(withFilters)
     local level = UnitLevel("player")
+    local activities = {}
+    for id in pairs(checked) do activities[id] = true end
     return {
         filters = withFilters and { myRole = S("filterMyRole"), levelFits = S("filterLevelFits"),
-            hideSeen = S("hideSeen"), text = filterText } or {},
+            hideSeen = S("hideSeen"), text = filterText, activities = activities, categoryID = S("category") } or {},
+        activityCategory = function(id)
+            local info = Activities.Info(id)
+            return info and info.categoryID or nil
+        end,
         activityFit = function(id)
             local info = Activities.Info(id)
             return info and Activities.Fit(info, level) or nil
@@ -131,6 +153,7 @@ end
 local function onResults()
     results = Finder.Results()
     receivedAt = GetTime()
+    receivedQuery = Finder.LastQuery()
     status = "idle"
     -- A hidden window builds its rows when it opens (Show -> Refresh).
     if Window.IsShown() then
@@ -323,6 +346,10 @@ function Window.UpdateHeader()
     end
     h.refresh:SetLabel(label)
     h.refresh:SetWidth(math.max(70, math.floor(h.refresh.label:GetStringWidth() + 30)))
+    local outdated = receivedAt ~= nil and Window.Outdated()
+    h.refresh.outdated = outdated
+    h.refresh:SetOn(outdated)
+    h.refresh.glow:SetShown(outdated)
     local locked = S("locked")
     h.lock.icon:SetTexture(Media.Icon(locked and "Lock" or "Unlock"))
     h.grip:SetShown(not locked)
@@ -357,7 +384,14 @@ local function createHeader()
         function() return S("locked") and L.TIP_UNLOCK_WINDOW or L.TIP_LOCK_WINDOW end)
     h.lock:SetPoint("RIGHT", h.close, "LEFT", -1, 0)
     h.refresh = Controls.Button(h, { text = L.REFRESH, width = 80, height = 16, icon = "Reset",
-        onClick = function() Window.Search() end, tip = function() return L.TIP_REFRESH end })
+        onClick = function() Window.Search() end,
+        tip = function(self) return self.outdated and L.TIP_OUTDATED or L.TIP_REFRESH end })
+    -- The outdated mark: a gold glow behind the button, pulsing.
+    h.refresh.glow = h.refresh:CreateTexture(nil, "BACKGROUND", nil, -1)
+    h.refresh.glow:SetPoint("TOPLEFT", -3, 3)
+    h.refresh.glow:SetPoint("BOTTOMRIGHT", 3, -3)
+    h.refresh.glow:SetColorTexture(1, 0.79, 0.19, 0.5)
+    h.refresh.glow:Hide()
     h.refresh:SetPoint("RIGHT", h.lock, "LEFT", -4, 0)
     h:SetScript("OnMouseDown", function(_, mouse)
         if mouse == "LeftButton" and not S("locked") then
@@ -521,6 +555,8 @@ local function create()
     ns.Resize.Attach(f, resizeSpec)
     local acc = 0
     f:SetScript("OnUpdate", function(_, elapsed)
+        local glow = f.header.refresh.glow
+        if glow:IsShown() then glow:SetAlpha(0.45 + 0.4 * math.sin(GetTime() * 5)) end
         acc = acc + (elapsed or 0)
         if acc < TICK then return end
         acc = 0

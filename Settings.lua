@@ -31,7 +31,7 @@ Settings.DEFAULTS = {
     sideWidth = 190,        -- the side panel of the window
 
     -- Search and list
-    minInterval = 3,        -- seconds between two searches
+    minInterval = 1,        -- seconds between two searches (Blizzard: none, one in flight)
     levelRangeOnly = true,
     category = 2,
     sortFriendsFirst = true,
@@ -97,7 +97,7 @@ Settings.RANGES = {
     height = { 320, 800 },
     scale = { 50, 150 },
     sideWidth = { 150, 280 },
-    minInterval = { 3, 15 },
+    minInterval = { 1, 15 },
     rowHeight = { 16, 36 },
     playerRowHeight = { 26, 50 },
     memoryMinutes = { 5, 240 },

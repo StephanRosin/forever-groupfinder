@@ -11,6 +11,7 @@ local PENDING_TIMEOUT = 10     -- a search the client swallowed must not block u
 local MAX_MEMBERS = 40
 
 local pending, lastSearch = false, nil
+local lastQuery = nil   -- QueryKey of the search in flight / last issued
 local pendingSince = 0
 
 -- A value as the addon may use it: secrets become nil.
@@ -63,11 +64,30 @@ function Finder.LastSearchAge()
     return GetTime() - lastSearch
 end
 
+-- One string per query: category, sorted activities, sorted languages.
+-- opts as Search takes them.
+function Finder.QueryKey(opts)
+    local ids, langs = {}, {}
+    for _, id in ipairs(opts.activityIDs or {}) do ids[#ids + 1] = id end   -- plain: our own query
+    table.sort(ids)
+    for code, on in pairs(opts.languages or {}) do
+        if on then langs[#langs + 1] = code end
+    end
+    table.sort(langs)
+    return tostring(opts.categoryID) .. "|" .. table.concat(ids, ",") .. "|" .. table.concat(langs, ",")
+end
+
+-- The query of the search in flight, or of the last one issued; its
+-- results are the next (or the last) RESULTS.
+function Finder.LastQuery() return lastQuery end
+
 -- Blizzard's finder issues a search in this click (Blizzard.lua): count it
--- as ours (pending, the interval) without a second C_LFGList.Search.
+-- as ours (pending, the interval) without a second C_LFGList.Search. Its
+-- query is Blizzard's, unknown here: "blizzard" never equals ours.
 function Finder.ExpectSearch()
     lastSearch = GetTime()
     pending, pendingSince = true, lastSearch
+    lastQuery = "blizzard"
 end
 
 -- Call from a click or key press only: the client blocks Search otherwise.
@@ -89,6 +109,7 @@ function Finder.Search(opts)
     end
     lastSearch = GetTime()
     pending, pendingSince = true, lastSearch
+    lastQuery = Finder.QueryKey(opts)
     C_LFGList.Search(opts.categoryID, 0, 0, languageFilter, false, nil, activityIDs)
     return true
 end

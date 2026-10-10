@@ -98,6 +98,26 @@ local function sorter(friendsFirst)
     end
 end
 
+-- The checked activities (a set): a row matches when any of its activities
+-- is checked; with none checked, when any is in the category (an activity
+-- of unknown category counts as in it).
+local function matchesActivities(row, checked, categoryID, categoryOf)
+    local ids = type(row.activityIDs) == "table" and row.activityIDs or {}   -- plain: Finder converted the row
+    if next(checked) ~= nil then
+        for _, id in ipairs(ids) do
+            if checked[id] then return true end
+        end
+        return false
+    end
+    if not (categoryID and categoryOf) then return true end
+    if #ids == 0 then return true end
+    for _, id in ipairs(ids) do
+        local c = categoryOf(id)
+        if c == nil or c == categoryID then return true end
+    end
+    return false
+end
+
 function Results.Build(results, ctx)
     local filters = ctx.filters or {}
     local text = type(filters.text) == "string" and filters.text ~= "" and filters.text:lower() or nil
@@ -108,6 +128,7 @@ function Results.Build(results, ctx)
         local row = buildRow(r, myRoles)
         row.fit = bestFit(row.activityIDs, ctx.activityFit)
         local keep = not Memory.IsIgnored(row.leader) and not Memory.IsHidden(row.key)
+        if keep and filters.activities and not matchesActivities(row, filters.activities, filters.categoryID, ctx.activityCategory) then keep = false end
         if keep and filters.myRole and row.kind == "GROUP" and not row.freeForMe then keep = false end
         if keep and filters.levelFits and row.fit ~= nil and row.fit ~= "FITS" then keep = false end
         if keep and filters.hideSeen and row.seen then keep = false end

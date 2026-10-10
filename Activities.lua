@@ -45,7 +45,7 @@ function Activities.Info(id)
     local short = a.shortName
     if type(short) ~= "string" or short == "" then short = name end
     c = {
-        id = id, name = name, shortName = short,
+        id = id, name = name, shortName = short, categoryID = a.categoryID,
         minLevel = a.minLevelSuggestion or 0, maxLevel = a.maxLevelSuggestion or 0,
         maxPlayers = a.maxNumPlayers or 0,
         groupID = a.groupFinderActivityGroupID,

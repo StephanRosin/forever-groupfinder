@@ -114,7 +114,7 @@ local EXPECTED = {
     replaceBlizzard = true, minimapShow = true, minimapAngle = 215, compartment = true,
     point = "CENTER", relPoint = "CENTER", x = 0, y = 40, width = 720, height = 460,
     scale = 100, locked = false, sideWidth = 190,
-    minInterval = 3, levelRangeOnly = true, category = 2, sortFriendsFirst = true,
+    minInterval = 1, levelRangeOnly = true, category = 2, sortFriendsFirst = true,
     filterMyRole = false, filterLevelFits = false, hideSeen = false,
     markOpenSlot = true, showPlayers = true, rowHeight = 22, playerRowHeight = 34,
     memoryMinutes = 30,
@@ -151,7 +151,7 @@ for _ in pairs(D) do total = total + 1 end
 check("no other default (languages, templates and whisperTemplates are the three tables)", total, expectedCount + 3)
 local RANGES = {
     width = { 560, 1100 }, height = { 320, 800 }, scale = { 50, 150 }, sideWidth = { 150, 280 },
-    minInterval = { 3, 15 }, rowHeight = { 16, 36 }, playerRowHeight = { 26, 50 }, memoryMinutes = { 5, 240 },
+    minInterval = { 1, 15 }, rowHeight = { 16, 36 }, playerRowHeight = { 26, 50 }, memoryMinutes = { 5, 240 },
     expiryWarnMinutes = { 1, 15 }, borderSize = { 1, 8 }, cornerRadius = { 0, 12 }, shadowSize = { 1, 20 },
     x = { -4000, 4000 }, y = { -4000, 4000 },
     shadowAlpha = { 0, 100 }, bgAlpha = { 0, 100 }, headerSize = { 8, 24 }, activitySize = { 8, 20 },
@@ -186,8 +186,8 @@ Settings.Set("width", 5000)
 check("clamped to the maximum", S("width"), 1100)
 Settings.Set("width", 1)
 check("clamped to the minimum", S("width"), 560)
-Settings.Set("minInterval", 2)
-check("search interval never below 3 s", S("minInterval"), 3)
+Settings.Set("minInterval", 0)
+check("search interval never below 1 s", S("minInterval"), 1)
 Settings.Set("scale", 99.6)
 check("whole numbers", S("scale"), 100)
 check("rounded to the default is not stored", ns.DB().scale, nil)
@@ -744,11 +744,11 @@ check("pending refused", ok, false)
 check("pending reason", why, "pending")
 M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
 check("results end the search", F.IsSearching(), false)
-M.state.time = 5002
+M.state.time = 5000.5
 ok, why = lfg.click(F.Search, { categoryID = 2, activityIDs = {} })
 check("throttled refused", ok, false)
 check("throttled reason", why, "throttled")
-check("age counts up", F.LastSearchAge(), 2)
+check("age counts up", F.LastSearchAge(), 0.5)
 M.state.time = 5003
 ok = lfg.click(F.Search, { categoryID = 114, activityIDs = {}, languages = {} })
 check("after the interval", ok, true)
@@ -1983,6 +1983,61 @@ check("closes in combat", pcall(W.Toggle), true)
 check("opens in combat", pcall(lfg.click, W.Toggle), true)
 check("nothing waits for combat", ns.PendingAfterCombat(), 0)
 M.state.combat = false
+-- The list follows the ticks at once; a dropped search marks it outdated.
+local function sideItem(id)
+    for _, item in ipairs(Side.Items()) do if item:IsShown() and item.activity and item.activity.id == id then return item end end
+end
+lfg.results[2].activityIDs = { 24 }
+result(9, "Raider", { member("Raider", "WARRIOR"), member("R2", "MAGE") }, { activityIDs = { 31 } })
+M.state.time = M.state.time + 10
+W.SetCheckedList({ 22, 24 })
+Side.Refresh()
+click(f.header.refresh)
+check("current query searched", table.concat(lfg.searches[#lfg.searches][7], ","), "22,24")
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+check("results for the current query: not outdated", W.Outdated(), false)
+check("no glow", f.header.refresh.glow:IsShown(), false)
+check("both ticked activities listed", #W.Built().groups, 2)
+check("the raid is not ticked", (function()
+    for _, r in ipairs(W.Built().groups) do if r.id == 9 then return false end end
+    return true
+end)(), true)
+k = searches()
+click(sideItem(24))
+check("untick inside the interval: no search", searches(), k)
+check("untick filters the list at once", #W.Built().groups, 1)
+check("the list is marked outdated", W.Outdated(), true)
+check("refresh glows", f.header.refresh.glow:IsShown() and f.header.refresh.on, true)
+f.header.refresh:GetScript("OnEnter")(f.header.refresh)
+check("outdated tooltip", GameTooltip._text, "Click to load results for your current selection.")
+f.header.refresh:GetScript("OnLeave")(f.header.refresh)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+check("results for the old query: still outdated", W.Outdated(), true)
+check("still filtered to the ticks", #W.Built().groups, 1)
+M.state.time = M.state.time + 2
+click(f.header.refresh)
+check("the next click searches the current query", table.concat(lfg.searches[#lfg.searches][7], ","), "22")
+check("searching the current query: not outdated", W.Outdated(), false)
+M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
+check("its results clear the mark", W.Outdated(), false)
+check("glow gone", f.header.refresh.glow:IsShown(), false)
+W.SetCheckedList({})
+W.Rebuild()
+check("nothing ticked: the whole category", #W.Built().groups, 2)
+check("nothing ticked: other categories left out", (function()
+    for _, r in ipairs(W.Built().groups) do if r.id == 9 then return false end end
+    return true
+end)(), true)
+check("a raid result with raids chosen", (function()
+    Settings.Set("category", 114)
+    W.Rebuild()
+    local n = #W.Built().groups
+    Settings.Set("category", nil)
+    return n
+end)(), 1)
+lfg.results[9] = nil
+W.SetChecked(22, true)
+W.Rebuild()
 click(f.header.close)
 check("close button", W.IsShown(), false)
 check("no search was ever blocked", #lfg.blocked, 0)
