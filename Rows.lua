@@ -11,17 +11,16 @@ local Rows = {}
 ns.Rows = Rows
 
 local EDGE_W = 3
-local SQUARE, SQUARE_GAP, MAX_SQUARES = 16, 2, 5
+local SQUARE_GAP, MAX_SQUARES = 2, 5
 local AGE_W = 46
 local PAD = 6
 local PLAYER_LEFT_W = 150
 local LEVEL_W = 24
 local INVITE_W = 46
 local CHIP_GAP = 3
-local ICON = 14
 local DIVIDER_H = 18
 local TAG_COLOR = { 0.5, 0.82, 1 }
-local SEEN_ALPHA, DELISTED_ALPHA = 0.45, 0.5
+local DELISTED_ALPHA = 0.5
 local CLASS_SHEET = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes"
 local PIN_ATLAS = "Waypoint-MapPin-Untracked"
 -- Blizzard's own finder icons (Blizzard_LFGVanilla_Browse.lua).
@@ -222,7 +221,7 @@ local function newBase(parent)
     row.line:SetPoint("BOTTOMRIGHT")
     row.line:SetHeight(1)
     row.line:SetColorTexture(0.11, 0.13, 0.19, 1)
-    row.age = Controls.Text(row, "small")
+    row.age = Controls.Text(row, "age")
     row.age:SetJustifyH("RIGHT")
     row.age:SetWidth(AGE_W)
     row.strike = row:CreateTexture(nil, "OVERLAY")
@@ -276,10 +275,13 @@ Rows.Dimmable = dimmable
 
 local function markers(row, entry)
     local open = entry.freeForMe == true and S("markOpenSlot") and entry.kind == "GROUP"
+    local c = S("openEdgeColor")
+    row.edge:SetColorTexture(c[1], c[2], c[3], 1)
+    row.open:SetColorTexture(c[1], c[2], c[3], 0.08)
     row.edge:SetShown(open and true or false)
     row.open:SetShown(open and true or false)
     local alpha = 1
-    if entry.seen == true then alpha = SEEN_ALPHA end
+    if entry.seen == true then alpha = S("seenAlpha") / 100 end
     if entry.delisted == true then alpha = math.min(alpha, DELISTED_ALPHA) end
     row:SetAlpha(1)
     row.dimmed = alpha
@@ -314,7 +316,7 @@ end
 
 local function newSquare(row)
     local sq = CreateFrame("Frame", nil, row)
-    sq:SetSize(SQUARE, SQUARE)
+    sq:SetSize(16, 16)
     sq.fill = sq:CreateTexture(nil, "ARTWORK")
     sq.fill:SetPoint("TOPLEFT", 1, -1)
     sq.fill:SetPoint("BOTTOMRIGHT", -1, 1)
@@ -362,8 +364,10 @@ end
 
 local function layoutSquares(row, entry, x)
     local slots = Rows.Slots(entry)
+    local SQUARE = S("groupRoleIconSize")
     for i = 1, MAX_SQUARES do
         local sq = row.squares[i]
+        sq:SetSize(SQUARE, SQUARE)
         sq:ClearAllPoints()
         sq:SetPoint("LEFT", row, "LEFT", x + (i - 1) * (SQUARE + SQUARE_GAP), 0)
         if slots[i] then
@@ -429,8 +433,8 @@ local function newChip(row)
     chip.bg = chip:CreateTexture(nil, "BACKGROUND")
     chip.bg:SetAllPoints()
     chip.bg:SetColorTexture(0.11, 0.09, 0.06, 1)
-    chip.edges = Controls.Outline(chip, { 0.36, 0.29, 0.13, 1 })
-    chip.text = Controls.Text(chip, "small")
+    chip.edges = Controls.Outline(chip, S("chipBorderColor"))
+    chip.text = Controls.Text(chip, "chip")
     chip.text:SetPoint("CENTER")
     return chip
 end
@@ -439,17 +443,16 @@ local function newPlayer(parent)
     local row = newBase(parent)
     row.roles = {}
     for i in ipairs(ROLE_ORDER) do row.roles[i] = row:CreateTexture(nil, "ARTWORK") end
-    row.level = Controls.Text(row, "name")
+    row.level = Controls.Text(row, "level")
     row.level:SetJustifyH("CENTER")
     row.class = row:CreateTexture(nil, "ARTWORK")
-    row.class:SetSize(ICON, ICON)
     row.name = Controls.Text(row, "name")
     row.pin = row:CreateTexture(nil, "ARTWORK")
     row.pin:SetSize(12, 12)
     row.pin:SetAtlas(PIN_ATLAS)
-    row.area = Controls.Text(row, "activity")
+    row.area = Controls.Text(row, "location")
     row.chips = {}
-    row.more = Controls.Text(row, "small")
+    row.more = Controls.Text(row, "chip")
     row.comment = Controls.Text(row, "comment")
     row.invite = Controls.Button(row, { text = L.INVITE, width = INVITE_W, height = 16,
         onClick = function(self) if self.leader then ns.Finder.Invite(self.leader) end end })
@@ -457,9 +460,11 @@ local function newPlayer(parent)
 end
 
 -- The role column's icon size and width for a row height: one role fills
--- the height, two or three sit side by side, smaller.
+-- the height (or the playerRoleIconSize setting), two or three sit side by
+-- side, smaller.
 function Rows.RoleColumn(h, n)
-    local big = math.max(12, h - 6)
+    local set = S("playerRoleIconSize")
+    local big = set > 0 and set or math.max(12, h - 6)
     local size = n <= 1 and big or (n == 2 and math.floor(big * 0.75) or math.floor(big * 0.6))
     return size, math.floor(big * 1.8)
 end
@@ -484,39 +489,55 @@ local function layoutRoles(row, entry, x, h)
     return colW
 end
 
-local function layoutChips(row, entry, x, y, w)
+-- The activity chips flow over both lines of the right side; "+n" counts
+-- the ones that do not fit. Returns where line 2 is free from (nil when the
+-- chips use only line 1).
+local MORE_W = 24
+local function layoutChips(row, entry, x, top, bottom, w)
     local ids = type(entry.activityIDs) == "table" and entry.activityIDs or {}   -- plain: Finder converted the row
-    local used, shown = 0, 0
+    local line, used, shown, used2 = 1, 0, 0, nil
+    local border = S("chipBorderColor")
     for i, id in ipairs(ids) do
         local chip = row.chips[i] or newChip(row)
         row.chips[i] = chip
         Controls.Restyle(chip.text)
+        Controls.PaintOutline(chip.edges, border)
         chip.text:SetText(Activities.Name(id) or L.UNKNOWN_ACTIVITY)
         local cw = math.floor(chip.text:GetStringWidth() + 10 + 0.5)
-        if used + cw > w - 24 and shown > 0 then
-            chip:Hide()
-        else
-            chip:SetSize(cw, 14)
-            chip:ClearAllPoints()
-            chip:SetPoint("TOPLEFT", row, "TOPLEFT", x + used, y)
-            chip:Show()
-            used, shown = used + cw + CHIP_GAP, shown + 1
+        local last = i == #ids
+        local room = w - used - (line == 2 and not last and MORE_W or 0)
+        if cw > room and used > 0 and line == 1 then
+            line, used = 2, 0
+            room = w - (not last and MORE_W or 0)
         end
+        if cw > room and used > 0 then
+            for j = i, #ids do row.chips[j] = row.chips[j] or newChip(row); row.chips[j]:Hide() end
+            break
+        end
+        cw = math.min(cw, w)
+        chip.text:SetWidth(cw - 6)
+        chip:SetSize(cw, 14)
+        chip:ClearAllPoints()
+        chip:SetPoint("TOPLEFT", row, "TOPLEFT", x + used, line == 1 and top or bottom)
+        chip:Show()
+        used, shown = used + cw + CHIP_GAP, shown + 1
+        if line == 2 then used2 = used end
     end
     for i = #ids + 1, #row.chips do row.chips[i]:Hide() end
     row.more:ClearAllPoints()
-    row.more:SetPoint("TOPLEFT", row, "TOPLEFT", x + used, y - 1)
+    row.more:SetPoint("TOPLEFT", row, "TOPLEFT", x + used, (line == 1 and top or bottom) - 1)
     row.more:SetText(#ids > shown and L.MORE_MEMBERS:format(#ids - shown) or "")
-    row.shownChips = shown
+    row.shownChips, row.chipLines = shown, line
+    if #ids > shown then used2 = w end
+    return used2
 end
 
 local function layoutPlayer(row, entry, width, elapsed)
     local h = S("playerRowHeight")
     row:SetSize(width, h)
-    for _, fs in ipairs({ row.name, row.area, row.more, row.comment, row.age }) do Controls.Restyle(fs) end
-    local levelStyle = Settings.TextStyle("name")
-    levelStyle.size = levelStyle.size + 3
-    ns.Media.ApplyText(row.level, levelStyle)
+    for _, fs in ipairs({ row.name, row.level, row.area, row.more, row.comment, row.age }) do Controls.Restyle(fs) end
+    local ICON = S("classIconSize")
+    row.class:SetSize(ICON, ICON)
     local first = type(entry.members) == "table" and entry.members[1] or {}
     local top, bottom = -3, -math.floor(h / 2) - 1
     -- Role column, the level beside it.
@@ -536,7 +557,7 @@ local function layoutPlayer(row, entry, width, elapsed)
     row.name:SetPoint("TOPLEFT", row, "TOPLEFT", nx, top)
     row.name:SetWidth(PLAYER_LEFT_W - ICON - 4)
     row.name:SetText(type(entry.leader) == "string" and entry.leader or L.UNKNOWN_PLAYER)
-    row.name:SetTextColor(Rows.ClassColor(first.classFile))
+    if S("classColorNames") then row.name:SetTextColor(Rows.ClassColor(first.classFile)) end
     row.pin:ClearAllPoints()
     row.pin:SetPoint("TOPLEFT", row, "TOPLEFT", x + 1, bottom)
     row.area:ClearAllPoints()
@@ -547,11 +568,15 @@ local function layoutPlayer(row, entry, width, elapsed)
     -- Chips over the comment.
     local bx = x + PLAYER_LEFT_W
     local bw = math.max(40, width - bx - INVITE_W - AGE_W - 2 * PAD)
-    layoutChips(row, entry, bx, top, bw)
+    -- The comment after the chips on line 2 while room remains (cut off
+    -- with "..."), else only in the tooltip.
+    local used2 = layoutChips(row, entry, bx, top, bottom, bw) or 0
+    local roomLeft = bw - used2
     row.comment:ClearAllPoints()
-    row.comment:SetPoint("TOPLEFT", row, "TOPLEFT", bx, bottom)
-    row.comment:SetWidth(bw)
+    row.comment:SetPoint("TOPLEFT", row, "TOPLEFT", bx + used2, bottom)
+    row.comment:SetWidth(math.max(1, roomLeft))
     row.comment:SetText(type(entry.comment) == "string" and entry.comment or "")   -- plain: Finder converted the row
+    row.comment:SetShown(roomLeft >= 40)
     row.invite.leader = type(entry.leader) == "string" and entry.leader or nil
     row.invite:ClearAllPoints()
     row.invite:SetPoint("RIGHT", row, "RIGHT", -PAD - AGE_W, 0)

@@ -166,9 +166,43 @@ local function textStyleRows(key, header)
     }
 end
 
+local function isListStyle(name)
+    for _, n in ipairs(Settings.LIST_STYLES) do if n == name then return true end end
+    return false
+end
+
+-- Text: the styles outside the list (header, small print).
 local function textRows()
     local rows = {}
-    for _, name in ipairs(Settings.TEXT_STYLES) do append(rows, textStyleRows(name, "STYLE_" .. name:upper())) end
+    for _, name in ipairs(Settings.TEXT_STYLES) do
+        if not isListStyle(name) then append(rows, textStyleRows(name, "STYLE_" .. name:upper())) end
+    end
+    return rows
+end
+
+-- List look: row heights, markers, icon sizes and the list's text styles.
+local function lookRows()
+    local rows = {
+        { type = "header", label = "OPT_LOOK_ROWS" },
+        num("rowHeight", "OPT_ROW_HEIGHT"),
+        num("playerRowHeight", "OPT_PLAYER_ROW_HEIGHT"),
+        colorRow("openEdgeColor", "OPT_OPEN_EDGE_COLOR", true),
+        num("seenAlpha", "OPT_SEEN_ALPHA", "%"),
+        { type = "header", label = "OPT_LOOK_ICONS" },
+        num("playerRoleIconSize", "OPT_PLAYER_ROLE_ICON"),
+        { type = "text", label = "OPT_PLAYER_ROLE_ICON_HINT" },
+        num("groupRoleIconSize", "OPT_GROUP_ROLE_ICON"),
+        num("classIconSize", "OPT_CLASS_ICON"),
+    }
+    for _, name in ipairs(Settings.LIST_STYLES) do
+        append(rows, textStyleRows(name, "STYLE_" .. name:upper()))
+        if name == "name" then
+            -- The colour row above is used while class colours are off.
+            rows[#rows + 1] = check("classColorNames", "OPT_CLASS_COLOR_NAMES")
+        elseif name == "chip" then
+            rows[#rows + 1] = colorRow("chipBorderColor", "OPT_CHIP_BORDER", true)
+        end
+    end
     return rows
 end
 
@@ -212,8 +246,6 @@ end
 local function listFilterRows()
     local rows = {
         { type = "header", label = "OPT_LIST" },
-        num("rowHeight", "OPT_ROW_HEIGHT"),
-        num("playerRowHeight", "OPT_PLAYER_ROW_HEIGHT"),
         check("markOpenSlot", "OPT_MARK_OPEN_SLOT"),
         check("showPlayers", "OPT_SHOW_PLAYERS"),
         check("sortFriendsFirst", "OPT_SORT_FRIENDS_FIRST"),
@@ -394,6 +426,7 @@ Options.PAGES = {
     { id = "window", label = "PAGE_WINDOW", rows = windowRows },
     { id = "appearance", label = "PAGE_APPEARANCE", rows = appearanceRows },
     { id = "text", label = "PAGE_TEXT", rows = textRows },
+    { id = "look", label = "PAGE_LOOK", rows = lookRows },
     { id = "list", label = "PAGE_LIST", rows = listFilterRows },
     { id = "templates", label = "PAGE_TEMPLATES", rows = templateRows },
     { id = "profiles", label = "PAGE_PROFILES", rows = profileRows },

@@ -8,7 +8,9 @@ local Settings = {}
 ns.Settings = Settings
 
 -- The text styles; each has <prefix>Font, Size, Flag and Color.
-Settings.TEXT_STYLES = { "header", "activity", "name", "comment", "small" }
+Settings.TEXT_STYLES = { "header", "activity", "name", "comment", "small", "level", "location", "chip", "age" }
+-- The styles of the result list, on the "List look" page; the others on "Text".
+Settings.LIST_STYLES = { "activity", "name", "level", "location", "chip", "comment", "age" }
 
 -- Tables (languages, templates, whisperTemplates) are stored whole, and
 -- only when they differ from the default.
@@ -43,6 +45,14 @@ Settings.DEFAULTS = {
     showPlayers = true,
     rowHeight = 22,
     playerRowHeight = 34,
+    -- List look
+    playerRoleIconSize = 0, -- 0: the player row's height minus 6
+    groupRoleIconSize = 16, -- a member slot in a group row
+    classIconSize = 14,
+    classColorNames = true, -- else nameColor
+    chipBorderColor = { 0.36, 0.29, 0.13 },
+    openEdgeColor = { 0.25, 0.75, 0.37 },
+    seenAlpha = 45,         -- percent: how visible a seen row stays
     memoryMinutes = 30,
 
     -- Listing
@@ -82,6 +92,22 @@ Settings.DEFAULTS = {
     commentSize = 11,
     commentFlag = "SHADOW",
     commentColor = { 0.79, 0.76, 0.69 },
+    levelFont = "Friz Quadrata",
+    levelSize = 15,
+    levelFlag = "SHADOW",
+    levelColor = { 1, 1, 1 },
+    locationFont = "Friz Quadrata",
+    locationSize = 12,
+    locationFlag = "SHADOW",
+    locationColor = { 1, 0.82, 0.29 },
+    chipFont = "Friz Quadrata",
+    chipSize = 10,
+    chipFlag = "SHADOW",
+    chipColor = { 0.79, 0.76, 0.69 },
+    ageFont = "Friz Quadrata",
+    ageSize = 10,
+    ageFlag = "SHADOW",
+    ageColor = { 0.55, 0.54, 0.5 },
     smallFont = "Friz Quadrata",
     smallSize = 10,
     smallFlag = "SHADOW",
@@ -100,6 +126,14 @@ Settings.RANGES = {
     minInterval = { 1, 15 },
     rowHeight = { 16, 36 },
     playerRowHeight = { 26, 50 },
+    playerRoleIconSize = { 0, 48 },
+    groupRoleIconSize = { 10, 28 },
+    classIconSize = { 8, 28 },
+    seenAlpha = { 10, 100 },
+    levelSize = { 8, 24 },
+    locationSize = { 8, 20 },
+    chipSize = { 7, 16 },
+    ageSize = { 7, 16 },
     memoryMinutes = { 5, 240 },
     expiryWarnMinutes = { 1, 15 },
     borderSize = { 1, 8 },

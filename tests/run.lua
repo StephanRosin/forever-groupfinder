@@ -127,6 +127,11 @@ local EXPECTED = {
     nameFont = "Friz Quadrata", nameSize = 12, nameFlag = "SHADOW",
     commentFont = "Friz Quadrata", commentSize = 11, commentFlag = "SHADOW",
     smallFont = "Friz Quadrata", smallSize = 10, smallFlag = "SHADOW",
+    levelFont = "Friz Quadrata", levelSize = 15, levelFlag = "SHADOW",
+    locationFont = "Friz Quadrata", locationSize = 12, locationFlag = "SHADOW",
+    chipFont = "Friz Quadrata", chipSize = 10, chipFlag = "SHADOW",
+    ageFont = "Friz Quadrata", ageSize = 10, ageFlag = "SHADOW",
+    playerRoleIconSize = 0, groupRoleIconSize = 16, classIconSize = 14, classColorNames = true, seenAlpha = 45,
 }
 local expectedCount = 0
 for key, want in pairs(EXPECTED) do
@@ -136,7 +141,9 @@ end
 local COLORS = {
     borderColor = { 0, 0, 0, 1 }, bgColor = { 0.047, 0.047, 0.055 }, headerColor = { 1, 0.82, 0.29 },
     activityColor = { 1, 0.82, 0.29 }, nameColor = { 1, 1, 1 }, commentColor = { 0.79, 0.76, 0.69 },
-    smallColor = { 0.55, 0.54, 0.5 },
+    smallColor = { 0.55, 0.54, 0.5 }, levelColor = { 1, 1, 1 }, locationColor = { 1, 0.82, 0.29 },
+    chipColor = { 0.79, 0.76, 0.69 }, ageColor = { 0.55, 0.54, 0.5 },
+    chipBorderColor = { 0.36, 0.29, 0.13 }, openEdgeColor = { 0.25, 0.75, 0.37 },
 }
 for key, want in pairs(COLORS) do
     expectedCount = expectedCount + 1
@@ -157,6 +164,8 @@ local RANGES = {
     shadowAlpha = { 0, 100 }, bgAlpha = { 0, 100 }, headerSize = { 8, 24 }, activitySize = { 8, 20 },
     nameSize = { 8, 20 }, commentSize = { 8, 18 }, smallSize = { 7, 16 },
     minimapAngle = { 0, 360 },   -- the options slider; dragging sets it too
+    playerRoleIconSize = { 0, 48 }, groupRoleIconSize = { 10, 28 }, classIconSize = { 8, 28 }, seenAlpha = { 10, 100 },
+    levelSize = { 8, 24 }, locationSize = { 8, 20 }, chipSize = { 7, 16 }, ageSize = { 7, 16 },
 }
 local rangeCount = 0
 for key, want in pairs(RANGES) do
@@ -168,7 +177,8 @@ end
 local rangesTotal = 0
 for _ in pairs(Settings.RANGES) do rangesTotal = rangesTotal + 1 end
 check("no other range", rangesTotal, rangeCount)
-check("text styles", table.concat(Settings.TEXT_STYLES, ","), "header,activity,name,comment,small")
+check("text styles", table.concat(Settings.TEXT_STYLES, ","), "header,activity,name,comment,small,level,location,chip,age")
+check("list styles", table.concat(Settings.LIST_STYLES, ","), "activity,name,level,location,chip,comment,age")
 for _, name in ipairs(Settings.TEXT_STYLES) do
     for _, part in ipairs({ "Font", "Size", "Flag", "Color" }) do
         check("default " .. name .. part, D[name .. part] ~= nil, true)
@@ -357,7 +367,7 @@ local function rowFor(label, field)
 end
 local pageIds = {}
 for _, page in ipairs(ns.Options.PAGES) do pageIds[#pageIds + 1] = page.id end
-check("pages", table.concat(pageIds, ","), "general,window,appearance,text,list,templates,profiles")
+check("pages", table.concat(pageIds, ","), "general,window,appearance,text,look,list,templates,profiles")
 for _, page in ipairs(ns.Options.PAGES) do
     local ok, err = pcall(ns.Options.ShowPage, page.id)
     check("page " .. page.id .. " builds", ok, true)
@@ -390,7 +400,13 @@ check("compartment on General", reachable.compartment, "general")
 check("scale on Window", reachable.scale, "window")
 check("side width on Window", reachable.sideWidth, "window")
 check("border on Appearance", reachable.borderStyle, "appearance")
-check("comment colour on Text", reachable.commentColor, "text")
+check("comment colour on List look", reachable.commentColor, "look")
+check("header colour on Text", reachable.headerColor, "text")
+for _, key in ipairs({ "rowHeight", "playerRowHeight", "playerRoleIconSize", "groupRoleIconSize", "classIconSize",
+    "classColorNames", "chipBorderColor", "openEdgeColor", "seenAlpha", "levelSize", "levelColor", "locationSize",
+    "locationColor", "chipSize", "chipColor", "ageSize", "ageColor", "activitySize", "activityColor", "nameSize" }) do
+    check(key .. " on List look", reachable[key], "look")
+end
 check("no role override any more", Settings.DEFAULTS.roleOverride, nil)
 check("memory on List", reachable.memoryMinutes, "list")
 check("whispers on Templates", reachable.whisperTemplates, "templates")
@@ -420,7 +436,13 @@ local sizeRows = 0
 for _, f in ipairs(M.frames) do
     if f.slider and f.label and f.label._text == "Size" and f:IsVisible() then sizeRows = sizeRows + 1 end
 end
-check("five text styles", sizeRows, 5)
+check("two text styles outside the list", sizeRows, 2)
+ns.Options.ShowPage("look")
+sizeRows = 0
+for _, f in ipairs(M.frames) do
+    if f.slider and f.label and f.label._text == "Size" and f:IsVisible() then sizeRows = sizeRows + 1 end
+end
+check("seven list styles on List look", sizeRows, 7)
 -- Appearance: the flat colour only for a flat border.
 ns.Options.ShowPage("appearance")
 check("border colour hidden without a flat border", rowFor("Colour (flat)", "swatch") == nil, true)
@@ -1580,8 +1602,8 @@ check("player chips for the activities that fit", (function()
     local t = {}
     for i = 1, 3 do t[#t + 1] = p1.chips[i] and p1.chips[i]:IsShown() and p1.chips[i].text:GetText() or "-" end
     return table.concat(t, ",")
-end)(), "The Deadmines,-,-")
-check("the rest counted", p1.more:GetText(), "+2")
+end)(), "The Deadmines,Wailing Caverns,-")
+check("the rest counted", p1.more:GetText(), "+1")
 check("player role column: tank and damage, large", p1.roles[1]:IsShown() and p1.roles[3]:IsShown()
     and not p1.roles[2]:IsShown() and p1.roles[1]._atlas, "groupfinder-icon-role-large-tank")
 check("role icons side by side, the same size", p1.roles[1]._w == p1.roles[3]._w and p1.roles[1]._w >= 18, true)
@@ -2038,6 +2060,71 @@ end)(), 1)
 lfg.results[9] = nil
 W.SetChecked(22, true)
 W.Rebuild()
+-- Player rows: chips flow over both lines, the comment after them.
+do
+lfg.activities[25] = { categoryID = 2, fullName = "Blackfathom Deeps", shortName = "BFD", minLevelSuggestion = 20, maxLevelSuggestion = 30, maxNumPlayers = 5 }
+lfg.activities[26] = { categoryID = 2, fullName = "Gnomeregan", shortName = "Gnome", minLevelSuggestion = 24, maxLevelSuggestion = 34, maxNumPlayers = 5 }
+local chipPool = ns.Rows.NewPool(CreateFrame("Frame", nil, UIParent))
+local function playerWith(ids, comment)
+    local row = chipPool:Acquire("PLAYER")
+    ns.Rows.Layout(row, { id = 77, kind = "PLAYER", activityIDs = ids, leader = "Chip", comment = comment, age = 5,
+        members = { { name = "Chip", level = 20, classFile = "MAGE" } }, roles = { dps = true } }, 800, 0)
+    return row
+end
+local one = playerWith({ 22 }, "lf group")
+check("1 activity: one line", one.chipLines, 1)
+check("1 activity: comment on line 2", one.comment:IsShown() and one.comment:GetText(), "lf group")
+local three = playerWith({ 21, 22, 23 }, "three")
+check("3 activities: all shown", three.shownChips, 3)
+check("3 activities: no +n", three.more:GetText(), "")
+check("3 activities: comment still shown", three.comment:IsShown(), true)
+local six = playerWith({ 21, 22, 23, 24, 25, 26 }, "six")
+check("6 activities: both lines used", six.chipLines, 2)
+check("6 activities: more than one line holds", six.shownChips > 4, true)
+check("6 activities: chips on line 2", six.chips[6]:IsShown() and six.chips[6]._points.TOPLEFT[4] < -3, true)
+check("6 activities: +n counts the hidden ones", six.more:GetText(), six.shownChips < 6 and ("+" .. (6 - six.shownChips)) or "")
+check("6 activities: comment only when room is left", six.comment:IsShown() == (six.comment._w >= 40), true)
+local many = playerWith({ 21, 22, 23, 24, 25, 26, 31, 21, 22, 23 }, "hidden")
+check("overflow: +n", many.more:GetText():match("^%+%d+$") ~= nil, true)
+check("overflow: comment in the tooltip only", many.comment:IsShown(), false)
+
+-- List look settings apply live.
+Settings.Set("groupRoleIconSize", 20)
+local gRow
+for _, row in ipairs(f.pool.used) do if row.kind == "GROUP" then gRow = row end end
+check("group role icon size applied", gRow.squares[1]:GetWidth(), 20)
+Settings.Set("groupRoleIconSize", nil)
+Settings.Set("openEdgeColor", { 0, 0, 1 })
+check("edge colour applied", gRow.edge._texColor[3], 1)
+Settings.Set("openEdgeColor", nil)
+Settings.Set("seenAlpha", 70)
+Memory.MarkSeen(gRow.entry.key)
+W.RefreshRows()
+check("seen dim amount applied", gRow.activity:GetAlpha(), 0.7)
+Settings.Set("seenAlpha", nil)
+ns.AccountDB().memory.seen = {}
+W.RefreshRows()
+local pRow
+for _, row in ipairs(f.pool.used) do if row.kind == "PLAYER" then pRow = row end end
+Settings.Set("classColorNames", false)
+check("names in the name colour when class colours are off", pRow.name._textColor[1] == 1 and pRow.name._textColor[2] == 1, true)
+Settings.Set("classColorNames", nil)
+check("class colour back", pRow.name._textColor[1], RAID_CLASS_COLORS.MAGE.r)
+Settings.Set("levelSize", 20)
+check("level size applied", pRow.level._font[2], 20)
+Settings.Set("levelSize", nil)
+Settings.Set("playerRoleIconSize", 40)
+check("player role icon size applied (two roles: 75 %)", pRow.roles[3]._w, 30)
+Settings.Set("playerRoleIconSize", nil)
+Settings.Set("chipBorderColor", { 1, 0, 0 })
+check("chip border colour applied", pRow.chips[1].edges[1]._texColor[1], 1)
+Settings.Set("chipBorderColor", nil)
+check("bad colour import skipped", ns.Share.Import("FGF1:ts13:openEdgeColors3:red}"), true)
+check("bad colour not stored", ns.DB().openEdgeColor, nil)
+check("size import clamped", (function() ns.Share.Import("FGF1:ts17:groupRoleIconSizen99;}"); return S("groupRoleIconSize") end)(), 28)
+Settings.ResetProfile()
+end
+
 click(f.header.close)
 check("close button", W.IsShown(), false)
 check("no search was ever blocked", #lfg.blocked, 0)
