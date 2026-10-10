@@ -1427,6 +1427,34 @@ Li.Tick()
 check("warn limit follows the setting", warnings, 2)
 Settings.Set("expiryWarnMinutes", 5)
 
+-- the ticker warns with the window closed, never searches, and stops with the listing
+do
+    lfg.active = nil
+    M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+    check("no ticker without an entry", Li.Ticking(), false)
+    local before = #M.tickers
+    lfg.active = { duration = 3600, activityIDs = { 1 } }
+    Settings.Set("expiryWarnMinutes", 5)
+    M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+    check("ticker starts with an active entry", #M.tickers, before + 1)
+    local t = M.tickers[#M.tickers]
+    check("ticker interval", t.interval, 5)
+    M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+    check("one ticker for repeated updates", #M.tickers, before + 1)
+    local w, searches = warnings, #lfg.searches
+    M.state.time = M.state.time + 3400
+    t.fn()
+    check("ticker fires the warning once", warnings, w + 1)
+    t.fn()
+    check("ticker warns only once", warnings, w + 1)
+    check("ticker never searches", #lfg.searches, searches)
+    lfg.active = nil
+    M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
+    check("ticker stops without an entry", t.cancelled, true)
+    check("Ticking false", Li.Ticking(), false)
+    lfg.active = { duration = 600, activityIDs = { 1 } }
+end
+
 Li.Remove()
 check("remove calls Finder", lfg.removed, 1)
 check("state inactive after remove", Li.State().active, false)
@@ -1477,36 +1505,22 @@ check("{role} is my selected roles", Li.Expand("{role}", 11), "Healer/DPS")
 ForeverGroupFinderChar.roles = nil
 UnitClass = nil
 
--- comment editor
-local textSet, setCalls = nil, 0
-local box = { SetText = function(self, t) setCalls = setCalls + 1; textSet = t end }
-LFGListingComment = { EditBox = box }
+-- comment editor: only opens Blizzard's listing tab, never writes into it
 local shown, loaded = 0, {}
 LFGVanilla_ShowFrame = function(tab) shown = shown + 1; loaded.tab = tab end
 C_AddOns = { LoadAddOn = function(name) loaded.name = name; return true end }
 lfg.authenticated = {}
 check("CanComment false without authenticator", Li.CanComment(2), false)
-check("editor unavailable without authenticator", Li.OpenCommentEditor("text", 2), "UNAVAILABLE")
-check("Blizzard's box untouched without authenticator", setCalls, 0)
+check("editor unavailable without authenticator", Li.OpenCommentEditor(2), "UNAVAILABLE")
 check("Blizzard finder not opened without authenticator", shown, 0)
 lfg.authenticated[2] = true
 check("CanComment true", Li.CanComment(2), true)
 check("CanComment defaults to the category setting", Li.CanComment(), true)
-check("editor prefills", Li.OpenCommentEditor("LF healer", 2), "PREFILLED")
-check("prefill text", textSet, "LF healer")
+check("editor opens the tab", Li.OpenCommentEditor(2), "OPENED")
 check("addon loaded", loaded.name, "Blizzard_GroupFinder_VanillaStyle")
 check("finder shown on tab 1", loaded.tab, 1)
-setCalls = 0
-check("empty text opens without writing", Li.OpenCommentEditor("", 2), "OPENED")
-check("nothing written for empty text", setCalls, 0)
-box.SetText = function() error("Call is illegal when disabled by security settings") end
-local r1, r2 = Li.OpenCommentEditor("LF healer", 2)
-check("illegal write falls back to copy", r1, "COPY")
-check("copy text returned", r2, "LF healer")
-LFGListingComment = nil
-check("missing box falls back to copy", (Li.OpenCommentEditor("x", 2)), "COPY")
 LFGVanilla_ShowFrame = nil
-check("no Blizzard finder", Li.OpenCommentEditor("x", 2), "UNAVAILABLE")
+check("no Blizzard finder", Li.OpenCommentEditor(2), "UNAVAILABLE")
 LFGVanilla_ShowFrame, C_AddOns = nil, nil
 lfg.reset()
 
@@ -2318,7 +2332,7 @@ check("hint without activities", lp.hint:IsShown() and lp.hint:GetText(), "Tick 
 W.SetChecked(22, true)
 W.ListingChanged()
 
--- Comment: greyed without an authenticator; copy box on "COPY".
+-- Comment: greyed without an authenticator and in combat.
 lfg.authenticated = {}
 W.ListingChanged()
 check("comment button greyed", lp.comment.off, true)
@@ -2330,10 +2344,21 @@ click(lp.comment)
 check("no template button", lp.template, nil)
 check("no copy box", lp.copy, nil)
 lfg.authenticated[2] = true
-LFGVanilla_ShowFrame = function() end
+local opened = 0
+LFGVanilla_ShowFrame = function() opened = opened + 1 end
 W.ListingChanged()
 check("comment button active", lp.comment.off, false)
 check("comment opens Blizzard's tab", click(lp.comment) ~= false and LP.OpenComment(), "OPENED")
+M.state.combat = true
+M.Fire("PLAYER_REGEN_DISABLED")
+check("comment greyed in combat", lp.comment.off, true)
+check("combat tooltip", lp.comment.offTip, "Not in combat")
+local openedBefore = opened
+check("comment does nothing in combat", LP.OpenComment(), "UNAVAILABLE")
+check("Blizzard's tab not opened in combat", opened, openedBefore)
+M.state.combat = false
+M.Fire("PLAYER_REGEN_ENABLED")
+check("comment active after combat", lp.comment.off, false)
 LFGVanilla_ShowFrame = nil
 
 -- Leader line only when leading.
@@ -3332,7 +3357,7 @@ Settings.Set("replaceBlizzard", nil)
 -- Our comment editor opens Blizzard's listing tab on purpose.
 lfg.authenticated[2] = true
 local hidesBefore = M.blizzard.hides
-lfg.click(ns.Listing.OpenCommentEditor, "", 2)
+lfg.click(ns.Listing.OpenCommentEditor, 2)
 check("comment editor: Blizzard's tab stays open", parent:IsShown(), true)
 check("comment editor: not closed by us", M.blizzard.hides, hidesBefore)
 check("comment editor: ours not opened by it", W.IsShown(), false)
@@ -3420,7 +3445,7 @@ M.SecurePress(LFGVanilla_ToggleFrame, 1)
 check("combat: a close waits", ns.PendingAfterCombat(), 1)
 lfg.authenticated[2] = true
 M.SecurePress(LFGVanilla_ToggleFrame, 1)      -- both closed by the key
-lfg.click(ns.Listing.OpenCommentEditor, "", 2)
+lfg.click(ns.Listing.OpenCommentEditor, 2)
 check("comment editor drops the waiting close", ns.PendingAfterCombat(), 0)
 M.state.combat = false
 M.Fire("PLAYER_REGEN_ENABLED")
@@ -3477,20 +3502,18 @@ lfg.leaders = nil
 lfg.reset()
 
 section("Source rules")
--- Listing.lua may name exactly two Blizzard things: the comment box it prefills
--- (inside a pcall) and the global that shows the finder.
+-- Listing.lua may name exactly one Blizzard thing: the global that shows the finder.
 local function touchesBlizzardFinder(code, file)
     if file == "Listing.lua" then
-        code = code:gsub("LFGListingComment", ""):gsub("LFGVanilla_ShowFrame", "")
+        code = code:gsub("LFGVanilla_ShowFrame", "")
     elseif file == "Blizzard.lua" then
         -- The one read of Blizzard's window: is it shown?
         code = code:gsub('type%(LFGParentFrame%) == "table" and LFGParentFrame:IsShown%(%)', "")
     end
     return code:find("LFGParentFrame", 1, true) or code:find("GroupFinder[%w_]*Frame") or code:find("LFGListing", 1, true)
 end
-check("lint: LFGListingComment allowed in Listing.lua", touchesBlizzardFinder("local b = LFGListingComment.EditBox", "Listing.lua"), nil)
 check("lint: LFGVanilla_ShowFrame allowed in Listing.lua", touchesBlizzardFinder("LFGVanilla_ShowFrame(1)", "Listing.lua"), nil)
-check("lint: LFGListingComment caught elsewhere", touchesBlizzardFinder("LFGListingComment.EditBox", "Window.lua") ~= nil, true)
+check("lint: LFGListingComment caught everywhere", touchesBlizzardFinder("LFGListingComment.EditBox", "Listing.lua") ~= nil, true)
 check("lint: other LFGListing frames caught in Listing.lua", touchesBlizzardFinder("LFGListingFrame:Hide()", "Listing.lua") ~= nil, true)
 check("lint: LFGParentFrame caught in Listing.lua", touchesBlizzardFinder("LFGParentFrame:Hide()", "Listing.lua") ~= nil, true)
 check("lint: the IsShown read allowed in Blizzard.lua", touchesBlizzardFinder('return type(LFGParentFrame) == "table" and LFGParentFrame:IsShown() == true', "Blizzard.lua"), nil)

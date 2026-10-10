@@ -150,6 +150,7 @@ end
 
 -- Blizzard's listing tab, where the comment is written (authenticator only).
 function Panel.OpenComment()
+    if InCombatLockdown() then return "UNAVAILABLE" end
     local result = Listing.OpenCommentEditor()
     ns.Window.ListingChanged()
     return result
@@ -249,7 +250,12 @@ function Panel.Refresh()
     p.roomOnly:SetLabel(L.FILTER_ROOM_FOR_ME)
     p.roomOnly:SetChecked(S("filterMyRole"))
     p.comment:SetLabel(L.COMMENT_EDIT)
-    p.comment:SetOff(not Listing.CanComment(), L.TIP_COMMENT_NEEDS_AUTH)
+    -- In combat the client refuses Blizzard's panel from addon code ("Interface action failed").
+    if InCombatLockdown() then
+        p.comment:SetOff(true, L.TIP_NOT_IN_COMBAT)
+    else
+        p.comment:SetOff(not Listing.CanComment(), L.TIP_COMMENT_NEEDS_AUTH)
+    end
     p.extend:SetLabel(L.EXTEND)
     local comment = state.comment
     if type(comment) == "string" and comment ~= "" then

@@ -723,6 +723,9 @@ local function listingEvent()
     Window.ListingChanged()
 end
 Finder.On("ACTIVE_ENTRY", listingEvent)
+-- The Comment button greys out in combat and comes back after it.
+ns.On("PLAYER_REGEN_DISABLED", function() if f then Window.ListingChanged() end end)
+ns.On("PLAYER_REGEN_ENABLED", function() if f then Window.ListingChanged() end end)
 Finder.On("EXPIRED", listingEvent)
 Finder.On("AVAILABILITY", function() if Window.IsShown() then ns.Side.Refresh() end end)
 ns.On("GROUP_ROSTER_UPDATE", listingEvent)

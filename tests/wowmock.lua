@@ -211,7 +211,16 @@ SlashCmdList = {}
 UISpecialFrames = {}
 StaticPopupDialogs = {}
 function StaticPopup_Show(which, a) M.popups[#M.popups + 1] = { which = which, text = StaticPopupDialogs[which].text, arg = a } end
-C_Timer = { After = function(_, fn) M.timers[#M.timers + 1] = fn end }
+M.tickers = {}
+C_Timer = {
+    After = function(_, fn) M.timers[#M.timers + 1] = fn end,
+    NewTicker = function(interval, fn)
+        local t = { interval = interval, fn = fn, cancelled = false }
+        function t:Cancel() self.cancelled = true end
+        M.tickers[#M.tickers + 1] = t
+        return t
+    end,
+}
 function CreateColor(r, g, b, a) return { r = r, g = g, b = b, a = a } end
 InterfaceOptions_AddCategory = function(panel) M.registered[#M.registered + 1] = panel.name end
 PixelUtil = { GetNearestPixelSize = function(v) return v end, GetPixelToUIUnitFactor = function() return 1 end }

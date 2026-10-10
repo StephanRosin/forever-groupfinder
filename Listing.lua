@@ -1,7 +1,7 @@
 local ADDON, ns = ...
 
 -- My listing: state and countdown, the leader's missing roles and
--- the way a comment gets into Blizzard's own field. The addon never writes the
+-- the way to Blizzard's own comment field. The addon never writes the
 -- comment itself: the client only lets the player do that, and only with an
 -- authenticator. No C_LFGList call here; Finder does that.
 
@@ -53,6 +53,23 @@ function Listing.OnExpiryWarning(fn)
     warners[#warners + 1] = fn
 end
 
+-- A light ticker keeps the warning working with the window closed. It runs only
+-- while a listing is active and never searches or posts.
+local TICK_SECONDS = 5
+local ticker = nil
+
+local function stopTicker()
+    if ticker then ticker:Cancel(); ticker = nil end
+end
+
+local function syncTicker(active)
+    if not active then return stopTicker() end
+    if ticker or not (C_Timer and C_Timer.NewTicker) then return end
+    ticker = C_Timer.NewTicker(TICK_SECONDS, function() Listing.Tick() end)
+end
+
+function Listing.Ticking() return ticker ~= nil end
+
 -- A new or updated entry restarts the countdown; no entry resets everything.
 local function reanchor()
     local entry = Finder.ActiveEntry()
@@ -64,9 +81,10 @@ local function reanchor()
     else
         anchor, warned, Listing.roles = nil, false, nil
     end
+    syncTicker(entry ~= nil)
 end
 Finder.On("ACTIVE_ENTRY", reanchor)
-Finder.On("EXPIRED", function() anchor, warned, Listing.roles = nil, false, nil end)
+Finder.On("EXPIRED", function() anchor, warned, Listing.roles = nil, false, nil; stopTicker() end)
 
 -- Posting ---------------------------------------------------------------------------
 -- Click path only. An existing listing is updated, which keeps its comment.
@@ -80,6 +98,7 @@ end
 function Listing.Remove()
     Finder.Remove()
     anchor, warned, Listing.roles = nil, false, nil
+    stopTicker()
 end
 
 -- Comment ---------------------------------------------------------------------------
@@ -87,19 +106,14 @@ function Listing.CanComment(categoryID)
     return Finder.CanComment(categoryID or ns.Settings.Get("category"))
 end
 
--- Opens Blizzard's listing tab. Returns "PREFILLED" (our text is in Blizzard's
--- field), "COPY", text (the window shows a copy box: the client refused the
--- write), "OPENED" (nothing to prefill) or "UNAVAILABLE" (no authenticator or
--- no Blizzard finder).
-function Listing.OpenCommentEditor(text, categoryID)
+-- Opens Blizzard's listing tab, where the player types the comment. Returns
+-- "OPENED", or "UNAVAILABLE" (no authenticator or no Blizzard finder).
+function Listing.OpenCommentEditor(categoryID)
     if not Listing.CanComment(categoryID) then return "UNAVAILABLE" end
     if C_AddOns and C_AddOns.LoadAddOn then pcall(C_AddOns.LoadAddOn, "Blizzard_GroupFinder_VanillaStyle") end
     if type(LFGVanilla_ShowFrame) ~= "function" then return "UNAVAILABLE" end
     ns.Blizzard.PassThrough(LFGVanilla_ShowFrame, 1)   -- our own opening: the hooks stand aside
-    if type(text) ~= "string" or text == "" then return "OPENED" end
-    local box = LFGListingComment and LFGListingComment.EditBox
-    if box and pcall(box.SetText, box, text) then return "PREFILLED" end
-    return "COPY", text
+    return "OPENED"
 end
 
 -- Whisper templates -------------------------------------------------------------------
