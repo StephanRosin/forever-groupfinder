@@ -118,7 +118,7 @@ function Controls.ApplySizes()
     for b in pairs(sized) do Controls.Resize(b) end
 end
 
--- opts = { text, width, height, size, icon, onClick(self, mouse), tip (string or function),
+-- opts = { text, width, height, size, icon (Media icon) or iconTexture (a client path), onClick(self, mouse), tip (string or function),
 --         primary (the block's main action: a gold face) }.
 -- SetOff(true, tip) greys the button out: clicks do nothing, the tooltip
 -- still explains why (a disabled client button would not show it).
@@ -137,15 +137,19 @@ function Controls.Button(parent, opts)
     b.label.styleName, b.label.sizeKey = "small", "buttonTextSize"
     b.label:SetJustifyH("CENTER")
     b.label:SetWordWrap(false)
-    b.label:SetPoint("CENTER", opts.icon and 6 or 0, 0)
+    b.label:SetPoint("CENTER", (opts.icon or opts.iconTexture) and 6 or 0, 0)
     b.labelColor = Controls.GOLD
     Controls.Restyle(b.label, b.labelColor)
-    if opts.icon then
+    if opts.icon or opts.iconTexture then
         b.icon = b:CreateTexture(nil, "ARTWORK")
         local icon = math.max(8, math.floor(Settings.Get("buttonTextSize") - 2))
         b.icon:SetSize(icon, icon)
-        b.icon:SetTexture(Media.Icon(opts.icon))
-        b.icon:SetVertexColor(Controls.GOLD[1], Controls.GOLD[2], Controls.GOLD[3])
+        if opts.iconTexture then
+            b.icon:SetTexture(opts.iconTexture)   -- a client texture, in its own colours
+        else
+            b.icon:SetTexture(Media.Icon(opts.icon))
+            b.icon:SetVertexColor(Controls.GOLD[1], Controls.GOLD[2], Controls.GOLD[3])
+        end
     end
     b.tip, b.onClick, b.primary = opts.tip, opts.onClick, opts.primary
     function b.SetLabel(self, text)

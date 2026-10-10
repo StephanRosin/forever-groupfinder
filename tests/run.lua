@@ -2171,9 +2171,18 @@ check("role icon size", lp.roles.tank:GetWidth(), 28)
 check("rows top to bottom", lp.labels.STATUS._points.RIGHT[4] > lp.labels.ROLES._points.RIGHT[4]
     and lp.labels.ROLES._points.RIGHT[4] > lp.labels.FOR._points.RIGHT[4]
     and lp.labels.FOR._points.RIGHT[4] > lp.labels.COMMENT._points.RIGHT[4], true)
-check("main button in the value column, under the comment", lp.post._points.TOPLEFT[3] == vx
-    and lp.post._points.TOPLEFT[4] < lp.comment._points.TOPRIGHT[4], true)
-check("main button larger", lp.post:GetHeight() > lp.comment:GetHeight(), true)
+check("main button right after the status pill", lp.post._points.LEFT[3], vx + lp.pill:GetWidth() + 8)
+check("main button on the status row", lp.post._points.LEFT[4], lp.pill._points.LEFT[4])
+check("main button: the button size", lp.post:GetHeight(), 22)
+check("no extra row: the comment row is the last", (function()
+    local lowest = lp.comment._points.LEFT[4]
+    for _, fr in ipairs({ lp.post, lp.pill }) do if fr._points.LEFT[4] < lowest then return false end end
+    return true
+end)(), true)
+check("Edit right after the comment text", lp.comment._points.LEFT[3], vx + lp.commentText:GetWidth() + 8)
+check("Edit on the comment row", lp.comment._points.LEFT[4], lp.commentText._points.LEFT[4])
+check("Edit label and pencil", lp.comment.label:GetText() == "Edit" and lp.comment.icon ~= nil, true)
+check("nothing right-aligned to the edge", lp.comment._points.TOPRIGHT == nil and lp.post._points.TOPRIGHT == nil, true)
 check("role icon is the role atlas", lp.roles.tank.icon._atlas, "groupfinder-icon-role-large-tank")
 check("chosen role: full colour, gold ring", lp.roles.tank.icon._desaturated ~= true and lp.roles.tank.icon:GetAlpha() == 1
     and lp.roles.tank.ring[1]._texColor[1] == ns.Controls.GOLD[1], true)
@@ -2185,7 +2194,7 @@ lp.roles.healer:GetScript("OnLeave")(lp.roles.healer)
 check("room check box beside the roles", lp.roomOnly._points.LEFT[3] > vx, true)
 check("chips abbreviated, in the value column", lp.chips[1]:IsShown() and lp.chips[1]._points.TOPLEFT[3] == vx
     and lp.chips[1].label:GetText(), "DM")
-check("Comment button at the value column's right end", lp.comment._points.TOPRIGHT[3], vx + (lp:GetWidth() - vx))
+check("Edit stays inside the block", lp.comment._points.LEFT[3] + lp.comment:GetWidth() <= lp:GetWidth(), true)
 click(lp.roles.healer)
 check("role toggled", LP.Roles().healer, true)
 click(lp.post)
@@ -2494,8 +2503,8 @@ local function insideListing()
     for _, fr in ipairs({ lp.post, lp.roomOnly, lp.roles.tank, lp.chips[1] }) do
         if fr and fr:IsShown() and x0(fr) and x0(fr) + fr:GetWidth() > w + 0.5 then return false end
     end
-    local cr = lp.comment._points.TOPRIGHT
-    return cr[3] <= w + 0.5 and cr[3] - lp.comment:GetWidth() >= lp.labelW
+    local cl = lp.comment._points.LEFT
+    return cl[3] + lp.comment:GetWidth() <= w + 0.5 and cl[3] >= lp.labelW
 end
 local function insideFilters()
     local bar = f.filters

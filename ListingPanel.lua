@@ -7,8 +7,9 @@ local S = Settings.Get
 -- Changed – click Update), Roles (a large icon per role my class can play,
 -- ns.Roles, and the "Only groups with room for me" check box), For (the
 -- ticked activities as read-only chips), Comment (read-only; "Comment..."
--- opens Blizzard's listing tab for players with an authenticator), and the
--- one gold Post / Update / Remove button in the value column. Below: the
+-- and a compact "Edit" opens Blizzard's listing tab for players with an
+-- authenticator); the one gold Post / Update / Remove button sits right
+-- after the status pill. Below: the
 -- expiry warning with "Extend" and the leader line ("Missing: ...").
 --
 -- Posting needs a click: Post, Extend and Remove run from OnClick
@@ -17,6 +18,7 @@ local Panel = {}
 ns.ListingPanel = Panel
 
 local GAP = 4
+local EDIT_ICON = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up"   -- a pencil and note
 local PILL_H, PILL_PAD = 16, 6   -- the status pill
 local ROLE_SIZE = 28              -- a role icon toggle
 local LABEL_MIN, LABEL_MAX, COL_GAP = 44, 96, 8   -- the label column
@@ -207,7 +209,7 @@ function Panel.Refresh()
     for key, fs in pairs(p.labels) do fs:SetText(L["LISTING_LABEL_" .. key]) end
     p.roomOnly:SetLabel(L.FILTER_ROOM_FOR_ME)
     p.roomOnly:SetChecked(S("filterMyRole"))
-    p.comment:SetLabel(L.COMMENT_BUTTON)
+    p.comment:SetLabel(L.COMMENT_EDIT)
     p.comment:SetOff(not Listing.CanComment(), L.TIP_COMMENT_NEEDS_AUTH)
     p.extend:SetLabel(L.EXTEND)
     local comment = state.comment
@@ -258,11 +260,21 @@ function Panel.Layout(width)
     local vx = p.labelW + COL_GAP          -- the value column's left edge
     local vw = math.max(60, width - vx)    -- and its width
     local y = 0
-    -- Status.
-    local h = math.max(PILL_H, ch)
+    -- Status: the pill and right after it the main button (gold), which
+    -- goes under the pill when the value column is too narrow.
+    local h = math.max(PILL_H, bh)
     label("STATUS", y, h)
     p.pill:ClearAllPoints()
     p.pill:SetPoint("LEFT", p, "TOPLEFT", vx, -y - h / 2)
+    p.post:SetHeight(bh)
+    p.post:SetWidth(math.min(vw, math.max(80, math.floor(p.post.label:GetStringWidth() + 32))))
+    p.post:ClearAllPoints()
+    local px = p.pill:GetWidth() + 8
+    if px + p.post:GetWidth() > vw then
+        y = y + h + GAP
+        px = 0
+    end
+    p.post:SetPoint("LEFT", p, "TOPLEFT", vx + px, -y - h / 2)
     y = y + h + GAP
     -- Roles: the icons my class can play, then the check box (next line when
     -- it does not fit).
@@ -312,23 +324,18 @@ function Panel.Layout(width)
     p.hint:SetWidth(vw)
     p.hint:SetShown(#ids == 0)
     y = y + (lines + 1) * (ch + 2) - 2 + GAP
-    -- Comment: the text, "Comment..." at the value column's right end.
+    -- Comment: the text, then a compact "Edit" button right after it (the
+    -- text is cut so the button stays in the value column).
     h = math.max(bh, ch)
     label("COMMENT", y, h)
-    p.comment:SetWidth(math.min(vw, math.max(70, math.floor(p.comment.label:GetStringWidth() + 18))))
-    p.comment:ClearAllPoints()
-    p.comment:SetPoint("TOPRIGHT", p, "TOPLEFT", vx + vw, -y)
+    p.comment:SetWidth(math.min(vw, math.floor(p.comment.label:GetStringWidth() + 30)))
+    local textW = math.max(10, math.min(p.commentText:GetStringWidth() + 2, vw - p.comment:GetWidth() - 8))
     p.commentText:ClearAllPoints()
     p.commentText:SetPoint("LEFT", p, "TOPLEFT", vx, -y - h / 2)
-    p.commentText:SetWidth(math.max(10, vw - p.comment:GetWidth() - 8))
+    p.commentText:SetWidth(textW)
+    p.comment:ClearAllPoints()
+    p.comment:SetPoint("LEFT", p, "TOPLEFT", vx + textW + 8, -y - h / 2)
     y = y + h + GAP
-    -- The main button, in the value column, larger and gold.
-    local ph = bh + 4
-    p.post:SetHeight(ph)
-    p.post:SetWidth(math.min(vw, math.max(110, math.floor(p.post.label:GetStringWidth() + 40))))
-    p.post:ClearAllPoints()
-    p.post:SetPoint("TOPLEFT", p, "TOPLEFT", vx, -y)
-    y = y + ph + GAP
     -- Expiry warning with "Extend".
     p.warningText:SetShown(warning)
     p.extend:SetShown(warning)
@@ -398,7 +405,7 @@ function Panel.Create(parent)
     p.chips = {}
     p.hint = Controls.Text(p, "small")
     p.commentText = Controls.Text(p, "comment")
-    p.comment = Controls.Button(p, { text = "", onClick = function() Panel.OpenComment() end,
+    p.comment = Controls.Button(p, { text = "", iconTexture = EDIT_ICON, onClick = function() Panel.OpenComment() end,
         tip = function() return L.TIP_COMMENT end })
     p.warningText = Controls.Text(p, "comment")
     Controls.Restyle(p.warningText, Controls.RED)
