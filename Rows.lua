@@ -17,6 +17,7 @@ local PAD = 6
 local PLAYER_LEFT_W = 150
 local LEVEL_W = 24
 local INVITE_W = 46
+local LEADER_W, LEVELS_W, COUNT_W = 96, 38, 30   -- a group row's leader, levels, "2/5"
 local CHIP_GAP = 3
 local DIVIDER_H = 18
 local TAG_COLOR = { 0.5, 0.82, 1 }
@@ -126,6 +127,29 @@ function Rows.ActivityText(ids)
     if #ids > 1 then return L.ACTIVITY_MORE:format(first, #ids - 1) end
     return first
 end
+
+-- What decides on a group at a glance: the leader (name, class), the
+-- members' level range and how full it is. Pure; fields may be nil.
+function Rows.GroupFacts(entry)
+    local members = type(entry.members) == "table" and entry.members or {}   -- plain: Finder converted the row
+    local leader = type(entry.leader) == "string" and entry.leader or nil
+    local facts = { leader = leader, count = #members, max = Rows.MaxPlayers(entry.activityIDs) }
+    if type(entry.numMembers) == "number" then facts.count = entry.numMembers end
+    for _, m in ipairs(members) do
+        if (m.isLeader == true or (leader ~= nil and m.name == leader)) and not facts.classFile then
+            facts.classFile = m.classFile
+        end
+        if type(m.level) == "number" then
+            facts.minLevel = math.min(facts.minLevel or m.level, m.level)
+            facts.maxLevel = math.max(facts.maxLevel or m.level, m.level)
+        end
+    end
+    return facts
+end
+
+-- The list shows one activity only: group rows leave its name out (the
+-- divider names it). Set by Window.RenderList.
+Rows.singleActivity = nil
 
 function Rows.MaxPlayers(ids)
     local max = 0
@@ -261,7 +285,7 @@ end
 -- "room for me" edge, its tint and the selection outline keep full colour.
 local function dimmable(row)
     local list = {}
-    for _, key in ipairs({ "activity", "more", "tag", "comment", "age", "strike", "level", "class", "name", "pin",
+    for _, key in ipairs({ "activity", "leaderName", "levels", "count", "more", "tag", "comment", "age", "strike", "level", "class", "name", "pin",
         "area", "invite" }) do
         if row[key] then list[#list + 1] = row[key] end
     end
@@ -354,6 +378,10 @@ end
 local function newGroup(parent)
     local row = newBase(parent)
     row.activity = Controls.Text(row, "activity")
+    row.activity.sizeKey = "nameSize"   -- the title no larger than a name
+    row.leaderName = Controls.Text(row, "name")
+    row.levels = Controls.Text(row, "small")
+    row.count = Controls.Text(row, "small")
     row.squares = {}
     for i = 1, MAX_SQUARES do row.squares[i] = newSquare(row) end
     row.more = Controls.Text(row, "small")
@@ -394,15 +422,42 @@ end
 local function layoutGroup(row, entry, width, elapsed)
     local h = S("rowHeight")
     row:SetSize(width, h)
-    for _, fs in ipairs({ row.activity, row.more, row.tag, row.comment, row.age }) do Controls.Restyle(fs) end
+    for _, fs in ipairs({ row.activity, row.leaderName, row.levels, row.count, row.more, row.tag, row.comment, row.age }) do
+        Controls.Restyle(fs)
+    end
     Controls.Color(row.tag, TAG_COLOR)
     local x = EDGE_W + PAD
-    local actW = math.max(90, math.min(170, math.floor(width * 0.28)))
+    -- The activity, unless the list shows only one (then the divider names it).
+    local showActivity = not (Rows.singleActivity and type(entry.activityIDs) == "table" and #entry.activityIDs == 1)
+    row.activity:SetShown(showActivity)
     row.activity:ClearAllPoints()
     row.activity:SetPoint("LEFT", row, "LEFT", x, 0)
-    row.activity:SetWidth(actW)
-    row.activity:SetText(Rows.ActivityText(entry.activityIDs))
-    x = x + actW + PAD
+    if showActivity then
+        local actW = math.max(80, math.min(150, math.floor(width * 0.22)))
+        row.activity:SetWidth(actW)
+        row.activity:SetText(Rows.ActivityText(entry.activityIDs))
+        x = x + actW + PAD
+    end
+    -- Leader (class colour), the members' levels, how full.
+    local facts = Rows.GroupFacts(entry)
+    row.leaderName:ClearAllPoints()
+    row.leaderName:SetPoint("LEFT", row, "LEFT", x, 0)
+    row.leaderName:SetText(facts.leader or L.UNKNOWN_PLAYER)
+    if S("classColorNames") and facts.classFile then row.leaderName:SetTextColor(Rows.ClassColor(facts.classFile)) end
+    local nameW = math.min(row.leaderName:GetStringWidth() + 2, LEADER_W)
+    row.leaderName:SetWidth(nameW)
+    x = x + LEADER_W + PAD
+    row.levels:ClearAllPoints()
+    row.levels:SetPoint("LEFT", row, "LEFT", x, 0)
+    row.levels:SetWidth(LEVELS_W)
+    row.levels:SetText(facts.minLevel and (facts.minLevel == facts.maxLevel and tostring(facts.minLevel)
+        or L.LEVEL_RANGE:format(facts.minLevel, facts.maxLevel)) or "")
+    x = x + LEVELS_W + PAD
+    row.count:ClearAllPoints()
+    row.count:SetPoint("LEFT", row, "LEFT", x, 0)
+    row.count:SetWidth(COUNT_W)
+    row.count:SetText(facts.max > 0 and L.MEMBER_COUNT:format(facts.count, facts.max) or tostring(facts.count))
+    x = x + COUNT_W + PAD
     x = x + layoutSquares(row, entry, x)
     local tag = tagText(entry)
     row.tag:ClearAllPoints()
@@ -417,7 +472,7 @@ local function layoutGroup(row, entry, width, elapsed)
     row.age:SetPoint("RIGHT", row, "RIGHT", -PAD, 0)
     Rows.SetAge(row, entry, elapsed)
     row.strike:ClearAllPoints()
-    row.strike:SetPoint("LEFT", row.activity, "LEFT", 0, 0)
+    row.strike:SetPoint("LEFT", row, "LEFT", EDGE_W + PAD, 0)
     row.strike:SetPoint("RIGHT", row, "RIGHT", -AGE_W - PAD, 0)
     row.strike:SetShown(entry.delisted == true)
     local open = ns.Detail and ns.Detail.OpenID()

@@ -1668,10 +1668,31 @@ check("groups built", #built.groups, 2)
 check("players built", #built.players, 1)
 local used = f.pool.used
 check("rows: divider, 2 groups, divider, 1 player", #used, 5)
-check("groups divider", used[1].text:GetText(), "Groups (2)")
+check("one activity ticked: the divider names it", used[1].text:GetText(), "The Deadmines – Groups (2)")
 check("players divider", used[4].text:GetText(), "Players (1)")
 check("group row kind", used[2].kind, "GROUP")
-check("group activity name", used[2].activity:GetText(), "The Deadmines")
+check("one activity ticked: no activity in the rows", used[2].activity:IsShown(), false)
+do
+local g = used[2].entry.id == 1 and used[2] or used[3]
+check("group row: leader name", g.leaderName:GetText(), "Grimnar")
+check("group row: leader in class colour", g.leaderName._textColor[1], RAID_CLASS_COLORS.WARRIOR.r)
+check("group row: members' levels", g.levels:GetText(), "20")
+check("group row: how full", g.count:GetText(), "2/5")
+check("group row: title no larger than a name", g.activity._font[2], S("nameSize"))
+check("GroupFacts: level range", (function()
+    local fct = ns.Rows.GroupFacts({ leader = "A", activityIDs = { 22 }, members = {
+        { name = "A", level = 17, classFile = "MAGE", isLeader = true }, { name = "B", level = 20 } } })
+    return fct.classFile .. " " .. fct.minLevel .. "-" .. fct.maxLevel .. " " .. fct.count .. "/" .. fct.max
+end)(), "MAGE 17-20 2/5")
+W.SetChecked(24, true)
+W.RenderList()
+check("two activities ticked: plain divider", f.pool.used[1].text:GetText(), "Groups (2)")
+check("two activities ticked: the activity in the rows", f.pool.used[2].activity:IsShown()
+    and f.pool.used[2].activity:GetText(), "The Deadmines")
+W.SetChecked(24, false)
+W.RenderList()
+used = f.pool.used
+end
 check("guild tag", used[2].entry.id == 1 and used[2].tag:GetText() or used[3].tag:GetText(), "Guild")
 local g1 = used[2]
 check("free slots from the counts (tank, healer)", (function()

@@ -230,8 +230,13 @@ function Window.RenderList()
         y = y + Rows.Layout(row, entry, width, elapsed)
     end
     local total = #built.groups + #built.players
+    -- One activity ticked: its name heads the groups instead of every row.
+    local only = Window.CheckedList()
+    local single = #only == 1 and Activities.Name(only[1]) or nil
+    Rows.singleActivity = single
     if total > 0 then
-        place("DIVIDER", { text = L.DIVIDER_GROUPS:format(#built.groups) })
+        place("DIVIDER", { text = single and L.DIVIDER_GROUPS_ACTIVITY:format(single, #built.groups)
+            or L.DIVIDER_GROUPS:format(#built.groups) })
         for _, row in ipairs(built.groups) do place("GROUP", row) end
         if S("showPlayers") then
             place("DIVIDER", { text = L.DIVIDER_PLAYERS:format(#built.players) })
