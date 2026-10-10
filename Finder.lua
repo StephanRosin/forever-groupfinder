@@ -231,6 +231,21 @@ function Finder.CreateOrUpdate(entry)
     return ok
 end
 
+-- The roles Blizzard's finder remembers for a solo listing (GetSavedRoles,
+-- else GetRoles) as { tank, healer, dps }; nil when it has none.
+function Finder.SavedRoles()
+    if not C_LFGListRoles then return nil end
+    for _, getter in ipairs({ C_LFGListRoles.GetSavedRoles, C_LFGListRoles.GetRoles }) do
+        local ok, r = false, nil
+        if type(getter) == "function" then ok, r = pcall(getter) end
+        if ok and type(r) == "table" then
+            local out = { tank = plain(r.tank) == true, healer = plain(r.healer) == true, dps = plain(r.dps) == true }
+            if out.tank or out.healer or out.dps then return out end
+        end
+    end
+    return nil
+end
+
 function Finder.Remove()
     C_LFGList.RemoveListing()
 end

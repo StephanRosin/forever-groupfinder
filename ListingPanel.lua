@@ -3,9 +3,10 @@ local L, Settings, Controls, Activities, Listing = ns.L, ns.Settings, ns.Control
 local S = Settings.Get
 
 -- "My listing", the top of the window's right side: the checked activities
--- as chips, my roles (solo), the current comment (read-only; "Comment..."
+-- as chips, my roles (ns.Roles: only those my class can play) with the
+-- "only groups with room for me" toggle, the current comment (read-only; "Comment..."
 -- opens Blizzard's listing tab for players with an authenticator), the
--- template menu, remaining time, Post/Update and Remove, the expiry warning
+-- template menu, remaining time, one Post / Update / Remove button, the expiry warning
 -- with "Extend", the leader line ("Missing: ...") and the copy box for a
 -- template comment the client would not let us prefill.
 --
@@ -18,29 +19,16 @@ local ROW_H, GAP = 18, 4
 local BUTTON_GAP = 4
 local ROLE_KEYS = { "tank", "healer", "dps" }
 local ROLE_LABEL = { tank = "ROLE_TANK", healer = "ROLE_HEALER", dps = "ROLE_DAMAGER" }
-local MY_ROLE_KEY = { TANK = "tank", HEALER = "healer", DAMAGER = "dps" }
 
 local p
-local roles = nil          -- { tank, healer, dps } for my next post
 local templateComment = "" -- the applied template's comment, ready to copy
 local warning = false      -- the expiry warning is showing
 local copyText = nil       -- the copy box is showing this
 
 -- State -------------------------------------------------------------------------------------
 
--- Until the player picks roles himself (or a template does), they follow
--- his current role, or what the listing was last posted with.
-function Panel.Roles()
-    if roles then return roles end
-    local derived = { tank = false, healer = false, dps = false }
-    local saved = Listing.roles
-    if type(saved) == "table" then
-        for _, k in ipairs(ROLE_KEYS) do derived[k] = saved[k] == true end
-    else
-        derived[MY_ROLE_KEY[ns.Results.MyRole()] or "dps"] = true
-    end
-    return derived
-end
+-- My selected roles (ns.Roles), the same everywhere.
+function Panel.Roles() return ns.Roles.Selected() end
 
 function Panel.TemplateComment() return templateComment end
 function Panel.Warning() return warning end
@@ -75,9 +63,42 @@ end
 -- Click paths --------------------------------------------------------------------------------
 
 function Panel.ToggleRole(key)
-    roles = Panel.Roles()
-    roles[key] = not roles[key]
-    Panel.Refresh()
+    ns.Roles.Toggle(key)
+    ns.Window.Rebuild()          -- room for me depends on my roles
+    ns.Window.ListingChanged()
+end
+
+local function sameActivities(a, b)
+    local set = {}
+    for _, id in ipairs(a) do set[id] = true end
+    local n = 0
+    for _, id in ipairs(b) do
+        if not set[id] then return false end
+        n = n + 1
+    end
+    return n == #a
+end
+
+-- My ticked activities or roles differ from the active listing.
+function Panel.Changed()
+    local state = Listing.State()
+    if not state.active then return false end
+    local ids = ns.Window.CheckedList()
+    if #ids > 0 and not sameActivities(ids, state.activityIDs) then return true end
+    if solo() and type(Listing.roles) == "table" and not ns.Roles.Same(Panel.Roles(), Listing.roles) then return true end
+    return false
+end
+
+-- The one listing button: Post without a listing, Update when something
+-- changed, Remove when nothing did. A right click always removes.
+function Panel.Action(mouse)
+    local state = Listing.State()
+    if not state.active then return Panel.Post() end
+    if mouse == "RightButton" or not Panel.Changed() then
+        Panel.Remove()
+        return true
+    end
+    return Panel.Post()
 end
 
 function Panel.Post()
@@ -127,8 +148,7 @@ function Panel.ApplyTemplate(name)
     local t = Listing.ApplyTemplate(name)
     if not t then return false end
     ns.Window.SetCheckedList(t.activityIDs)
-    roles = {}
-    for _, k in ipairs(ROLE_KEYS) do roles[k] = type(t.roles) == "table" and t.roles[k] == true end
+    ns.Roles.Set(t.roles)
     templateComment = type(t.comment) == "string" and t.comment or ""   -- plain: our own saved template
     ns.Side.Refresh()
     ns.Window.ListingChanged()
@@ -218,12 +238,14 @@ function Panel.Refresh()
     if not state.active then warning = false end
     p.title:SetText(L.MY_LISTING)
     p.status:SetText(statusText(state))
-    p.post:SetLabel(state.active and L.UPDATE or L.POST)
     local ids = ns.Window.CheckedList()
-    p.post:SetOff(#ids == 0, L.TIP_POST_NEEDS_ACTIVITY)
-    p.post.tip = state.active and L.TIP_UPDATE or L.TIP_POST
-    p.remove:SetLabel(L.REMOVE)
-    p.remove:SetOff(not state.active, L.TIP_REMOVE_NONE)
+    local mode = not state.active and "POST" or (Panel.Changed() and "UPDATE" or "REMOVE")
+    p.post.mode = mode
+    p.post:SetLabel(L[mode])
+    p.post:SetOff(mode == "POST" and #ids == 0, L.TIP_POST_NEEDS_ACTIVITY)
+    p.post.tip = L["TIP_" .. mode]
+    p.roomOnly:SetLabel(L.FILTER_ROOM_FOR_ME)
+    p.roomOnly:SetOn(S("filterMyRole"))
     p.template:SetLabel(L.TEMPLATE)
     p.comment:SetLabel(L.COMMENT_BUTTON)
     p.comment:SetOff(not Listing.CanComment(), L.TIP_COMMENT_NEEDS_AUTH)
@@ -258,7 +280,7 @@ function Panel.Layout(width)
     p.status:ClearAllPoints()
     p.status:SetPoint("LEFT", p.title, "RIGHT", 8, 0)
     local x = width
-    for _, b in ipairs({ p.remove, p.post, p.template }) do
+    for _, b in ipairs({ p.post, p.template }) do
         b:SetWidth(math.max(56, math.floor(b.label:GetStringWidth() + (b.icon and 30 or 18))))
         b:ClearAllPoints()
         b:SetPoint("TOPRIGHT", p, "TOPLEFT", x, -y)
@@ -287,17 +309,22 @@ function Panel.Layout(width)
     p.hint:SetPoint("TOPLEFT", p, "TOPLEFT", 0, -y - 2)
     p.hint:SetShown(#ids == 0)
     y = y + 16 + GAP
-    -- Line 3: roles (solo), the comment, "Comment...".
+    -- Line 3: my roles (only those my class can play), "only groups with
+    -- room for me", the comment, "Comment...".
     local rx = 0
+    local allowed = ns.Roles.Allowed()
     for _, k in ipairs(ROLE_KEYS) do
         local b = p.roles[k]
-        b:SetShown(solo())
-        if solo() then
+        b:SetShown(allowed[k])
+        if allowed[k] then
             b:ClearAllPoints()
             b:SetPoint("TOPLEFT", p, "TOPLEFT", rx, -y)
             rx = rx + b:Fit() + BUTTON_GAP
         end
     end
+    p.roomOnly:ClearAllPoints()
+    p.roomOnly:SetPoint("TOPLEFT", p, "TOPLEFT", rx + 2, -y)
+    rx = rx + 2 + p.roomOnly:Fit() + BUTTON_GAP
     p.comment:SetWidth(math.max(70, math.floor(p.comment.label:GetStringWidth() + 18)))
     p.comment:ClearAllPoints()
     p.comment:SetPoint("TOPRIGHT", p, "TOPLEFT", width, -y)
@@ -349,9 +376,7 @@ function Panel.Create(parent)
     p.title = Controls.Text(p, "small")
     Controls.Restyle(p.title, Controls.GOLD)
     p.status = Controls.Text(p, "small")
-    p.post = Controls.Button(p, { text = "", height = 18, onClick = function() Panel.Post() end })
-    p.remove = Controls.Button(p, { text = "", height = 18, onClick = function() Panel.Remove() end,
-        tip = function() return L.TIP_REMOVE end })
+    p.post = Controls.Button(p, { text = "", height = 18, onClick = function(_, mouse) Panel.Action(mouse) end })
     p.template = Controls.Button(p, { text = "", height = 18, icon = "ChevronDown", tip = function() return L.TIP_TEMPLATE end,
         onClick = function(self) ns.Menu.Open(self, Panel.BuildTemplateMenu) end })
     p.chips = {}
@@ -360,6 +385,8 @@ function Panel.Create(parent)
     for _, k in ipairs(ROLE_KEYS) do
         p.roles[k] = Controls.Chip(p, { text = "", onClick = function() Panel.ToggleRole(k) end, tip = function() return L.TIP_ROLES end })
     end
+    p.roomOnly = Controls.Chip(p, { text = "", onClick = function() ns.Window.ToggleFilter("filterMyRole") end,
+        tip = function() return L.TIP_FILTER_ROOM_FOR_ME end })
     p.commentText = Controls.Text(p, "comment")
     p.comment = Controls.Button(p, { text = "", height = 18, onClick = function() Panel.OpenComment() end,
         tip = function() return L.TIP_COMMENT end })

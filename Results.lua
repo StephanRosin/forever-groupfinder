@@ -12,20 +12,13 @@ local Memory = ns.Memory
 local FIT_RANK = { FITS = 0, HIGH = 1, LOW = 2 }
 local NO_FIT = 3
 
-local ROLE_NAMES = { TANK = true, HEALER = true, DAMAGER = true }
-
-function Results.MyRole()
-    local override = ns.Settings.Get("roleOverride")
-    if ROLE_NAMES[override] then return override end
-    if type(GetSpecialization) == "function" and type(GetSpecializationRole) == "function" then
-        local ok, role = pcall(function() return GetSpecializationRole(GetSpecialization()) end)
-        if ok and ROLE_NAMES[role] then return role end
+-- Room for me: a free place for any of my roles ("TANK", "HEALER", "DAMAGER").
+local function roomFor(counts, myRoles)
+    for _, role in ipairs(myRoles) do
+        local remaining = counts[role .. "_REMAINING"]
+        if type(remaining) == "number" and remaining > 0 then return true end
     end
-    if type(UnitGroupRolesAssigned) == "function" then
-        local role = UnitGroupRolesAssigned("player")
-        if ROLE_NAMES[role] then return role end
-    end
-    return "DAMAGER"
+    return false
 end
 
 -- The best (lowest rank) fit of the activities; nil when none is known.
@@ -56,12 +49,11 @@ local function isPlayer(r)
     return r.numMembers == 1 and #members <= 1
 end
 
-local function buildRow(r, myRole)
+local function buildRow(r, myRoles)
     local members = type(r.members) == "table" and r.members or {}
     local player = isPlayer(r)
     local first = members[1] or {}
     local counts = type(r.counts) == "table" and r.counts or {}
-    local remaining = counts[myRole .. "_REMAINING"]
     local leader = r.leaderName
     if player and type(leader) ~= "string" then leader = first.name end
     local key = Memory.Key(r)
@@ -69,7 +61,7 @@ local function buildRow(r, myRole)
         id = r.id, kind = player and "PLAYER" or "GROUP",
         activityIDs = r.activityIDs, leader = leader, comment = r.comment, age = r.age,
         members = members, counts = counts,
-        freeForMe = type(remaining) == "number" and remaining > 0,
+        freeForMe = not player and roomFor(counts, myRoles),
         friend = r.friends, guild = r.guild,
         seen = Memory.IsSeen(key),
         area = player and first.area or nil,
@@ -110,9 +102,10 @@ function Results.Build(results, ctx)
     local filters = ctx.filters or {}
     local text = type(filters.text) == "string" and filters.text ~= "" and filters.text:lower() or nil
     local out = { groups = {}, players = {} }
-    local myRole = ctx.myRole or Results.MyRole()
+    -- ctx.myRoles: my selected roles; ns.Roles.List() by default.
+    local myRoles = ctx.myRoles or ns.Roles.List()
     for _, r in ipairs(results or {}) do
-        local row = buildRow(r, myRole)
+        local row = buildRow(r, myRoles)
         row.fit = bestFit(row.activityIDs, ctx.activityFit)
         local keep = not Memory.IsIgnored(row.leader) and not Memory.IsHidden(row.key)
         if keep and filters.myRole and row.kind == "GROUP" and not row.freeForMe then keep = false end

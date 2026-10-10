@@ -28,6 +28,7 @@ Resize.lua
 Corners.lua
 Border.lua
 Finder.lua
+Roles.lua
 Activities.lua
 Memory.lua
 Listing.lua

@@ -149,9 +149,7 @@ function Listing.ApplyTemplate(name)
 end
 
 -- Whisper templates -------------------------------------------------------------------
-local ROLE_LABEL = { TANK = "ROLE_TANK", HEALER = "ROLE_HEALER", DAMAGER = "ROLE_DAMAGER" }
-
--- {role} {level} {class} {activity}; activityID defaults to the first of my listing.
+-- {role} (my selected roles, "Tank/Damage") {level} {class} {activity}; activityID defaults to the first of my listing.
 function Listing.Expand(text, activityID)
     if type(text) ~= "string" then return "" end
     if activityID == nil then   -- plain: an id from our own list
@@ -159,7 +157,7 @@ function Listing.Expand(text, activityID)
         activityID = entry and entry.activityIDs[1]
     end
     local values = {
-        role = ns.L[ROLE_LABEL[ns.Results.MyRole()]],
+        role = ns.Roles.Text(),
         level = tostring(UnitLevel("player") or ""),
         class = (UnitClass and (UnitClass("player"))) or "",
         activity = activityID and Activities.Name(activityID) or "",   -- plain: an id from our own list

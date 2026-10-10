@@ -116,7 +116,7 @@ local EXPECTED = {
     scale = 100, locked = false, sideWidth = 190,
     minInterval = 3, levelRangeOnly = true, category = 2, sortFriendsFirst = true,
     filterMyRole = false, filterLevelFits = false, hideSeen = false,
-    roleOverride = "AUTO", markOpenSlot = true, showPlayers = true, rowHeight = 22, playerRowHeight = 34,
+    markOpenSlot = true, showPlayers = true, rowHeight = 22, playerRowHeight = 34,
     memoryMinutes = 30,
     expiryWarnMinutes = 5,
     borderStyle = "NONE", borderSize = 1, cornerRadius = 10,
@@ -263,7 +263,7 @@ Settings.ResetProfile()
 section("Export and import")
 Settings.Set("width", 777)
 Settings.Set("bgColor", { 0.1, 0.2, 0.3 })
-Settings.Set("roleOverride", "TANK")
+Settings.Set("borderStyle", "GOLD")
 Settings.Set("languages", { "deDE" })
 Settings.Set("whisperTemplates", { "a", "b {role}" })
 template.name = "Heal"
@@ -277,7 +277,7 @@ check("reset", S("width"), D.width)
 check("import", ns.Share.Import(text), true)
 check("number back", S("width"), 777)
 check("colour back", S("bgColor")[3], 0.3)
-check("enum back", S("roleOverride"), "TANK")
+check("enum back", S("borderStyle"), "GOLD")
 check("flag back", S("headerFlag"), "OUTLINE")
 check("languages back", S("languages")[1], "deDE")
 check("whisper templates back", S("whisperTemplates")[2], "b {role}")
@@ -295,13 +295,14 @@ check("truncated string refused", ns.Share.Import(text:sub(1, #text - 3)), nil)
 check("unknown keys skipped", ns.Share.Import("FGF1:ts6:bogus!b1}"), true)
 check("unknown key not stored", ns.DB().bogus, nil)
 Settings.ResetProfile()
-check("bad enum values skipped", ns.Share.Import("FGF1:ts12:roleOverrides4:BOSSs11:borderStyles3:BAD"
+check("bad enum values skipped", ns.Share.Import("FGF1:ts11:borderStyles3:BAD"
     .. "s6:bgModes5:SOLIDs10:headerFlags6:Italic}"), true)
-check("bad role not stored", ns.DB().roleOverride, nil)
+check("a removed setting (roleOverride) is skipped", ns.Share.Import("FGF1:ts12:roleOverrides4:TANK}"), true)
+check("removed setting not stored", ns.DB().roleOverride, nil)
 check("bad borderStyle not stored", ns.DB().borderStyle, nil)
 check("bad flag not stored", ns.DB().headerFlag, nil)
-check("good enum kept", ns.Share.Import("FGF1:ts12:roleOverrides6:HEALERs8:nameFlags7:OUTLINE}"), true)
-check("role imported", S("roleOverride"), "HEALER")
+check("good enum kept", ns.Share.Import("FGF1:ts11:borderStyles4:GOLDs8:nameFlags7:OUTLINE}"), true)
+check("enum imported", S("borderStyle"), "GOLD")
 check("flag imported", S("nameFlag"), "OUTLINE")
 check("wrong type skipped", ns.Share.Import("FGF1:ts5:widths3:abcs6:locked" .. "n1;}"), true)
 check("wrong type not stored", ns.DB().width, nil)
@@ -390,7 +391,7 @@ check("scale on Window", reachable.scale, "window")
 check("side width on Window", reachable.sideWidth, "window")
 check("border on Appearance", reachable.borderStyle, "appearance")
 check("comment colour on Text", reachable.commentColor, "text")
-check("role override on List", reachable.roleOverride, "list")
+check("no role override any more", Settings.DEFAULTS.roleOverride, nil)
 check("memory on List", reachable.memoryMinutes, "list")
 check("whispers on Templates", reachable.whisperTemplates, "templates")
 check("templates on Templates", reachable.templates, "templates")
@@ -433,7 +434,6 @@ local function itemFor(text)
     end
 end
 ns.Options.ShowPage("list")
-check("role override row", rowFor("My role", "button") ~= nil, true)
 check("ignore list empty hint", (function()
     for _, f in ipairs(M.frames) do
         if f.text and f.text._text == "No one is ignored." and f:IsVisible() then return true end
@@ -1116,7 +1116,7 @@ end
 local fits = { [1] = "FITS", [2] = "HIGH", [3] = "LOW" }
 local ctx = function(c)
     c = c or {}
-    return { myRole = c.myRole or "HEALER", myLevel = 60, filters = c.filters or {}, activityFit = function(id) return fits[id] end }
+    return { myRoles = c.myRoles or { "HEALER" }, myLevel = 60, filters = c.filters or {}, activityFit = function(id) return fits[id] end }
 end
 local ids = function(rows) local t = {} for _, r in ipairs(rows) do t[#t + 1] = r.id end return table.concat(t, ",") end
 
@@ -1139,7 +1139,7 @@ check("no role filter keeps all", ids(R.Build(mixed, ctx()).groups), "2,1")
 local byRole = R.Build(mixed, ctx({ filters = { myRole = true } }))
 check("role filter drops full-for-me groups", ids(byRole.groups), "2")
 check("role filter never touches players", ids(byRole.players), "3")
-check("role filter follows the role", ids(R.Build(mixed, ctx({ myRole = "DAMAGER", filters = { myRole = true } })).groups), "1")
+check("role filter follows the role", ids(R.Build(mixed, ctx({ myRoles = { "DAMAGER" }, filters = { myRole = true } })).groups), "1")
 local lv = { group(1, "A", { 1 }), group(2, "B", { 2 }), group(3, "C", { 3 }), group(4, "D", { 2, 1 }), solo(5, "E", { 3 }) }
 local lvl = R.Build(lv, ctx({ filters = { levelFits = true } }))
 check("level filter groups", ids(lvl.groups), "1,4")
@@ -1161,7 +1161,7 @@ check("ignored player dropped", ids(R.Build({ solo(1, "Carl", { 1 }) }, ctx()).p
 Mem.Unignore("Carl")
 clock = clock + 100 * 3600
 check("text in activity name", ids(R.Build({ group(1, "A", { 1 }), group(2, "B", { 2 }) },
-    { myRole = "HEALER", myLevel = 60, filters = { text = "deadm" }, activityFit = function() return "FITS" end }).groups), "2")
+    { myRoles = { "HEALER" }, myLevel = 60, filters = { text = "deadm" }, activityFit = function() return "FITS" end }).groups), "2")
 
 -- sort
 local sorted = R.Build({
@@ -1198,27 +1198,45 @@ local unknown = R.Build({ group(1, "A", { 99 }, { age = 1 }), group(2, "B", { 3 
 check("unknown fit sorts last", ids(unknown.groups), "3,2,1")
 check("unknown fit has no fit", unknown.groups[3].fit, nil)
 check("levelFits keeps unknown activities", ids(R.Build({ group(1, "A", { 99 }), group(2, "B", { 3 }) }, ctx({ filters = { levelFits = true } })).groups), "1")
-Settings.Set("roleOverride", "DAMAGER")
-check("missing myRole defaults to MyRole", ids(R.Build({ group(1, "A", { 1 }, { healFree = 1, dpsFree = 0 }), group(2, "B", { 1 }, { healFree = 0, dpsFree = 1 }) },
-    { myLevel = 60, filters = { myRole = true }, activityFit = function() return "FITS" end }).groups), "2")
-Settings.Set("roleOverride", nil)
+check("room for any of my roles", ids(R.Build({ group(1, "A", { 1 }, { healFree = 1, dpsFree = 0 }), group(2, "B", { 1 }, { healFree = 0, dpsFree = 1 }),
+    group(3, "C", { 1 }, { healFree = 0, dpsFree = 0 }) }, ctx({ myRoles = { "HEALER", "DAMAGER" }, filters = { myRole = true } })).groups), "1,2")
 
--- my role
-check("role override", (function() Settings.Set("roleOverride", "TANK") return R.MyRole() end)(), "TANK")
-Settings.Set("roleOverride", nil)
-GetSpecialization, GetSpecializationRole = nil, nil
+-- My roles: only what the class can play, the selection per character.
+local Ro = ns.Roles
+local function roleSet(t) return (t.tank and "T" or "-") .. (t.healer and "H" or "-") .. (t.dps and "D" or "-") end
+ForeverGroupFinderChar.roles = nil
+UnitClass = function() return "Krieger", "WARRIOR" end
+check("warrior: tank and dps", roleSet(Ro.Allowed()), "T-D")
 UnitGroupRolesAssigned = nil
-check("role fallback", R.MyRole(), "DAMAGER")
-UnitGroupRolesAssigned = function() return "HEALER" end
-check("role from group assignment", R.MyRole(), "HEALER")
-UnitGroupRolesAssigned = function() return "NONE" end
-check("unassigned group role", R.MyRole(), "DAMAGER")
-GetSpecialization = function() return 2 end
-GetSpecializationRole = function(i) return i == 2 and "TANK" or nil end
-check("role from specialization", R.MyRole(), "TANK")
-GetSpecializationRole = function() return nil end
-check("specialization without a role falls through", R.MyRole(), "DAMAGER")
-GetSpecialization, GetSpecializationRole, UnitGroupRolesAssigned = nil, nil, nil
+check("warrior default: first allowed (tank)", roleSet(Ro.Selected()), "T--")
+check("text for tank", Ro.Text(), "Tank")
+check("Results uses my roles", ids(R.Build({ group(1, "A", { 1 }, { tankFree = 1, healFree = 0, dpsFree = 0 }), group(2, "B", { 1 }, { healFree = 1, dpsFree = 0 }) },
+    { myLevel = 60, filters = { myRole = true }, activityFit = function() return "FITS" end }).groups), "1")
+UnitGroupRolesAssigned = function() return "DAMAGER" end
+check("default from the assigned group role", roleSet(Ro.Selected()), "--D")
+M.lfg.savedRoles = { tank = true, healer = true, dps = false }
+check("default from Blizzard's saved roles, healer dropped", roleSet(Ro.Selected()), "T--")
+M.lfg.savedRoles = nil
+UnitGroupRolesAssigned = nil
+check("healer is not allowed for a warrior", Ro.Toggle("healer"), false)
+check("toggle dps on", Ro.Toggle("dps"), true)
+check("tank and dps", roleSet(Ro.Selected()), "T-D")
+check("stored per character", roleSet(ForeverGroupFinderChar.roles), "T-D")
+check("text for two roles", Ro.Text(), "Tank/DPS")
+check("toggle tank off", Ro.Toggle("tank"), true)
+check("the last role stays", Ro.Toggle("dps"), false)
+check("dps only", roleSet(Ro.Selected()), "--D")
+UnitClass = function() return "Priester", "PRIEST" end
+check("a stored role the class cannot play falls back", roleSet(Ro.Selected()), "--D")
+check("priest: heal and dps", roleSet(Ro.Allowed()), "-HD")
+UnitGetAvailableRoles = function() return true, false, false end
+check("the client's answer wins", roleSet(Ro.Allowed()), "T--")
+UnitGetAvailableRoles = function() return false, false, false end
+check("an empty answer falls back to the class", roleSet(Ro.Allowed()), "-HD")
+UnitGetAvailableRoles = nil
+UnitClass = nil
+check("unknown class: all roles", roleSet(Ro.Allowed()), "THD")
+ForeverGroupFinderChar.roles = nil
 
 section("Listing")
 local Li = ns.Listing
@@ -1341,9 +1359,9 @@ UnitIsGroupLeader, GetNumGroupMembers, IsInRaid, UnitGroupRolesAssigned = nil, n
 
 -- whisper expansion
 lfg.level = 42
-UnitClass = function() return "Magier", "MAGE" end
-Settings.Set("roleOverride", "HEALER")
-check("expansion", Li.Expand("Hi! {role}, {level} {class} for {activity}", 11), "Hi! Healer, 42 Magier for Ragefire Chasm")
+UnitClass = function() return "Priester", "PRIEST" end
+ns.Roles.Set({ healer = true })
+check("expansion", Li.Expand("Hi! {role}, {level} {class} for {activity}", 11), "Hi! Healer, 42 Priester for Ragefire Chasm")
 check("expansion twice", Li.Expand("{level}{level}", 11), "4242")
 check("unknown placeholder kept", Li.Expand("{foo} {role}", 11), "{foo} Healer")
 lfg.active = { activityIDs = { 12 } }
@@ -1351,8 +1369,10 @@ check("activity from my listing", Li.Expand("{activity}"), "Molten Core")
 lfg.active = nil
 check("no activity expands empty", Li.Expand("[{activity}]"), "[]")
 check("default whisper template expands", Li.Expand(Settings.Get("whisperTemplates")[1], 11),
-    "Hi! Still looking for Healer? I'm a level 42 Magier.")
-Settings.Set("roleOverride", "AUTO")
+    "Hi! Still looking for Healer? I'm a level 42 Priester.")
+ns.Roles.Set({ healer = true, dps = true })
+check("{role} is my selected roles", Li.Expand("{role}", 11), "Healer/DPS")
+ForeverGroupFinderChar.roles = nil
 UnitClass = nil
 
 -- comment editor
@@ -1529,7 +1549,7 @@ result(1, "Grimnar", { member("Grimnar", "WARRIOR"), member("Ilvea", "MAGE") }, 
 result(2, "Thal", { member("Thal", "PRIEST"), member("Ra", "ROGUE"), member("Ho", "HUNTER") }, { age = 10 })
 result(3, "Solo", { member("Solo", "MAGE", 21, "Stormwind City", { tank = true, healer = false, dps = true }) },
     { activityIDs = { 22, 24, 23 }, comment = "tank lf" })
-Settings.Set("roleOverride", "TANK")
+ForeverGroupFinderChar.roles = nil   -- my roles: the first allowed (tank)
 M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
 local built = W.Built()
 check("groups built", #built.groups, 2)
@@ -1605,7 +1625,7 @@ for _, line in ipairs(GameTooltip._lines or {}) do tipText[#tipText + 1] = table
 tipText = table.concat(tipText, "\n")
 check("tooltip: activity", tipText:find("The Deadmines", 1, true) ~= nil, true)
 check("tooltip: every member", tipText:find("Grimnar (20)", 1, true) ~= nil and tipText:find("Ilvea (20)", 1, true) ~= nil, true)
-check("tooltip: class and role", tipText:find("WARRIOR - Damage", 1, true) ~= nil, true)
+check("tooltip: class and role", tipText:find("WARRIOR - DPS", 1, true) ~= nil, true)
 check("tooltip: comment", tipText:find("c1", 1, true) ~= nil, true)
 check("tooltip: age", tipText:find("Listed 1 min ago", 1, true) ~= nil, true)
 groupRow:GetScript("OnLeave")(groupRow)
@@ -1615,7 +1635,7 @@ check("player tooltip: area", (function()
     return false
 end)(), true)
 check("player tooltip: wanted roles", (function()
-    for _, line in ipairs(tl) do if line.text == "Roles: Tank, Damage" then return true end end
+    for _, line in ipairs(tl) do if line.text == "Roles: Tank, DPS" then return true end end
     return false
 end)(), true)
 
@@ -1744,13 +1764,13 @@ local menu = M.LastMenu()
 check("menu entries", M.MenuTexts(menu), "Grimnar,Whisper,Whisper template,Invite,-,Mark as seen,Hide,Ignore the leader")
 M.MenuClick(M.MenuFind(menu, "Whisper"))
 check("menu whisper", M.tells[#M.tells].name, "Grimnar")
-UnitClass = function() return "Mage", "MAGE" end
+UnitClass = function() return "Warrior", "WARRIOR" end
 click(groupRow, "RightButton")
 menu = M.LastMenu()
 local tmpl = M.MenuFind(menu, "Whisper template")
-check("whisper templates expanded", tmpl.items[1] and tmpl.items[1].text, "Hi! Still looking for Tank? I'm a level 20 Mage.")
+check("whisper templates expanded", tmpl.items[1] and tmpl.items[1].text, "Hi! Still looking for Tank? I'm a level 20 Warrior.")
 M.MenuClick(tmpl.items[1])
-check("template whisper text", M.tells[#M.tells].text, "Hi! Still looking for Tank? I'm a level 20 Mage.")
+check("template whisper text", M.tells[#M.tells].text, "Hi! Still looking for Tank? I'm a level 20 Warrior.")
 UnitClass = nil
 M.MenuClick(M.MenuFind(menu, "Invite"))
 check("menu invite", M.invited[#M.invited], "Grimnar")
@@ -1785,15 +1805,20 @@ MenuUtil = menuUtil
 
 -- Filter chips toggle their settings.
 local chips = f.filters.chips
-check("role chip names my role", chips.filterMyRole.label:GetText(), "Room for Tank")
+check("no role chip in the filter bar", chips.filterMyRole, nil)
+local room = LP.Frame().roomOnly
+check("room toggle with my roles", room:IsShown() and room.label:GetText(), "Only room for me")
+check("room toggle off by default", room.on, false)
 M.state.time = M.state.time + 5
 k = searches()
-click(chips.filterMyRole)
-check("chip sets filterMyRole", S("filterMyRole"), true)
-check("chip searched", searches(), k + 1)
-check("chip shows on", chips.filterMyRole.on, true)
-click(chips.filterMyRole)
-check("chip clears it", S("filterMyRole"), false)
+click(room)
+check("room toggle sets filterMyRole", S("filterMyRole"), true)
+check("room toggle searched", searches(), k + 1)
+check("room toggle shows on", LP.Frame().roomOnly.on, true)
+check("room toggle: only groups with room for a tank", #W.Built().groups, 2)
+check("room toggle: players stay", #W.Built().players, 1)
+click(room)
+check("room toggle clears it", S("filterMyRole"), false)
 click(chips.filterLevelFits)
 check("level chip", S("filterLevelFits"), true)
 click(chips.filterLevelFits)
@@ -1823,8 +1848,8 @@ M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
 local lp = LP.Frame()
 check("post label", lp.post.label:GetText(), "Post")
 check("status not listed", lp.status:GetText(), "not listed")
-check("remove greyed without listing", lp.remove.off, true)
-check("roles shown solo", lp.roles.tank:IsShown(), true)
+check("no separate remove button", lp.remove, nil)
+check("roles shown", lp.roles.tank:IsShown(), true)
 check("my role preselected", LP.Roles().tank, true)
 click(lp.roles.healer)
 check("role toggled", LP.Roles().healer, true)
@@ -1833,7 +1858,19 @@ check("post creates the listing", lfg.creates[#lfg.creates].activityIDs[1], 22)
 check("roles posted", lfg.roles and lfg.roles.healer, true)
 lfg.active.duration = 1800
 M.Fire("LFG_LIST_ACTIVE_ENTRY_UPDATE")
-check("update label", lp.post.label:GetText(), "Update")
+check("listed and unchanged: Remove", lp.post.label:GetText(), "Remove")
+click(lp.roles.healer)
+check("roles changed: Update", lp.post.label:GetText(), "Update")
+local upd = #lfg.updates
+click(lp.post)
+check("update sends the listing", #lfg.updates, upd + 1)
+check("updated roles", lfg.roles.healer, false)
+check("unchanged again: Remove", lp.post.label:GetText(), "Remove")
+W.SetChecked(24, true)
+W.ListingChanged()
+check("activities changed: Update", lp.post.label:GetText(), "Update")
+W.SetChecked(24, false)
+W.ListingChanged()
 check("status listed", lp.status:GetText(), "listed, 30 min left")
 -- Expiry warning with Extend.
 M.state.time = M.state.time + 1600
@@ -1843,7 +1880,11 @@ local updates = #lfg.updates
 click(lp.extend)
 check("extend re-posts", #lfg.updates, updates + 1)
 check("warning gone after extend", LP.Warning(), false)
-click(lp.remove)
+local removedBefore = lfg.removed
+click(lp.roles.healer)
+click(lp.post, "RightButton")
+check("right click removes even when changed", lfg.removed, removedBefore + 1)
+click(lp.roles.healer)
 check("remove", lfg.removed > 0, true)
 check("not listed after remove", lp.status:GetText(), "not listed")
 lp.post.off = false
@@ -1900,8 +1941,13 @@ UnitGroupRolesAssigned = function(unit) return unit == "player" and "TANK" or "D
 M.state.group = true
 W.ListingChanged()
 check("leader line shown", lp.leader:IsShown(), true)
-check("leader line text", lp.leader:GetText(), "Missing: 1 Healer, 2 Damage")
-check("no roles in a group", lp.roles.tank:IsShown(), false)
+check("leader line text", lp.leader:GetText(), "Missing: 1 Healer, 2 DPS")
+check("my roles stay in a group", lp.roles.tank:IsShown(), true)
+UnitClass = function() return "Warrior", "WARRIOR" end
+W.ListingChanged()
+check("warrior: healer role hidden", lp.roles.healer:IsShown(), false)
+check("warrior: tank and dps offered", lp.roles.tank:IsShown() and lp.roles.dps:IsShown(), true)
+UnitClass = nil
 UnitIsGroupLeader = function() return false end
 W.ListingChanged()
 check("leader line hidden when not leading", lp.leader:IsShown(), false)
@@ -1924,7 +1970,7 @@ M.state.combat = false
 click(f.header.close)
 check("close button", W.IsShown(), false)
 check("no search was ever blocked", #lfg.blocked, 0)
-Settings.Set("roleOverride", nil)
+ForeverGroupFinderChar.roles = nil
 lfg.reset()
 
 section("Blizzard redirection")

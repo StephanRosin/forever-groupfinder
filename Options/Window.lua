@@ -217,7 +217,6 @@ local function listFilterRows()
         check("markOpenSlot", "OPT_MARK_OPEN_SLOT"),
         check("showPlayers", "OPT_SHOW_PLAYERS"),
         check("sortFriendsFirst", "OPT_SORT_FRIENDS_FIRST"),
-        choice("roleOverride", "OPT_ROLE_OVERRIDE", Settings.ROLES, "ROLE_"),
         { type = "header", label = "OPT_SEARCH" },
         {
             key = "category", type = "select", label = "OPT_CATEGORY",

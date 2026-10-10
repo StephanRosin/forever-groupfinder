@@ -234,7 +234,9 @@ end
 
 -- Filters ------------------------------------------------------------------------------------
 
-local FILTER_KEYS = { "filterMyRole", "filterLevelFits", "hideSeen" }
+-- "Only groups with room for me" (filterMyRole) sits with my roles in
+-- ListingPanel.lua.
+local FILTER_KEYS = { "filterLevelFits", "hideSeen" }
 
 -- A filter chip: toggles its setting and searches (a user action).
 function Window.ToggleFilter(key)
@@ -267,20 +269,15 @@ local function openLanguageMenu(owner)
     end)
 end
 
-local function roleName()
-    return L["ROLE_" .. Results.MyRole()]
-end
-
 local function layoutFilters()
     local bar = f.filters
     local chips = bar.chips
-    chips.filterMyRole:SetLabel(L.FILTER_ROOM_FOR:format(roleName()))
     chips.filterLevelFits:SetLabel(L.FILTER_LEVEL_FITS)
     chips.hideSeen:SetLabel(L.FILTER_HIDE_SEEN)
     local n = #S("languages")
     chips.language:SetLabel(n > 0 and L.FILTER_LANGUAGE_N:format(n) or L.FILTER_LANGUAGE)
     local x = 0
-    local order = { chips.filterMyRole, chips.filterLevelFits, bar.text, chips.hideSeen, chips.language }
+    local order = { chips.filterLevelFits, bar.text, chips.hideSeen, chips.language }
     for _, c in ipairs(order) do
         c:ClearAllPoints()
         c:SetPoint("LEFT", bar, "LEFT", x, 0)

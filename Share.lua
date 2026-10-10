@@ -126,7 +126,6 @@ local ENUMS = {
     point = ANCHORS,
     relPoint = ANCHORS,
     category = { [2] = true, [114] = true, [116] = true, [118] = true, [120] = true },
-    roleOverride = { AUTO = true, TANK = true, HEALER = true, DAMAGER = true },
     borderStyle = { NONE = true, FLAT = true, GOLD = true },
     bgMode = { SOLID = true, GRADIENT = true, TEXTURE = true },
 }

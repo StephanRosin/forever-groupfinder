@@ -10,9 +10,6 @@ ns.Settings = Settings
 -- The text styles; each has <prefix>Font, Size, Flag and Color.
 Settings.TEXT_STYLES = { "header", "activity", "name", "comment", "small" }
 
--- Roles the player may force instead of the automatic one.
-Settings.ROLES = { "AUTO", "TANK", "HEALER", "DAMAGER" }
-
 -- Tables (languages, templates, whisperTemplates) are stored whole, and
 -- only when they differ from the default.
 Settings.DEFAULTS = {
@@ -42,7 +39,6 @@ Settings.DEFAULTS = {
     filterLevelFits = false,
     hideSeen = false,
     languages = {},         -- empty: all languages
-    roleOverride = "AUTO",  -- AUTO, TANK, HEALER or DAMAGER
     markOpenSlot = true,
     showPlayers = true,
     rowHeight = 22,

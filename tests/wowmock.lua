@@ -531,7 +531,9 @@ C_LFGList.GetAvailableActivities = function(cat, group)
 end
 C_LFGList.GetActivityInfoTable = function(id) return wrapAll(M.lfg.activities[id]) end
 
-C_LFGListRoles = { SetRoles = function(roles) M.lfg.roles = roles; return true end }
+-- M.lfg.savedRoles: what Blizzard's finder remembers ({ tank, healer, dps } or nil).
+C_LFGListRoles = { SetRoles = function(roles) M.lfg.roles = roles; return true end,
+    GetSavedRoles = function() return M.lfg.savedRoles end }
 C_LFGInfo = { CanPlayerUsePremadeGroup = function() return M.lfg.canUse, M.lfg.failure end }
 -- hooksecurefunc as in the client: the original runs, then the hook, with
 -- the same arguments. M.hooks records each hook: "global" (a global
