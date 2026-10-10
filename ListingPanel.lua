@@ -157,16 +157,27 @@ local function pillState(state, mode)
     return "LISTED", L.LISTING_ACTIVE_NO_TIME
 end
 
+-- The widest text the pill can show in this language and font, so its
+-- width (and the main button after it) does not jump between states.
+local function pillWidth()
+    local widest = 0
+    for _, text in ipairs({ L.LISTING_NONE, L.LISTING_CHANGED, L.LISTING_ACTIVE_NO_TIME,
+        L.LISTING_ACTIVE:format(Controls.Age(59 * 60)), L.LISTING_ACTIVE:format(Controls.Age(59)) }) do
+        p.status:SetText(text)
+        widest = math.max(widest, p.status:GetStringWidth())
+    end
+    return math.floor(widest + PILL_PAD * 2 + 0.5)
+end
+
 local function paintPill(kind, text)
     local look = PILL[kind]
-    p.status:SetText(text)
-    Controls.Color(p.status, look[1])
     p.pill.bg:SetColorTexture(look[2][1], look[2][2], look[2][3], look[2][4])
     Controls.PaintOutline(p.pill.edges, { look[1][1], look[1][2], look[1][3], 0.6 })
-    -- As tall as the buttons, with their text size: it shares a line with
-    -- the main button.
+    -- As tall as the buttons, with their text size (it shares a line with
+    -- the main button); as wide as its widest text, the text centred.
     Controls.Restyle(p.status, look[1])
-    p.pill:SetSize(math.floor(p.status:GetStringWidth() + PILL_PAD * 2 + 0.5), Controls.ButtonHeight())
+    p.pill:SetSize(pillWidth(), Controls.ButtonHeight())
+    p.status:SetText(text)
     p.pill.kind = kind
 end
 

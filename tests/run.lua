@@ -2195,6 +2195,7 @@ M.Fire("LFG_LIST_SEARCH_RESULTS_RECEIVED")
 local lp = LP.Frame()
 check("post label", lp.post.label:GetText(), "Post")
 check("status not listed", lp.status:GetText(), "Not listed")
+local pillX = { NONE = lp.post._points.LEFT[3] }
 check("no separate remove button", lp.remove, nil)
 check("roles shown", lp.roles.tank:IsShown(), true)
 check("my role preselected", LP.Roles().tank, true)
@@ -2256,6 +2257,7 @@ check("listed and unchanged: Remove", lp.post.label:GetText(), "Remove")
 click(lp.roles.healer)
 check("roles changed: Update", lp.post.label:GetText(), "Update")
 check("pill: changed, gold", lp.pill.kind == "CHANGED" and lp.status:GetText(), "Changed – click Update")
+pillX.CHANGED = lp.post._points.LEFT[3]
 local upd = #lfg.updates
 click(lp.post)
 check("update sends the listing", #lfg.updates, upd + 1)
@@ -2268,6 +2270,10 @@ W.SetChecked(24, false)
 W.ListingChanged()
 check("status listed", lp.status:GetText(), "Listed · 30 min")
 check("pill green when listed", lp.pill.kind == "LISTED" and lp.status._textColor[1], ns.Controls.GREEN[1])
+pillX.LISTED = lp.post._points.LEFT[3]
+check("main button at the same x: not listed, changed, listed", pillX.NONE == pillX.CHANGED and pillX.CHANGED == pillX.LISTED
+    and pillX.NONE ~= nil, true)
+check("pill width fits the widest text", lp.pill:GetWidth() >= #"Changed – click Update" * 6, true)
 -- Expiry warning with Extend.
 M.state.time = M.state.time + 1600
 f:GetScript("OnUpdate")(f, 1)
