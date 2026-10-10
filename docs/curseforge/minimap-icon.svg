@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Minimap / addon-list icon: three role discs (tank, healer, damage) on a round gold-rimmed disc. -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="65%"><stop offset="0" stop-color="#2a3346"/><stop offset="1" stop-color="#0a0d14"/></radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2b0"/><stop offset="0.4" stop-color="#e8c25a"/><stop offset="1" stop-color="#8a5f18"/></linearGradient>
+  </defs>
+  <circle cx="256" cy="256" r="236" fill="url(#bg)" stroke="url(#gold)" stroke-width="36"/>
+  <circle cx="256" cy="150" r="64" fill="#1d3a66"/>
+  <circle cx="160" cy="320" r="64" fill="#1b4a2c"/>
+  <circle cx="352" cy="320" r="64" fill="#5a1d1d"/>
+  <path d="M256 108 L292 120 V154 C292 176 277 190 256 198 C235 190 220 176 220 154 V120 Z" fill="#6fb2ff"/>
+  <path d="M148 286 h24 v26 h26 v24 h-26 v26 h-24 v-26 h-26 v-24 h26 Z" fill="#6fe08a"/>
+  <g transform="translate(352 320) rotate(45)" stroke-linecap="round">
+    <path d="M0 -48 L10 -32 V14 H-10 V-32 Z" fill="#ff8a7a"/>
+    <path d="M-24 14 H24" stroke="#ffd35a" stroke-width="10"/>
+    <path d="M0 14 V40" stroke="#c9a46a" stroke-width="10"/>
+  </g>
+</svg>
