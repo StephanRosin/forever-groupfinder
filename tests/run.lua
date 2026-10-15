@@ -84,7 +84,7 @@ for _, line in ipairs(tocLines()) do
 end
 check("Interface", toc.Interface, "16001")
 check("Title", toc.Title, "Forever Group Finder")
-check("Version", toc.Version, "1.0.1")
+check("Version", toc.Version, "1.0.2")
 check("saved variables (account)", toc.SavedVariables, "ForeverGroupFinderProfiles")
 check("saved variables (character)", toc.SavedVariablesPerCharacter, "ForeverGroupFinderChar")
 check("compartment click", toc.AddonCompartmentFunc, "ForeverGroupFinder_OnAddonCompartmentClick")
