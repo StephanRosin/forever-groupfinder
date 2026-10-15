@@ -1934,6 +1934,12 @@ check("player tooltip: wanted roles", (function()
     for _, line in ipairs(tl) do if line.text == "Roles: Tank, DPS" then return true end end
     return false
 end)(), true)
+-- Blizzard reports a player alone as DAMAGER, whatever they signed up as:
+-- that is no role of theirs, so the member line leaves it out.
+check("player tooltip: no group role for a player alone", (function()
+    for _, line in ipairs(tl) do if (line.right or ""):find("Stormwind City", 1, true) then return line.right:find("DPS", 1, true) == nil end end
+    return false
+end)(), true)
 
 -- Left click on a group opens the detail panel (no whisper).
 local D = ns.Detail

@@ -199,7 +199,9 @@ function Rows.TooltipLines(row, elapsed)
         local left = type(m.level) == "number" and L.TIP_MEMBER:format(name, m.level) or name
         local parts = {}
         parts[#parts + 1] = Rows.ClassName(m.classFile)
-        local role = type(m.role) == "string" and ROLE_LABEL[m.role]
+        -- The role in a group; a player alone has none (Blizzard reports
+        -- DAMAGER then): their signed-up roles are the "Roles:" line below.
+        local role = row.kind == "GROUP" and type(m.role) == "string" and ROLE_LABEL[m.role]
         if role then parts[#parts + 1] = L[role] end   -- plain: our own lookup
         if type(m.area) == "string" and m.area ~= "" then parts[#parts + 1] = m.area end
         local r, g, b = Rows.ClassColor(m.classFile)
