@@ -1917,6 +1917,12 @@ groupRow._mouseOver = false
 strip:GetScript("OnEnter")(strip)
 strip:GetScript("OnLeave")(strip)
 check("leaving the row from the strip hides the tooltip", tipOf(), "")
+groupRow._mouseOver = true
+W.Frame():Hide()
+strip:GetScript("OnLeave")(strip)
+check("window closed under the cursor: no row tooltip again", tipOf(), "")
+W.Frame():Show()
+groupRow._mouseOver = false
 check("slot tooltip: member data", (function()
     local lines = ns.Rows.SlotTooltipLines({ member = { name = "Zed", level = 31, classFile = "MAGE", area = "Ironforge" }, role = "DAMAGER" })
     local t = {}
@@ -3338,6 +3344,20 @@ check("invite label follows the language", (function() for _, r in ipairs(ns.Win
 check("invite label is French", ns.L.INVITE, "Inviter")
 Locale.Set("AUTO"); ns.Window.Refresh()
 check("invite label back to the game language", (function() for _, r in ipairs(ns.Window.Frame().pool.used) do if r.kind == "PLAYER" and r.invite.leader then return r end end end)().invite.label:GetText(), ns.L.INVITE)
+
+-- Closing with the key: the window closes its own tooltip.
+do
+    local onHide = W.Frame():GetScript("OnHide")
+    GameTooltip:SetOwner(CreateFrame("Button", nil, CreateFrame("Frame", nil, W.Frame())), "ANCHOR_RIGHT")
+    GameTooltip:Show()
+    onHide()
+    check("closing hides the tooltip of a window child", GameTooltip:IsShown(), false)
+    GameTooltip:SetOwner(CreateFrame("Button", nil, UIParent), "ANCHOR_RIGHT")
+    GameTooltip:Show()
+    onHide()
+    check("closing keeps a foreign tooltip", GameTooltip:IsShown(), true)
+    GameTooltip:Hide()
+end
 
 section("Blizzard redirection")
 local B = ns.Blizzard

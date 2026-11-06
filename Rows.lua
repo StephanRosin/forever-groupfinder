@@ -513,7 +513,7 @@ local function newStrip(row)
     strip:SetScript("OnLeave", function(self)
         self.shown = nil
         self:SetScript("OnUpdate", nil)
-        if row:IsMouseOver() and row.entry then
+        if row:IsVisible() and row:IsMouseOver() and row.entry then
             Rows.ShowTooltip(row, row.entry, ns.Window.Elapsed())
         else
             GameTooltip:Hide()
@@ -669,7 +669,7 @@ local function newChip(row)
     end
     chip:SetScript("OnEnter", function(self) Rows.ShowChipTooltip(self) end)
     chip:SetScript("OnLeave", function()
-        if row:IsMouseOver() and row.entry then
+        if row:IsVisible() and row:IsMouseOver() and row.entry then
             Rows.ShowTooltip(row, row.entry, ns.Window.Elapsed())
         else
             GameTooltip:Hide()

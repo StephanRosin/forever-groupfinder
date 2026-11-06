@@ -208,6 +208,15 @@ function GameTooltip:SetOwner(o, anchor) self._lines = {}; self._owner = o; self
 function GameTooltip:ClearLines() self._lines = {} end
 function GameTooltip:Hide() self._shown = false; self._lines = {} end
 function GameTooltip:IsOwned() return true end
+function GameTooltip:GetOwner() return self._owner end
+RegionUtil = {}
+function RegionUtil.IsDescendantOfOrSame(region, ancestor)
+    while region do
+        if region == ancestor then return true end
+        region = region:GetParent()
+    end
+    return false
+end
 DEFAULT_CHAT_FRAME = { AddMessage = function(_, m) M.chat[#M.chat + 1] = m end }
 SlashCmdList = {}
 UISpecialFrames = {}

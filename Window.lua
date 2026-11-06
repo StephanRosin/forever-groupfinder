@@ -669,6 +669,9 @@ local function create()
         Layouts.ClosePopup(f)
         ns.Detail.Close()
         ns.Undo.Clear()
+        -- A row's OnLeave cannot be relied on when the window hides under the
+        -- cursor. Only our own: the key may be pressed over an action button.
+        if RegionUtil.IsDescendantOfOrSame(GameTooltip:GetOwner(), f) then GameTooltip:Hide() end
         if f.moving then
             f:StopMovingOrSizing()
             f.moving = nil
