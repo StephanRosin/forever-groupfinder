@@ -3456,11 +3456,15 @@ M.state.combat = true
 M.SecurePress(LFGVanilla_ToggleFrame, 1)
 check("combat: ours opens", W.IsShown(), true)
 check("combat: Blizzard's left open", parent:IsShown(), true)
+check("combat: Blizzard's invisible", parent:GetAlpha(), 0)
+check("combat: Blizzard's too small to click", parent:GetScale() < 0.01, true)
 check("combat: we did not try", M.blizzard.refused, 0)
 check("combat: closing waits", ns.PendingAfterCombat(), 1)
 M.state.combat = false
 M.Fire("PLAYER_REGEN_ENABLED")
 check("after combat: Blizzard's closed", parent:IsShown(), false)
+check("after combat: Blizzard's alpha restored", parent:GetAlpha(), 1)
+check("after combat: Blizzard's scale restored", parent:GetScale(), 1)
 check("after combat: ours stays", W.IsShown(), true)
 M.state.combat = true
 M.SecurePress(LFGVanilla_ToggleFrame, 1)
@@ -3470,6 +3474,20 @@ check("combat: second press closes both", W.IsShown() or parent:IsShown(), false
 M.state.combat = false
 M.Fire("PLAYER_REGEN_ENABLED")
 check("combat: nothing waits", ns.PendingAfterCombat(), 0)
+check("second press in combat: Blizzard's restored", parent:GetAlpha() == 1 and parent:GetScale() == 1, true)
+-- The Who list in combat is Blizzard's: the concealed window comes back and stays.
+M.state.combat = true
+nextSearch()
+M.SecurePress(LFGVanilla_ToggleFrame, 1)
+check("who list: concealed first", parent:GetAlpha(), 0)
+M.SecurePress(LFGVanilla_ShowFrame, 3)
+check("who list: visible again", parent:GetAlpha() == 1 and parent:GetScale() == 1, true)
+check("who list: no close waits", ns.PendingAfterCombat(), 0)
+M.state.combat = false
+M.Fire("PLAYER_REGEN_ENABLED")
+check("who list: stays open after combat", parent:IsShown(), true)
+M.SecurePress(LFGVanilla_ToggleFrame)
+W.Hide()
 -- LFG_LIST_SHOW_SEARCH (a "find a group" link, inside its click): Blizzard's
 -- browse frame answers it too and searches; one request, one search, with
 -- the event's activities, whichever handler runs first.
@@ -3593,7 +3611,7 @@ local function touchesBlizzardFinder(code, file)
         code = code:gsub("LFGVanilla_ShowFrame", "")
     elseif file == "Blizzard.lua" then
         -- The one read of Blizzard's window: is it shown?
-        code = code:gsub('type%(LFGParentFrame%) == "table" and LFGParentFrame:IsShown%(%)', "")
+        code = code:gsub('type%(LFGParentFrame%) == "table" and LFGParentFrame', "")
     end
     return code:find("LFGParentFrame", 1, true) or code:find("GroupFinder[%w_]*Frame") or code:find("LFGListing", 1, true)
 end

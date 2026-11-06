@@ -36,16 +36,19 @@ Blizzard's frame again through Blizzard's own global LFGVanilla_ToggleFrame()
     "UIParentPanelManager.HideUIPanel" (gamepad listeners). Neither is
     protected; the in-game check is /console taintLog 1, open by key, micro
     button and eye, then open spellbook and talents in combat.
-  - We never call HideUIPanel / SetParent / Hide / SetAlpha on a Blizzard frame
-    ourselves and never hook a frame method. The only Blizzard frame we touch
-    is a read: LFGParentFrame:IsShown().
+  - We never call HideUIPanel / SetParent / Hide on a Blizzard frame ourselves
+    and never hook a frame method. The only Blizzard frame we touch is
+    LFGParentFrame: IsShown, and SetScale + SetAlpha in combat (below).
 In combat the panel manager refuses insecure callers (CheckProtectedFunctions-
-Allowed prints "Interface action failed"), so there we do not try: Blizzard's
-window stays open next to ours and is closed when combat ends.
+Allowed prints "Interface action failed"), so there we do not try to close:
+Blizzard's window stays open, invisible and too small to click (SetScale +
+SetAlpha, as ForeverQuestLog does with the tracker; LFGParentFrame is not
+protected), and is closed and restored when combat ends. Until then it keeps
+the left panel slot: another panel opened in combat stands beside the gap.
 Rejected: SetOverrideBinding (covers the key only, not the micro button or the
-eye, and is not allowed in combat); SetAlpha(0) / EnableMouse(false) on
-LFGParentFrame (it would still take the left panel slot and push other
-windows); not loading Blizzard's finder (Blizzard loads it itself).
+eye, and is not allowed in combat); SetAlpha(0) / EnableMouse(false) alone
+(its buttons would stay clickable) or out of combat too (the panel slot would
+stay taken); not loading Blizzard's finder (Blizzard loads it itself).
 Our own opening of Blizzard's listing tab (the comment editor, Listing.lua)
 goes through Blizzard.PassThrough, which the hooks leave alone (and which
 drops a close still waiting for the end of combat).
@@ -74,33 +77,71 @@ Blizzard.HOOKED = { "LFGVanilla_ToggleFrame", "LFGVanilla_ShowFrame" }
 local hooked = {}
 local busy = false           -- our own call into Blizzard's finder
 local opened = nil           -- { at = GetTime(), wasShown = } from the ShowFrame hook
+local CONCEALED_SCALE = 0.001
+local concealedScale = nil   -- in combat: the scale to give Blizzard's window back
 
 -- The tabs we answer: none given, the listing tab, the browse tab.
 local function ours(tab)
     return S("replaceBlizzard") and (tab == nil or tab == 1 or tab == 2)
 end
 
--- The one read of a Blizzard frame.
+-- The one reference to a Blizzard frame.
+local function blizzardFrame()
+    return type(LFGParentFrame) == "table" and LFGParentFrame
+end
+
 local function blizzardShown()
-    return type(LFGParentFrame) == "table" and LFGParentFrame:IsShown() == true
+    local frame = blizzardFrame()
+    return frame and frame:IsShown() == true
+end
+
+local function conceal()
+    local frame = blizzardFrame()
+    if concealedScale or not frame then return end
+    concealedScale = frame:GetScale()
+    frame:SetScale(CONCEALED_SCALE)
+    frame:SetAlpha(0)
+end
+
+local function reveal()
+    local frame = blizzardFrame()
+    if not concealedScale or not frame then return end
+    frame:SetScale(concealedScale)
+    frame:SetAlpha(1)
+    concealedScale = nil
 end
 
 local function closeBlizzard()
-    if not S("replaceBlizzard") or not blizzardShown() then return end
-    if InCombatLockdown() then
-        ns.AfterCombat("closeBlizzardFinder", closeBlizzard)
-        return
+    local inCombat = InCombatLockdown()
+    if S("replaceBlizzard") and blizzardShown() then
+        if inCombat then
+            conceal()
+            ns.AfterCombat("closeBlizzardFinder", closeBlizzard)
+            return
+        end
+        if type(LFGVanilla_ToggleFrame) == "function" then
+            busy = true
+            pcall(LFGVanilla_ToggleFrame)   -- shown and no tab: Blizzard's own close
+            busy = false
+        end
     end
-    if type(LFGVanilla_ToggleFrame) ~= "function" then return end
-    busy = true
-    pcall(LFGVanilla_ToggleFrame)   -- shown and no tab: Blizzard's own close
-    busy = false
+    if not inCombat then reveal() end
+end
+
+-- Blizzard's window is wanted after all (comment editor, Who list): visible, and it stays.
+local function keepBlizzard()
+    ns.CancelAfterCombat("closeBlizzardFinder")
+    reveal()
 end
 
 -- LFGVanilla_ShowFrame: ours opens (it searches: we are inside the click).
 -- Tab 2 is Blizzard's show-search, which searches itself right after.
 local function afterShow(tab)
-    if busy or not ours(tab) then return end
+    if busy then return end
+    if not ours(tab) then
+        keepBlizzard()
+        return
+    end
     opened = { at = GetTime(), wasShown = ns.Window.IsShown() }
     if tab == 2 then
         if ns.Window.IsShown() then ns.Window.AdoptSearch() else ns.Window.Show("adopt") end
@@ -143,7 +184,7 @@ function Blizzard.IsHooked(name) return hooked[name] == true end
 
 -- Runs fn with the hooks standing aside (we open Blizzard's tab ourselves).
 function Blizzard.PassThrough(fn, ...)
-    ns.CancelAfterCombat("closeBlizzardFinder")
+    keepBlizzard()
     busy = true
     local ok, err = pcall(fn, ...)
     busy = false

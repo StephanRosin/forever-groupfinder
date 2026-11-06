@@ -268,6 +268,31 @@ function Controls.CheckMark(parent, size)
     return box
 end
 
+-- A radio mark for a one-of choice, round and with SetChecked like CheckMark:
+-- edge, face and dot are one disc texture in three sizes.
+function Controls.RadioMark(parent, size)
+    local box = CreateFrame("Frame", nil, parent)
+    box:SetSize(size, size)
+    local function disc(layer, sub, d, c)
+        local t = box:CreateTexture(nil, layer, nil, sub)
+        t:SetPoint("CENTER")
+        t:SetSize(d, d)
+        t:SetTexture(Media.Icon("Circle"))
+        t:SetVertexColor(c[1], c[2], c[3])
+        return t
+    end
+    disc("BACKGROUND", 0, size, Controls.EDGE)
+    disc("BACKGROUND", 1, size - 2, { 0.07, 0.07, 0.07 })
+    box.check = disc("ARTWORK", 0, math.floor(size / 2), Controls.GOLD)
+    function box.SetChecked(self, on)
+        self.checked = on and true or false
+        self.check:SetShown(self.checked)
+    end
+    function box.GetChecked(self) return self.checked end
+    box:SetChecked(false)
+    return box
+end
+
 -- A check box with its label; the whole line is the click target.
 -- opts = { text, onClick, tip }. SetChecked / .on; Fit() sizes it.
 function Controls.CheckLabel(parent, opts)

@@ -107,7 +107,10 @@ local function showOwn(owner, d)
         line.text:SetText(item.kind == "divider" and "" or (item.text or ""))
         Controls.Color(line.text, item.kind == "title" and Controls.GOLD or Controls.TEXT)
         line.mark:ClearAllPoints()
-        line.mark:SetPoint("LEFT", line, "LEFT", x, 0)
+        local isRadio = item.kind == "radio"
+        line.mark:SetPoint("LEFT", line, "LEFT", isRadio and x + 2 or x, 0)
+        line.mark:SetSize(isRadio and 6 or 10, isRadio and 6 or 10)
+        line.mark:SetTexture(ns.Media.Icon(isRadio and "Circle" or "Check"))
         line.mark:SetShown(marked and item.isSelected and item.isSelected(item.data) and true or false)
         line.clickable = item.onSelect ~= nil and not item.disabled
         line:SetAlpha(item.disabled and Controls.DISABLED_ALPHA or 1)
