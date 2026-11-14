@@ -872,7 +872,7 @@ local function createNav(parent)
     return nav
 end
 
--- Footer: lock or unlock the strip (drag it while unlocked).
+-- Footer: lock or unlock the window size.
 local function refreshFooter()
     if frame and frame.lockButton then
         frame.lockButton.text:SetText(S("locked") and L.OPT_UNLOCK_FRAME or L.OPT_LOCK_FRAME)

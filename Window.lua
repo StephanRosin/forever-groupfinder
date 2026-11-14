@@ -488,24 +488,20 @@ local function savePosition()
     if x then Settings.SetMany({ point = "TOP", relPoint = "TOP", x = x, y = y }) end
 end
 
-local function canMove()
-    return not S("locked") or (IsControlKeyDown and IsControlKeyDown())
-end
-
 -- The quest log's header: grip, title, and from the right close, options,
 -- lock.
 local function createHeader()
     local Header = ns.Header
-    local h = Header.Create(f, { movable = function() return not S("locked") end })
+    local h = Header.Create(f, { movable = function() return true end })
     h.title:SetText(L.WINDOW_TITLE)
     h.close = Header.CloseButton(h, function() return L.TIP_CLOSE end, function() Window.Hide() end)
     h.options = Header.Button(h, "Gear", function() return L.TIP_OPTIONS end, function() ns.Options.Toggle() end)
     h.lock = Header.Button(h, "Lock", function() return S("locked") and L.TIP_UNLOCK_WINDOW or L.TIP_LOCK_WINDOW end,
         function() ns.ToggleLock() end, function() return not S("locked") end)
     h.lock.activeColor = Controls.ACCENT
-    -- Dragging the header moves the window (unlocked, or with Ctrl).
+    -- Dragging the header always moves the window; the lock only stops resizing.
     h:SetScript("OnMouseDown", function(_, mouse)
-        if mouse == "LeftButton" and canMove() then
+        if mouse == "LeftButton" then
             f:StartMoving()
             f.moving = true
         end

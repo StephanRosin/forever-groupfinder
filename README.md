@@ -26,7 +26,7 @@ Then `/reload` or restart the game.
 | --- | --- |
 | `/fgf options` | opens the options |
 | `/fgf search` | runs a search (opens the window first if it is closed) |
-| `/fgf lock` / `unlock` | locks or unlocks the window |
+| `/fgf lock` / `unlock` | locks or unlocks the window size (it always moves by its title) |
 | `/fgf reset` | puts the window back to its default place and size |
 | `/fgf ignore <name>` / `unignore <name>` | ignores a player or takes it back |
 
