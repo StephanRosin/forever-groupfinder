@@ -280,22 +280,46 @@ return function(t)
     Themes.Switch("CONSOLE")
     ns.ThemeArt.Style(frame, 0)
     check("console: header font", S("headerFont"), "IBM Plex Sans Condensed")
-    check("console: mint ring, no rule", rgb(S("borderColor")) .. tostring(Themes.Rim()) .. tostring(art.rule:IsShown()), "0.31,0.93,0.69nilfalse")
+    check("console: mint ring, no rule", rgb(Themes.RingColor()) .. tostring(art.rule:IsShown()), "0.31,0.93,0.69false")
     Themes.SetColor("AMBER")
-    check("console amber: the ring follows the accent", rgb(Themes.Rim()) .. "/" .. accent(), "1,0.69,0/1,0.69,0")
+    check("console amber: the ring follows the accent", rgb(Themes.RingColor()) .. "/" .. accent(), "1,0.69,0/1,0.69,0")
     check("console amber: backdrop kept", look(), PATH .. "ConsoleBack 1,1,1,1")
     Themes.SetColor("MINT")
     Themes.Switch("PITWALL")
     ns.ThemeArt.Style(frame, 0)
     check("pitwall: header font", S("headerFont"), "Titillium Web Bold Italic")
-    check("pitwall: no ring", S("borderStyle"), "NONE")
-    check("pitwall: title strip as high as the header", art.strip:IsShown() and art.strip:GetHeight(), ns.Header.HEIGHT + 1)
+    check("pitwall: a carbon hairline", S("borderStyle") .. S("borderSize"), "FLAT1")
+    check("pitwall: title strip as high as the header", art.strip:IsShown() and art.strip:GetHeight(), ns.Header.HEIGHT)
     check("pitwall: red wedge before the grip", art.wedge:IsShown() and rgb(art.wedge._vertex) .. "/" .. art.wedge:GetWidth(), "0.88,0.02,0/8")
     Themes.SetColor("TEAL")
     ns.ThemeArt.Style(frame, 0)
     check("pitwall teal: the wedge's colour", rgb(art.wedge._vertex), "0,0.63,0.61")
     check("pitwall teal: title kept", accent(), rgb(Themes.SPECS.PITWALL.look.headerColor))
     Themes.SetColor("RED")
+    -- The ring is the same in every Forever addon, for every theme and
+    -- colour: the theme's own; only Console's colours and Pixel's Handheld
+    -- recolour it.
+    local RINGS = { TECH = "0.25,0.88,0.94,0.9", PARCHMENT = "0.29,0.2,0.12,1", RUNESTONE = "0.1,0.1,0.12,1",
+        GLASS = "0.07,0.06,0.05,1", COMIC = "0.07,0.07,0.07,1", FROST = "0.86,0.96,1,0.8", PIXEL = "1,0.95,0.91,1",
+        SWISS = "0.16,0.16,0.16,1", PITWALL = "0.043,0.047,0.055,1" }
+    local OWN_RING = { CONSOLE = { MINT = "0.31,0.93,0.69,1", AMBER = "1,0.69,0,1", PHOSPHOR = "0.22,1,0.08,1",
+        VIOLET = "0.63,0.47,1,1" }, PIXEL = { HANDHELD = "0.78,0.94,0.44,1" } }
+    for _, id in ipairs(Themes.IDS) do
+        if id ~= "CLASSIC" then
+            Themes.Switch(id)
+            local chosen = entry.Color()
+            for _, c in ipairs(entry.Colors()) do
+                Themes.SetColor(c)
+                if id == "WOOD" then
+                    check("ring " .. id .. " " .. c, S("borderStyle"), "GOLD")
+                else
+                    check("ring " .. id .. " " .. c, S("borderStyle") .. " " .. table.concat(Themes.RingColor(), ","),
+                        "FLAT " .. ((OWN_RING[id] or {})[c] or RINGS[id]))
+                end
+            end
+            Themes.SetColor(chosen)
+        end
+    end
     Themes.Switch("TECH")
     ns.ThemeArt.Style(frame, 0)
     check("tech: no strip, wedge or rule", tostring(art.strip:IsShown()) .. tostring(art.wedge:IsShown()) .. tostring(art.rule:IsShown()), "falsefalsefalse")

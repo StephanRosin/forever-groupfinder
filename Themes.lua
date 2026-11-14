@@ -141,10 +141,11 @@ Themes.SPECS = {
             headerFlag = "OUTLINE", headerColor = { 0.31, 0.93, 0.69 } },
         art = { back = "ConsoleBack", padding = 4 },
     },
-    -- A timing screen: carbon, no ring, a dark title strip with a red wedge.
+    -- A timing screen: carbon, a carbon hairline, a dark title strip with a red wedge.
     PITWALL = {
         font = "Titillium Web Bold Italic",
-        look = { borderStyle = "NONE", borderSize = 1, cornerRadius = 0, bgMode = "SOLID",
+        look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.043, 0.047, 0.055, 1 }, cornerRadius = 0,
+            bgMode = "SOLID",
             bgColor = { 0.09, 0.09, 0.11 }, bgAlpha = 100, shadowEnabled = false, headerFlag = "OUTLINE",
             headerColor = { 0.95, 0.95, 0.96 } },
         art = { back = "PitwallBack", padding = 4, strip = { 0.14, 0.15, 0.17, 1 }, wedge = "PitwallWedge",
@@ -158,6 +159,8 @@ Themes.SPECS = {
 -- (vertex colour = back / GREY_MEAN, at most 1), and brings its accent
 -- (nil: the theme's own). Themes with one dark backdrop in every colour
 -- (SWISS, CONSOLE, PITWALL) change only the accent, the ring or the wedge.
+-- `rim` recolours the ring: only CONSOLE's colours and Pixel's HANDHELD,
+-- the same in every Forever addon.
 -- The comic keeps its paper tint (COMIC_PAINT).
 local GREY_MEAN = { WoodBack = 0.800, TechBack = 0.705, ParchmentBack = 0.799, StoneBack = 0.800,
     GlassBack = 0.777, FrostBack = 0.796, PixelBack = 0.800 }
@@ -221,7 +224,7 @@ Themes.COLORS = {
         colour("BLACK", { 0.03, 0.03, 0.04 }, { 0, 0.89, 0.21 }),
         colour("TEAL", { 0.02, 0.17, 0.22 }, { 0.16, 0.68, 1 }),
         colour("PURPLE", { 0.15, 0.1, 0.25 }, { 1, 0.47, 0.66 }),
-        colour("HANDHELD", { 0.06, 0.12, 0.06 }, { 0.78, 0.94, 0.44 }),
+        colour("HANDHELD", { 0.06, 0.12, 0.06 }, { 0.78, 0.94, 0.44 }, { 0.78, 0.94, 0.44, 1 }),
     },
     SWISS = {
         colour("RED"),
@@ -384,10 +387,10 @@ function Themes.Accent()
     return paint and paint.accent
 end
 
--- The ring's colour the theme's colour sets, else nil (the setting's).
-function Themes.Rim()
+-- The ring's colour: the theme's colour's where it has one, else the setting.
+function Themes.RingColor()
     local c = themePaint()
-    return c and c.rim
+    return c and c.rim or S("borderColor")
 end
 
 -- The wedge's colour (art: the theme's): the colour's, else the theme's.
