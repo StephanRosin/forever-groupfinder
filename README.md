@@ -49,6 +49,7 @@ Then `/reload` or restart the game.
 - **Themes (beta)**: Classic plus eleven looks (wooden plaque, technology, parchment,
   runestone, stained glass, comic, frost, pixel, Swiss Clean, console, pitwall) for the window and its panels; each
   theme keeps a whole set of settings of its own, Classic stays as you set it up.
+  "Apply to all Forever addons" puts the other Forever addons on the same theme and colour.
 - **Options** in the Forever style: list look (font and icon sizes), button
   sizes, profiles shared across characters, export and import as text.
 

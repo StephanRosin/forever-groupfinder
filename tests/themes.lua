@@ -121,12 +121,12 @@ return function(t)
     check("options: theme choice", general[2].key, "theme")
     general[2].set("RUNESTONE")
     check("options: choosing switches", Themes.Current(), "RUNESTONE")
-    check("options: copy row while themed", general[5].visible(), true)
+    check("options: copy row while themed", general[6].visible(), true)
     check("options: colours under any theme", general[3].visible(), true)
     general[2].set("CLASSIC")
-    check("options: no copy row on classic", general[5].visible(), false)
+    check("options: no copy row on classic", general[6].visible(), false)
     check("options: no colours on classic", general[3].visible(), false)
-    check("options: no reset on classic", general[6].visible(), false)
+    check("options: no reset on classic", general[7].visible(), false)
     general[2].set("COMIC")
     check("options: comic colour under the comic", general[3].visible() and general[3].get(), "GREY")
     general[2].set("CLASSIC")
@@ -365,6 +365,38 @@ return function(t)
         for _, name in ipairs(ns.Media.Names("font")) do if name == "Marcellus" then return true end end
         return false
     end)(), true)
+
+    -- "Apply to all Forever addons": only with another addon listed; puts it on
+    -- this theme and colour, skips it when it lacks the theme.
+    local allRow
+    for _, row in ipairs(ns.Options.PAGES[1].rows()) do
+        if row.buttons and row.buttons[1].label == "OPT_THEME_ALL" then allRow = row end
+    end
+    check("apply all: hidden alone", allRow.visible(), false)
+    local pick = Themes.Colors("PIXEL")[2]
+    local other, known = { theme = "CLASSIC" }, { CLASSIC = {}, PIXEL = { "NAVY", pick } }
+    _G.ForeverThemes.FakeOther = {
+        title = "Fake", Current = function() return other.theme end,
+        Switch = function(id)
+            if not known[id] then return nil, "UNKNOWN" end
+            other.theme = id
+            return true
+        end,
+        Colors = function(theme) return known[theme] end,
+        SetColor = function(id) other.color = id; return true end,
+    }
+    check("apply all: shown with another", allRow.visible(), true)
+    Themes.Switch("PIXEL")
+    Themes.SetColor(pick)
+    M.chat = {}
+    allRow.buttons[1].onClick()
+    check("apply all: theme and colour", other.theme .. " " .. tostring(other.color), "PIXEL " .. pick)
+    check("apply all: says how many", (M.chat[1] or ""):find("1 other", 1, true) ~= nil, true)
+    Themes.Switch("WOOD")
+    check("apply all: unknown theme skipped", Themes.ApplyToAll() .. " " .. other.theme, "0 PIXEL")
+    _G.ForeverThemes.FakeOther = nil
+    Themes.SetColor(Themes.Colors("PIXEL")[1], "PIXEL")
+    Themes.Switch("CLASSIC")
 
     Settings.ResetProfile()
     ns.DB().themeSets = nil
