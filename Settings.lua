@@ -243,7 +243,7 @@ function Settings.TextStyle(name)
         font = Settings.Get(name .. "Font"),
         size = Settings.Get(name .. "Size"),
         flag = Settings.Get(name .. "Flag"),
-        color = name == "header" and ns.Themes.ComicAccent() or Settings.Get(name .. "Color"),
+        color = name == "header" and ns.Themes.Accent() or Settings.Get(name .. "Color"),
     }
 end
 

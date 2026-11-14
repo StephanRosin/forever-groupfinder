@@ -122,9 +122,10 @@ return function(t)
     general[2].set("RUNESTONE")
     check("options: choosing switches", Themes.Current(), "RUNESTONE")
     check("options: copy row while themed", general[5].visible(), true)
-    check("options: no comic colour off the comic", general[3].visible(), false)
+    check("options: colours under any theme", general[3].visible(), true)
     general[2].set("CLASSIC")
     check("options: no copy row on classic", general[5].visible(), false)
+    check("options: no colours on classic", general[3].visible(), false)
     check("options: no reset on classic", general[6].visible(), false)
     general[2].set("COMIC")
     check("options: comic colour under the comic", general[3].visible() and general[3].get(), "GREY")
@@ -179,22 +180,22 @@ return function(t)
     local entry = _G.ForeverThemes.ForeverGroupFinder
     local function paper() ns.ThemeArt.Style(frame, 0); return table.concat(art.back._vertex, ",") end
     local function accent() return table.concat(Settings.TextStyle("header").color, ",") end
-    check("comic colours: list", table.concat(entry.ComicColors, ","), "GREY,DARKGREY,BLACK,WHITE,YELLOW,BLUE,RED,GREEN,PURPLE")
-    check("comic colours: grey by default", entry.ComicColor(), "GREY")
+    check("comic colours: list", table.concat(entry.Colors("COMIC"), ","), "GREY,DARKGREY,BLACK,WHITE,YELLOW,BLUE,RED,GREEN,PURPLE")
+    check("comic colours: grey by default", entry.Color("COMIC"), "GREY")
     check("comic grey: headers as today", accent(), "1,0.85,0.1")
-    check("comic blue: set", entry.SetComicColor("BLUE"), true)
+    check("comic blue: set", entry.SetColor("BLUE"), true)
     check("comic blue: paper", paper(), "0.45,0.6,0.86,1")
     check("comic blue: headers yellow", accent(), "1,0.9,0.1")
-    check("comic yellow: set", Themes.SetComicColor("YELLOW"), true)
+    check("comic yellow: set", Themes.SetColor("YELLOW"), true)
     check("comic yellow: headers blue", accent(), "0.15,0.45,0.95")
     check("comic colour: not in the set", S("headerColor")[1] .. "/" .. tostring(ns.DB().comicColor), "1/nil")
-    check("comic colour: unknown refused", select(2, Themes.SetComicColor("NOPE")), "UNKNOWN")
+    check("comic colour: unknown refused", select(2, Themes.SetColor("NOPE")), "UNKNOWN")
     Themes.Switch("WOOD")
     check("comic colour: nothing under wood", accent(), table.concat(Themes.SPECS.WOOD.look.headerColor, ","))
-    check("comic colour: chosen under wood", Themes.SetComicColor("RED"), true)
+    check("comic colour: chosen under wood", Themes.SetColor("RED", "COMIC"), true)
     Themes.Switch("COMIC")
-    check("comic colour: survives the switch", entry.ComicColor() .. " " .. paper(), "RED 0.86,0.44,0.4,1")
-    check("comic black: set", Themes.SetComicColor("BLACK"), true)
+    check("comic colour: survives the switch", entry.Color("COMIC") .. " " .. paper(), "RED 0.86,0.44,0.4,1")
+    check("comic black: set", Themes.SetColor("BLACK"), true)
     check("comic black: paper", paper(), "0.16,0.16,0.16,1")
     check("comic black: headers yellow", accent(), "1,0.9,0.1")
     b.hover = false
@@ -209,17 +210,56 @@ return function(t)
     check("comic black: off icon", ns.Header.ButtonColor(toggle)[1], 0.55)
     toggle.isActive = function() return true end
     check("comic black: on icon in the accent", table.concat(ns.Header.ButtonColor(toggle), ","), "1,0.9,0.1")
-    check("comic white: set", Themes.SetComicColor("WHITE"), true)
+    check("comic white: set", Themes.SetColor("WHITE"), true)
     check("comic white: paper", paper(), "1,1,1,1")
     check("comic white: headers blue", accent(), "0.15,0.45,0.95")
     ns.Header.Paint(b)
     check("comic white: header icon in ink", b.paintColor[1], 0.1)
-    ns.AccountDB().comicColor = "NOPE"
-    check("comic colour: unknown stored reads grey", Themes.ComicColor(), "GREY")
-    check("comic grey back: set", Themes.SetComicColor("GREY"), true)
+    ns.AccountDB().themeColors.COMIC = "NOPE"
+    check("comic colour: unknown stored reads grey", Themes.Color(), "GREY")
+    check("comic grey back: set", Themes.SetColor("GREY"), true)
     check("comic grey back: paper", paper(), "0.7,0.7,0.7,1")
     check("comic grey back: headers", accent(), "1,0.85,0.1")
-    check("comic grey back: nothing stored", ns.AccountDB().comicColor, nil)
+    check("comic grey back: nothing stored", ns.AccountDB().themeColors.COMIC, nil)
+    -- Every theme's colours: the first is today's look; any other the grey
+    -- texture tinted to target / mean, with its accent on the headers.
+    local function rgb(t) return table.concat({ t[1], t[2], t[3] }, ",") end
+    local function look() ns.ThemeArt.Style(frame, 0); return art.back._texture .. " " .. table.concat(art.back._vertex, ",") end
+    local PATH = "Interface\\AddOns\\ForeverGroupFinder\\Media\\Themes\\"
+    for _, id in ipairs(Themes.IDS) do
+        if id ~= "CLASSIC" and id ~= "COMIC" then
+            Themes.Switch(id)
+            local a, colours = Themes.SPECS[id].art, entry.Colors()
+            check(id .. ": the first colour by default", entry.Color(), colours[1])
+            local tint = a.tint or { 1, 1, 1, 1 }
+            check(id .. ": default as today", look(), PATH .. a.back .. " " .. table.concat(tint, ","))
+            check(id .. ": default headers as today", accent(), rgb(Themes.SPECS[id].look.headerColor))
+            for _, c in ipairs(colours) do
+                check(id .. " " .. c .. ": named", ns.L["THEME_COLOR_" .. id .. "_" .. c] ~= "THEME_COLOR_" .. id .. "_" .. c, true)
+            end
+        end
+    end
+    Themes.Switch("CLASSIC")
+    check("colours: none under classic", #entry.Colors() .. tostring(entry.Color()), "0nil")
+    Themes.Switch("PIXEL")
+    check("pixel plum: set", entry.SetColor("PLUM"), true)
+    check("pixel plum: grey texture tinted", look(), PATH .. "PixelBackGrey " .. rgb({ 0.23 / 0.8, 0.08 / 0.8, 0.16 / 0.8 }) .. ",1")
+    check("pixel plum: headers in its accent", accent(), "1,0.93,0.15")
+    check("pixel grey: no accent keeps the headers", Themes.SetColor("GREY") and accent(), rgb(Themes.SPECS.PIXEL.look.headerColor))
+    check("colour: another theme's id refused", select(2, Themes.SetColor("OAK")), "UNKNOWN")
+    check("frost deep: set while on pixel", Themes.SetColor("DEEP", "FROST"), true)
+    Themes.Switch("FROST")
+    check("frost deep: tinted, alpha kept", look(), PATH .. "FrostBackGrey " .. rgb({ 0.1 / 0.796, 0.18 / 0.796, 0.32 / 0.796 }) .. ",1")
+    check("colours: each theme its own", entry.Color() .. " " .. entry.Color("PIXEL"), "DEEP GREY")
+    Themes.SetColor("ICE")
+    Themes.SetColor("NAVY", "PIXEL")
+    check("colours: defaults store nothing", next(ns.AccountDB().themeColors), nil)
+    -- The comic colour of before moves in once.
+    ns.AccountDB().comicColor = "RED"
+    check("migration: comic colour moved", entry.Color("COMIC") .. " " .. tostring(ns.AccountDB().comicColor), "RED nil")
+    ns.AccountDB().comicColor = "BLUE"
+    check("migration: a colour already set wins", entry.Color("COMIC"), "RED")
+    Themes.SetColor("GREY", "COMIC")
     Themes.Switch("TECH")
     ns.ThemeArt.Style(frame, 0)
     check("art: tech without corner pieces", art.ornaments[1]:IsShown() or art.ornaments[4]:IsShown(), false)

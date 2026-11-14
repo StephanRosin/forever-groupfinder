@@ -121,10 +121,80 @@ Themes.SPECS = {
     },
 }
 
--- The comic's colours, the same in every Forever addon: the paper's tint
--- and the accent (the headers' colour). GREY is the comic as it is (accent
--- nil: the set's own). Stored account wide, outside profiles and theme sets.
-Themes.COMIC_COLORS = { "GREY", "DARKGREY", "BLACK", "WHITE", "YELLOW", "BLUE", "RED", "GREEN", "PURPLE" }
+-- Each theme's colours, the same in every Forever addon (none for CLASSIC).
+-- The first is the theme as it is. Any other draws the backdrop from the
+-- theme's grey texture (<back>Grey), tinted so its mean lands on `back`
+-- (vertex colour = back / GREY_MEAN, at most 1), and brings its accent
+-- (nil: the theme's own). The comic keeps its paper tint (COMIC_PAINT).
+local GREY_MEAN = { WoodBack = 0.800, TechBack = 0.705, ParchmentBack = 0.799, StoneBack = 0.800,
+    GlassBack = 0.777, FrostBack = 0.796, PixelBack = 0.800 }
+local function colour(id, back, accent) return { id = id, back = back, accent = accent } end
+Themes.COLORS = {
+    WOOD = {
+        colour("OAK"),
+        colour("WALNUT", { 0.15, 0.09, 0.06 }),
+        colour("BIRCH", { 0.38, 0.32, 0.22 }),
+        colour("CHERRY", { 0.3, 0.12, 0.08 }),
+        colour("EBONY", { 0.08, 0.07, 0.07 }),
+        colour("DRIFTWOOD", { 0.25, 0.24, 0.22 }),
+    },
+    TECH = {
+        colour("CYAN"),
+        colour("GREEN", { 0.02, 0.1, 0.05 }, { 0.3, 0.95, 0.45 }),
+        colour("AMBER", { 0.1, 0.07, 0.02 }, { 1, 0.75, 0.2 }),
+        colour("MAGENTA", { 0.09, 0.03, 0.1 }, { 0.95, 0.4, 0.95 }),
+        colour("BLUE", { 0.03, 0.05, 0.13 }, { 0.45, 0.65, 1 }),
+        colour("GREY", { 0.07, 0.07, 0.08 }, { 0.85, 0.88, 0.9 }),
+    },
+    PARCHMENT = {
+        colour("CLASSIC"),
+        colour("AGED", { 0.32, 0.25, 0.15 }),
+        colour("ASH", { 0.33, 0.33, 0.31 }),
+        colour("SEA", { 0.25, 0.3, 0.33 }),
+        colour("ROSE", { 0.36, 0.27, 0.26 }),
+        colour("DARK", { 0.2, 0.17, 0.13 }),
+    },
+    RUNESTONE = {
+        colour("GRANITE"),
+        colour("SANDSTONE", { 0.33, 0.27, 0.18 }, { 1, 0.8, 0.35 }),
+        colour("SLATE", { 0.15, 0.18, 0.25 }, { 0.55, 0.75, 1 }),
+        colour("MOSS", { 0.15, 0.22, 0.14 }, { 0.5, 1, 0.45 }),
+        colour("OBSIDIAN", { 0.07, 0.06, 0.09 }, { 0.75, 0.5, 1 }),
+    },
+    GLASS = {
+        colour("CATHEDRAL"),
+        colour("BLUE", { 0.08, 0.12, 0.28 }),
+        colour("GREEN", { 0.07, 0.2, 0.1 }),
+        colour("AMBER", { 0.28, 0.17, 0.05 }),
+        colour("VIOLET", { 0.18, 0.08, 0.26 }),
+        colour("RUBY", { 0.26, 0.05, 0.08 }),
+    },
+    FROST = {
+        colour("ICE"),
+        colour("DEEP", { 0.1, 0.18, 0.32 }, { 0.6, 0.85, 1 }),
+        colour("AURORA", { 0.1, 0.27, 0.24 }, { 0.55, 1, 0.8 }),
+        colour("VIOLET", { 0.22, 0.18, 0.33 }, { 0.85, 0.75, 1 }),
+        colour("SILVER", { 0.3, 0.31, 0.33 }, { 0.92, 0.92, 0.95 }),
+        colour("NIGHT", { 0.06, 0.08, 0.14 }, { 0.7, 0.85, 1 }),
+    },
+    PIXEL = {
+        colour("NAVY"),
+        colour("PLUM", { 0.23, 0.08, 0.16 }, { 1, 0.93, 0.15 }),
+        colour("FOREST", { 0, 0.2, 0.12 }, { 1, 0.93, 0.15 }),
+        colour("BROWN", { 0.2, 0.12, 0.08 }, { 1, 0.64, 0 }),
+        colour("GREY", { 0.18, 0.17, 0.16 }),
+        colour("BLACK", { 0.03, 0.03, 0.04 }, { 0, 0.89, 0.21 }),
+        colour("TEAL", { 0.02, 0.17, 0.22 }, { 0.16, 0.68, 1 }),
+        colour("PURPLE", { 0.15, 0.1, 0.25 }, { 1, 0.47, 0.66 }),
+    },
+    COMIC = { colour("GREY"), colour("DARKGREY"), colour("BLACK"), colour("WHITE"), colour("YELLOW"),
+        colour("BLUE"), colour("RED"), colour("GREEN"), colour("PURPLE") },
+}
+
+-- The accent is the headers' colour. Colours are stored account wide,
+-- outside profiles and theme sets (AccountDB().themeColors).
+-- The comic's paper tint and accent per colour; GREY is the comic as it is
+-- (accent nil: the set's own).
 local COMIC_YELLOW = { 1, 0.9, 0.1 }
 local COMIC_PAINT = {
     GREY = { paper = { 0.70, 0.70, 0.70 } },
@@ -184,28 +254,76 @@ function Themes.Spec(id)
     return Themes.SPECS[id] or Themes.SPECS.CLASSIC
 end
 
--- The comic colour chosen; an unknown one stored reads as GREY.
-function Themes.ComicColor()
-    local id = ns.AccountDB().comicColor
-    return COMIC_PAINT[id] and id or "GREY"   -- plain: a colour id
+-- The stored colours, theme -> colour id; the comic's colour of before
+-- moves in once.
+local function storedColours()
+    local db = ns.AccountDB()
+    if type(db.themeColors) ~= "table" then db.themeColors = {} end
+    if db.comicColor ~= nil then
+        if db.themeColors.COMIC == nil then db.themeColors.COMIC = db.comicColor end
+        db.comicColor = nil
+    end
+    return db.themeColors
+end
+
+local function colourOf(themeId, id)
+    for _, c in ipairs(Themes.COLORS[themeId] or {}) do
+        if c.id == id then return c end
+    end
+    return nil
+end
+
+-- A theme's colour ids in order (themeId defaults to the current theme;
+-- CLASSIC has none).
+function Themes.Colors(themeId)
+    local list = {}
+    for i, c in ipairs(Themes.COLORS[themeId or Themes.Current()] or {}) do list[i] = c.id end
+    return list
+end
+
+-- A theme's colour chosen; an unknown one stored reads as its first.
+function Themes.Color(themeId)
+    themeId = themeId or Themes.Current()
+    local colours = Themes.COLORS[themeId]
+    if not colours then return nil end
+    local id = storedColours()[themeId]
+    return colourOf(themeId, id) and id or colours[1].id   -- plain: a colour id
 end
 
 -- The comic's paint in use, or nil under any other theme.
 local function comicPaint()
     if Themes.Current() ~= "COMIC" then return nil end
-    return COMIC_PAINT[Themes.ComicColor()]
+    return COMIC_PAINT[Themes.Color("COMIC")]
 end
 
--- The backdrop's tint (art: the theme's): the comic's paper in its colour.
+-- Any other theme's colour in use when it is not the theme's own look.
+local function themePaint()
+    local c = colourOf(Themes.Current(), Themes.Color())
+    return c and c.back and c or nil
+end
+
+-- The backdrop's texture (art: the theme's): the grey one under a colour.
+function Themes.Back(art)
+    return themePaint() and art.back .. "Grey" or art.back
+end
+
+-- The backdrop's tint (art: the theme's): the comic's paper in its colour,
+-- or the grey texture tinted to the colour at the theme's alpha.
 function Themes.Tint(art)
     local paint = comicPaint()
     if paint and art.tint then return { paint.paper[1], paint.paper[2], paint.paper[3], art.tint[4] } end
+    local c = themePaint()
+    if c then
+        local mean = GREY_MEAN[art.back]
+        return { math.min(1, c.back[1] / mean), math.min(1, c.back[2] / mean), math.min(1, c.back[3] / mean),
+            art.tint and art.tint[4] or 1 }
+    end
     return art.tint
 end
 
--- The headers' colour the comic colour sets, else nil (the setting's).
-function Themes.ComicAccent()
-    local paint = comicPaint()
+-- The headers' colour the theme's colour sets, else nil (the setting's).
+function Themes.Accent()
+    local paint = comicPaint() or themePaint()
     return paint and paint.accent
 end
 
@@ -219,11 +337,13 @@ function Themes.DarkInk()
     return { idle = DARK_INK.idle, hover = DARK_INK.hover, off = DARK_INK.off, text = DARK_INK.text, on = paint.accent }
 end
 
--- Our frames are not protected: no combat lock.
-function Themes.SetComicColor(id)
-    if not COMIC_PAINT[id] then return nil, "UNKNOWN" end
-    ns.AccountDB().comicColor = id ~= "GREY" and id or nil   -- plain: a colour id
-    Settings.Changed(nil)
+-- A theme's colour (themeId defaults to the current theme). Our frames
+-- are not protected: no combat lock.
+function Themes.SetColor(id, themeId)
+    themeId = themeId or Themes.Current()
+    if not colourOf(themeId, id) then return nil, "UNKNOWN" end
+    storedColours()[themeId] = id ~= Themes.COLORS[themeId][1].id and id or nil   -- plain: a colour id
+    if themeId == Themes.Current() then Settings.Changed(nil) end
     return true
 end
 
@@ -339,7 +459,7 @@ _G.ForeverThemes[ADDON] = {
     title = ns.L.ADDON_NAME,
     Current = function() return Themes.Current() end,
     Switch = function(id) return Themes.Switch(id) end,
-    ComicColors = Themes.COMIC_COLORS,
-    ComicColor = function() return Themes.ComicColor() end,
-    SetComicColor = function(id) return Themes.SetComicColor(id) end,
+    Colors = function(themeId) return Themes.Colors(themeId) end,
+    Color = function(themeId) return Themes.Color(themeId) end,
+    SetColor = function(id, themeId) return Themes.SetColor(id, themeId) end,
 }

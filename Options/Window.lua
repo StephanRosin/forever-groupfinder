@@ -110,18 +110,20 @@ local function themeRows()
             get = function() return Themes.Current() end,
             set = function(v) refused(Themes.Switch(v)) end,
         },
-        -- The comic's colour, kept apart from the theme sets.
+        -- The current theme's colours, kept apart from the theme sets.
         visibleIf({
-            type = "select", label = "OPT_THEME_COMIC_COLOR",
+            type = "select", label = "OPT_THEME_COLOR",
             choices = function()
-                local list = {}
-                for _, id in ipairs(Themes.COMIC_COLORS) do list[#list + 1] = { label = L["COMIC_COLOR_" .. id], value = id } end
+                local theme, list = Themes.Current(), {}
+                for _, id in ipairs(Themes.Colors()) do
+                    list[#list + 1] = { label = L["THEME_COLOR_" .. theme .. "_" .. id], value = id }
+                end
                 return list
             end,
-            get = function() return Themes.ComicColor() end,
-            set = function(v) refused(Themes.SetComicColor(v)) end,
-        }, function() return Themes.Current() == "COMIC" end),
-        { type = "text", label = "OPT_THEME_HINT", height = 40 },
+            get = function() return Themes.Color() end,
+            set = function(v) refused(Themes.SetColor(v)) end,
+        }, function() return #Themes.Colors() > 0 end),
+        { type = "text", label = "OPT_THEME_HINT", height = 66 },
         visibleIf({
             type = "select", label = "OPT_THEME_COPY_FROM",
             choices = function()

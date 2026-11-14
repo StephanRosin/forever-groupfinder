@@ -38,7 +38,7 @@ local function build(frame)
 end
 
 local function paintBack(texture, look)
-    texture:SetTexture(PATH .. look.back, "REPEAT", "REPEAT")
+    texture:SetTexture(PATH .. ns.Themes.Back(look), "REPEAT", "REPEAT")
     texture:SetHorizTile(true)
     texture:SetVertTile(true)
     local tint = ns.Themes.Tint(look) or { 1, 1, 1, 1 }
