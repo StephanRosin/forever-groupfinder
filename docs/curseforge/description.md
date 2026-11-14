@@ -43,8 +43,16 @@ A group finder built for **WoW: Forever**. One window replaces Blizzard's group 
 - A search runs **on every click** (the Refresh button, ticking a dungeon, a category, a filter change). The game blocks addons from searching on a timer, so the list never refreshes by itself; it tells you when it is **outdated** with a gentle pulse.
 - Rows update live while you look at them.
 
+## Window
+- Always **moves by its title**. The lock only stops resizing: unlocked, drag its corners to change the size.
+
+## Themes (beta)
+Forever addons can now wear a shared look: Wood, Parchment, Tech, Runestone, Stained Glass, Comic, Frost, Pixel, Swiss Clean, Console and Pitwall, each with its own colour choices. Pick one in the options under Theme. It works on its own, but looks best when your other Forever addons wear the same theme — "Apply to all Forever addons" switches them in one click. Classic stays the default, and switching back to Classic always restores your previous settings exactly.
+
+A theme dresses the window with its backdrop, ornaments, shadow and header font; the list rows keep their own fonts, so typed comments stay readable. Each theme keeps all its settings of its own; the first time, it starts from your Classic settings. "Take positions from" copies the positions of another theme (with undo), "Reset theme" starts it anew from Classic. The theme fonts ship with the addon (SIL Open Font License).
+
 ## Options
 - Its own options window in the Forever style (`/fgf`, the addon compartment, or the optional minimap button): **List look** with font and icon sizes, button sizes, layout, **Profiles** shared across characters, **export and import** as text.
 
 ## Commands
-`/fgf` toggle the window · `/fgf options` · `/fgf search` · `/fgf lock` / `unlock` · `/fgf reset` · `/fgf ignore <name>` · `/fgf unignore <name>`
+`/fgf` toggle the window · `/fgf options` · `/fgf search` · `/fgf lock` / `unlock` (window size) · `/fgf reset` · `/fgf ignore <name>` · `/fgf unignore <name>`
