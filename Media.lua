@@ -1,8 +1,8 @@
 local ADDON, ns = ...
 
--- Fonts, background textures and bar textures: the game's own, plus every
--- one another addon registers with LibSharedMedia (the library itself is
--- not shipped).
+-- Fonts, background textures and bar textures: the game's own, the
+-- themes' fonts (Themes.lua), plus every one another addon registers with
+-- LibSharedMedia (the library itself is not shipped).
 local Media = {}
 ns.Media = Media
 
@@ -31,6 +31,33 @@ Media.BLIZZARD = {
         { name = "Blizzard Raid Bar", path = "Interface\\RaidFrame\\Raid-Bar-Hp-Fill" },
     },
 }
+-- The themes' fonts, shipped in Media/Fonts (SIL Open Font License, see
+-- OFL.txt and FONTS.txt there). Latin letters only.
+local FONTS = ICONS .. "Fonts\\"
+Media.OWN = {
+    font = {
+        { name = "Bangers", path = FONTS .. "Bangers-Regular.ttf" },
+        { name = "Cinzel", path = FONTS .. "Cinzel-Bold.ttf" },
+        { name = "Cormorant SC", path = FONTS .. "CormorantSC-Bold.ttf" },
+        { name = "IM Fell English SC", path = FONTS .. "IMFeENsc28P.ttf" },
+        { name = "Marcellus", path = FONTS .. "Marcellus-Regular.ttf" },
+        { name = "Space Grotesk", path = FONTS .. "SpaceGrotesk-Bold.ttf" },
+        { name = "VT323", path = FONTS .. "VT323-Regular.ttf" },
+    },
+    background = {},
+    statusbar = {},
+}
+local SOURCES = { Media.BLIZZARD, Media.OWN }
+
+-- Our font files loaded while the addon loads: a file used for the first
+-- time can be refused (ApplyText tries again), so the first restyle
+-- should not be its first use.
+do
+    local holder = CreateFrame("Frame")
+    holder:Hide()
+    for _, f in ipairs(Media.OWN.font) do holder:CreateFontString():SetFont(f.path, 12, "") end
+end
+
 Media.DEFAULT = {
     font = "Fonts\\FRIZQT__.TTF",
     background = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
@@ -42,12 +69,14 @@ local function sharedMedia()
 end
 
 -- Every name of a kind ("font", "background", "statusbar"), Blizzard's
--- first, then LibSharedMedia's sorted.
+-- first, then ours, then LibSharedMedia's sorted.
 function Media.Names(kind)
     local names, seen = {}, {}
-    for _, f in ipairs(Media.BLIZZARD[kind]) do
-        names[#names + 1] = f.name
-        seen[f.name] = true
+    for _, source in ipairs(SOURCES) do
+        for _, f in ipairs(source[kind]) do
+            names[#names + 1] = f.name
+            seen[f.name] = true
+        end
     end
     local lsm = sharedMedia()
     if lsm then
@@ -63,8 +92,10 @@ end
 
 -- The file for a name; unknown names get the kind's default.
 function Media.Path(kind, name)
-    for _, f in ipairs(Media.BLIZZARD[kind]) do
-        if f.name == name then return f.path end
+    for _, source in ipairs(SOURCES) do
+        for _, f in ipairs(source[kind]) do
+            if f.name == name then return f.path end
+        end
     end
     local lsm = sharedMedia()
     local path = lsm and lsm:Fetch(kind, name, true)
@@ -73,13 +104,38 @@ end
 
 function Media.FontPath(name) return Media.Path("font", name) end
 
+-- Whether a text took the font file asked for. A file the client has not
+-- loaded yet (our theme fonts) can be refused on first use and leave the
+-- text without a font.
+local function hasFont(fs, path)
+    local got = fs:GetFont()
+    if type(got) ~= "string" then return false end
+    local function plain(p) return (p:lower():gsub("/", "\\")) end
+    return plain(got) == plain(path)
+end
+-- How often, and how far apart, a refused font is tried again.
+local FONT_RETRIES, FONT_RETRY_DELAY = 8, 0.25
+
 -- A text style (Settings.TextStyle) on a font string. SHADOW is a drop
--- shadow, the other flags are outlines.
-function Media.ApplyText(fs, style)
+-- shadow, the other flags are outlines. A refused font: the default font
+-- meanwhile, the wanted one tried again a few times, then a chat line.
+function Media.ApplyText(fs, style, retries)
     local flag = style.flag
     local outline = (flag == "OUTLINE" or flag == "THICKOUTLINE") and flag or ""
-    if not fs:SetFont(Media.FontPath(style.font), style.size, outline) then
+    local path = Media.FontPath(style.font)
+    local wanted = path .. "|" .. style.size .. "|" .. outline
+    fs.fontWanted = wanted
+    if not (fs:SetFont(path, style.size, outline) and hasFont(fs, path)) then
         fs:SetFont(Media.DEFAULT.font, style.size, outline)
+        retries = retries or FONT_RETRIES
+        if retries > 0 then
+            C_Timer.After(FONT_RETRY_DELAY, function()
+                -- Restyled since: that call has its own tries.
+                if fs.fontWanted == wanted then Media.ApplyText(fs, style, retries - 1) end
+            end)
+        else
+            ns.Print(ns.L.MSG_FONT_FAILED, style.font)
+        end
     end
     if flag == "SHADOW" then
         fs:SetShadowColor(0, 0, 0, 1)

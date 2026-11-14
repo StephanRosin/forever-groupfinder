@@ -16,6 +16,7 @@ Settings.LIST_STYLES = { "activity", "name", "level", "location", "chip", "comme
 -- only when they differ from the default.
 Settings.DEFAULTS = {
     -- General
+    theme = "CLASSIC",      -- Themes.lua; switched only through Themes.Switch
     replaceBlizzard = true, -- our window answers the keybinding and the micro menu
     minimapShow = false,
     minimapAngle = 215,
@@ -246,9 +247,16 @@ function Settings.TextStyle(name)
     }
 end
 
--- Back to the defaults (the language is not in the profile).
+-- Back to the defaults (the language is not in the profile). Only the
+-- current theme's settings: it keeps its look, the other themes' stored
+-- sets (Classic among them) stay.
 function Settings.ResetProfile()
     local db = ns.DB()
+    local sets, theme = db.themeSets, db.theme
     for k in pairs(db) do db[k] = nil end
+    if theme then
+        for k, v in pairs(ns.Themes.Seed(theme, {})) do db[k] = v end
+    end
+    db.themeSets = sets
     Settings.Changed(nil)
 end

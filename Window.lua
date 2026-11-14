@@ -537,8 +537,10 @@ function Window.ApplyLook(frame, width, height)
     Media.ApplyBackground(frame.bg, S("bgMode"), S("bgColor"), S("bgAlpha") / 100, S("bgTexture"))
     local radius = ns.Corners.Clamp(S("cornerRadius"), width, height)
     ns.Corners.Fit(frame.clip, frame, radius, { frame.bg, frame.header.shine })
-    ns.Border.Draw(frame, frame, {
-        style = S("borderStyle"), size = S("borderSize"), color = S("borderColor"), radius = radius,
+    -- A theme's backdrop frames the window: the ring goes round it.
+    local box, ringRadius = ns.ThemeArt.Style(frame, radius)
+    ns.Border.Draw(frame, box, {
+        style = S("borderStyle"), size = S("borderSize"), color = S("borderColor"), radius = ringRadius,
         shadow = S("shadowEnabled"), shadowSize = S("shadowSize"), shadowAlpha = S("shadowAlpha") / 100,
     })
 end

@@ -87,10 +87,65 @@ local function trim(text)
     return ((text or ""):gsub("^%s+", ""):gsub("%s+$", ""))
 end
 
--- General: what opens the finder, the minimap, the addon list. (The
--- language is at the bottom of the navigation.)
-local function generalRows()
+-- The theme (Themes.lua, beta): the choice, "Take positions from" another
+-- theme (with an undo until the theme changes) and "Reset theme".
+local themeUndo
+local PICK, UNDO = "__pick", "__undo"
+local function refused(ok, why)
+    if not ok then ns.Print(L[("MSG_THEME_%s"):format(why)]) end
+end
+
+local function themeRows()
+    local Themes = ns.Themes
+    local function themed() return Themes.Current() ~= Themes.CLASSIC end
     return {
+        { type = "header", label = "OPT_THEME" },
+        {
+            key = "theme", type = "select", label = "OPT_THEME_CHOICE",
+            choices = function()
+                local list = {}
+                for _, id in ipairs(Themes.IDS) do list[#list + 1] = { label = L["THEME_" .. id], value = id } end
+                return list
+            end,
+            get = function() return Themes.Current() end,
+            set = function(v) refused(Themes.Switch(v)) end,
+        },
+        { type = "text", label = "OPT_THEME_HINT", height = 40 },
+        visibleIf({
+            type = "select", label = "OPT_THEME_COPY_FROM",
+            choices = function()
+                local stored = Themes.Stored()
+                local list = { { label = #stored > 0 and L.OPT_THEME_COPY_PICK or L.OPT_THEME_COPY_NONE, value = PICK } }
+                if themeUndo and themeUndo.theme == Themes.Current() then
+                    list[#list + 1] = { label = L.OPT_THEME_COPY_UNDO, value = UNDO }
+                end
+                for _, id in ipairs(stored) do list[#list + 1] = { label = L["THEME_" .. id], value = id } end
+                return list
+            end,
+            get = function() return PICK end,
+            set = function(v)
+                if v == PICK then return end
+                if v == UNDO then
+                    local undo = themeUndo
+                    themeUndo = nil
+                    if undo then Themes.Restore(undo.saved) end
+                    return
+                end
+                local saved, why = Themes.CopyPlacement(v)
+                refused(saved, why)
+                if saved then themeUndo = { theme = Themes.Current(), saved = saved } end
+            end,
+        }, themed),
+        visibleIf({ type = "buttons", buttons = {
+            { label = "OPT_THEME_RESET", width = 200, onClick = function() refused(Themes.Reset()) end },
+        } }, themed),
+    }
+end
+
+-- General: the theme, what opens the finder, the minimap, the addon list.
+-- (The language is at the bottom of the navigation.)
+local function generalRows()
+    return append(themeRows(), {
         { type = "header", label = "OPT_GENERAL" },
         check("replaceBlizzard", "OPT_REPLACE_BLIZZARD"),
         { type = "text", label = "OPT_REPLACE_BLIZZARD_HINT", height = 54 },
@@ -98,7 +153,7 @@ local function generalRows()
         check("minimapShow", "OPT_MINIMAP_SHOW"),
         visibleIf(num("minimapAngle", "OPT_MINIMAP_ANGLE", "°"), function() return S("minimapShow") end),
         check("compartment", "OPT_COMPARTMENT"),
-    }
+    })
 end
 
 -- Window: place and size; the sliders write a TOP anchor as dragging does.

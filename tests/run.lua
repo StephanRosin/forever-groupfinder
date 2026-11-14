@@ -134,7 +134,7 @@ local EXPECTED = {
     ageFont = "Friz Quadrata", ageSize = 10, ageFlag = "SHADOW",
     playerRoleIconSize = 0, groupRoleIconSize = 24, classIconSize = 15, classColorNames = true, seenAlpha = 45,
     abbreviate = true,
-    noRoomAlpha = 45, buttonHeight = 22, chipHeight = 20, buttonTextSize = 12,
+    noRoomAlpha = 45, buttonHeight = 22, chipHeight = 20, buttonTextSize = 12, theme = "CLASSIC",
 }
 local expectedCount = 0
 for key, want in pairs(EXPECTED) do
@@ -3603,6 +3603,8 @@ check("secret leader name stays nil", ns.Finder.Result(6).leaderName, nil)
 lfg.secret = false
 lfg.leaders = nil
 lfg.reset()
+
+dofile("themes.lua")({ ns = ns, M = M, check = check, section = section })
 
 section("Source rules")
 -- Listing.lua may name exactly one Blizzard thing: the global that shows the finder.

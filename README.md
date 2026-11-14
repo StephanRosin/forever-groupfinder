@@ -46,6 +46,9 @@ Then `/reload` or restart the game.
 - **Details**: members, free slots, whisper and whisper templates, seen, hide,
   ignore with undo.
 - **Leader help**: missing roles, fitting players, one-click invite.
+- **Themes (beta)**: Classic plus eight looks (wooden plaque, technology, parchment,
+  runestone, stained glass, comic, frost, pixel) for the window and its panels; each
+  theme keeps a whole set of settings of its own, Classic stays as you set it up.
 - **Options** in the Forever style: list look (font and icon sizes), button
   sizes, profiles shared across characters, export and import as text.
 
@@ -68,5 +71,8 @@ Then `/reload` or restart the game.
 Bump `## Version` in the TOC before a release.
 
 ## License note
+
+The theme fonts in `Media/Fonts` are under the SIL Open Font License (see `OFL.txt`
+and `FONTS.txt` there).
 
 Forever Group Finder is written from scratch.

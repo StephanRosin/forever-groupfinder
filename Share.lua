@@ -59,11 +59,18 @@ function encode(v, out)
     end
 end
 
+-- Not passed on: which theme is in use and the other themes' sets
+-- (Themes.lua). An import replaces the current theme's settings.
+local LOCAL = { theme = true, themeSets = true }
+
 -- The active profile: everything it stores (only what differs from the
 -- defaults, so the string stays short).
 function Share.Export()
-    local out = { Share.PREFIX }
-    encode(ns.DB(), out)
+    local out, settings = { Share.PREFIX }, {}
+    for k, v in pairs(ns.DB()) do
+        if not LOCAL[k] then settings[k] = v end
+    end
+    encode(settings, out)
     return table.concat(out)
 end
 
@@ -197,7 +204,7 @@ function Share.Decode(text)
         local default = Settings.DEFAULTS[key]
         if tables[key] then
             clean[key] = tables[key](v)
-        elseif default ~= nil and sameType(v, default) and allowed(key, v) then
+        elseif default ~= nil and not LOCAL[key] and sameType(v, default) and allowed(key, v) then
             clean[key] = v
         end
     end
@@ -212,7 +219,9 @@ function Share.Import(text)
     -- Written in one go, clamped as Settings.Set does, then one change for
     -- everything (as a profile switch), instead of a relayout per key.
     local db = ns.DB()
-    for k in pairs(db) do db[k] = nil end
+    for k in pairs(db) do
+        if not LOCAL[k] then db[k] = nil end
+    end
     for key, v in pairs(clean) do
         v = Settings.Clamp(key, v)
         if not Settings.SameValue(v, Settings.DEFAULTS[key]) then db[key] = v end

@@ -24,10 +24,12 @@ Profiles.lua
 Settings.lua
 Share.lua
 Media.lua
+Themes.lua
 Position.lua
 Resize.lua
 Corners.lua
 Border.lua
+ThemeArt.lua
 Finder.lua
 Roles.lua
 Playstyle.lua
