@@ -101,7 +101,7 @@ return function(t)
     check("upgrade: stale set dropped", db.themeSets.TECH, nil)
     check("upgrade: classic kept", db.themeSets.CLASSIC.width, 800)
     check("upgrade: revision noted", db.themeSets.revision, Themes.REVISION)
-    check("revision 4: sets rebuilt (wood's gold ring)", Themes.REVISION, 4)
+    check("revision 5: sets rebuilt (Swiss and Pitwall in one black)", Themes.REVISION, 5)
     Settings.Set("borderSize", 5)
     Themes.Upgrade()
     check("upgrade: once only", S("borderSize"), 5)
@@ -289,13 +289,20 @@ return function(t)
     ns.ThemeArt.Style(frame, 0)
     check("pitwall: header font", S("headerFont"), "Titillium Web Bold Italic")
     check("pitwall: a carbon hairline", S("borderStyle") .. S("borderSize"), "FLAT1")
-    check("pitwall: title strip as high as the header", art.strip:IsShown() and art.strip:GetHeight(), ns.Header.HEIGHT)
+    check("pitwall: black title strip as high as the header", art.strip:IsShown() and table.concat(art.strip._texColor or art.strip._vertex, ",") .. " " .. art.strip:GetHeight(), "0,0,0,1 " .. ns.Header.HEIGHT)
     check("pitwall: red wedge before the grip", art.wedge:IsShown() and rgb(art.wedge._vertex) .. "/" .. art.wedge:GetWidth(), "0.88,0.02,0/8")
     Themes.SetColor("TEAL")
     ns.ThemeArt.Style(frame, 0)
     check("pitwall teal: the wedge's colour", rgb(art.wedge._vertex), "0,0.63,0.61")
     check("pitwall teal: title kept", accent(), rgb(Themes.SPECS.PITWALL.look.headerColor))
     Themes.SetColor("RED")
+    -- Swiss and Pitwall share one black with every Forever addon: the flat
+    -- backdrop untinted, the background #0a0a0a, opaque.
+    for _, id in ipairs({ "SWISS", "PITWALL" }) do
+        Themes.Switch(id)
+        check(id .. ": the shared black", look() .. " " .. S("bgMode") .. " " .. table.concat(S("bgColor"), ",")
+            .. " " .. S("bgAlpha"), PATH .. "SwissBack 1,1,1,1 SOLID 0.039,0.039,0.039 100")
+    end
     -- The ring is the same in every Forever addon, for every theme and
     -- colour: the theme's own; only Console's colours and Pixel's Handheld
     -- recolour it.

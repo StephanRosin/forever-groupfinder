@@ -25,7 +25,7 @@ Themes.IDS = { "CLASSIC", "WOOD", "TECH", "PARCHMENT", "RUNESTONE", "GLASS", "CO
 -- Raised whenever SPECS change a look: theme sets stored before are made
 -- anew from CLASSIC (Themes.Upgrade), so a changed theme shows as it is
 -- now. CLASSIC is never touched.
-Themes.REVISION = 4
+Themes.REVISION = 5
 
 -- The theme fonts have Latin letters only: on a client whose names are
 -- written otherwise the header keeps its font.
@@ -128,7 +128,7 @@ Themes.SPECS = {
     SWISS = {
         font = "Inter Tight Bold",
         look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.16, 0.16, 0.16, 1 }, cornerRadius = 0,
-            bgMode = "SOLID", bgColor = { 0.04, 0.04, 0.04 }, bgAlpha = 100, shadowEnabled = false,
+            bgMode = "SOLID", bgColor = { 0.039, 0.039, 0.039 }, bgAlpha = 100, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 1, 0.18, 0.13 } },
         art = { back = "SwissBack", padding = 4, rule = { 0.95, 0.95, 0.95, 1 }, ruleSize = 3 },
         iconColor = { 0.55, 0.55, 0.55 }, iconHoverColor = { 0.95, 0.95, 0.95 },
@@ -141,14 +141,14 @@ Themes.SPECS = {
             headerFlag = "OUTLINE", headerColor = { 0.306, 0.929, 0.69 } },
         art = { back = "ConsoleBack", padding = 4 },
     },
-    -- A timing screen: carbon, a carbon hairline, a dark title strip with a red wedge.
+    -- A timing screen: flat black, a carbon hairline, a black title strip with a red wedge.
     PITWALL = {
         font = "Titillium Web Bold Italic",
         look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.043, 0.047, 0.055, 1 }, cornerRadius = 0,
             bgMode = "SOLID",
-            bgColor = { 0.09, 0.09, 0.11 }, bgAlpha = 100, shadowEnabled = false, headerFlag = "OUTLINE",
+            bgColor = { 0.039, 0.039, 0.039 }, bgAlpha = 100, shadowEnabled = false, headerFlag = "OUTLINE",
             headerColor = { 0.95, 0.95, 0.96 } },
-        art = { back = "PitwallBack", padding = 4, strip = { 0.14, 0.15, 0.17, 1 }, wedge = "PitwallWedge",
+        art = { back = "SwissBack", padding = 4, strip = { 0, 0, 0, 1 }, wedge = "PitwallWedge",
             wedgeColor = { 0.88, 0.02, 0, 1 } },
     },
 }
