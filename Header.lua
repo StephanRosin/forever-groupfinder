@@ -170,7 +170,11 @@ function Header.Layout(h, width)
     h.grip:SetShown(movable)
     Controls.Restyle(h.title)
     Media.ApplyText(h.note, Header.NoteStyle())
-    local left = movable and TITLE_X_GRIP or TITLE_X
+    -- Past a theme's wedge: the grip there, the title as far after it as usual.
+    local start = ns.ThemeArt.TitleLeft()
+    h.grip:ClearAllPoints()
+    h.grip:SetPoint("LEFT", h, "LEFT", start or 8, 0)
+    local left = start and (movable and start + TITLE_X_GRIP - 8 or start) or (movable and TITLE_X_GRIP or TITLE_X)
     h.title:ClearAllPoints()
     h.title:SetPoint("LEFT", h, "LEFT", left, 0)
     h.line:SetShown(S("headerLine"))

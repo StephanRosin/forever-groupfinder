@@ -21,9 +21,11 @@ ns.ThemeArt = ThemeArt
 
 local PATH = "Interface\\AddOns\\ForeverGroupFinder\\Media\\Themes\\"
 local OVER_LEVELS = 20   -- the ornaments lie above every part of the frame
--- The wedge stays left of the header's grip (Header.lua: at 8); its band
--- fills the left 17 of the texture's 32 columns.
-local WEDGE_WIDTH, WEDGE_RIGHT = 8, 17 / 32
+-- Pitwall's wedge, as in every Forever addon: the texture's left 0.53, as
+-- wide as the strip is high; its right edge runs from 0.98 of that width at
+-- the top to 0.62 at the bottom. The grip or title starts TITLE_GAP past it.
+local WEDGE_PART, TITLE_GAP = 0.53, 8
+local function wedgeReach(h, y) return math.floor(0.98 * h - 0.36 * y + 0.5) end
 
 local function build(frame)
     local art = {}
@@ -103,9 +105,9 @@ local function placeStrip(art, look, inset)
     if look.wedge then
         art.wedge:ClearAllPoints()
         art.wedge:SetPoint("TOPLEFT", art.back, "TOPLEFT", 0, 0)
-        art.wedge:SetSize(WEDGE_WIDTH, height)
+        art.wedge:SetSize(height, height)
         art.wedge:SetTexture(PATH .. look.wedge)
-        art.wedge:SetTexCoord(0, WEDGE_RIGHT, 0, 1)
+        art.wedge:SetTexCoord(0, WEDGE_PART, 0, 1)
         local c = ns.Themes.WedgeColor(look)
         art.wedge:SetVertexColor(c[1], c[2], c[3], c[4])
     end
@@ -119,6 +121,21 @@ end
 local function classicRing()
     local set, D = ns.Themes.ClassicSet() or {}, ns.Settings.DEFAULTS
     return ringWidth(set.borderStyle or D.borderStyle, set.borderSize or D.borderSize)
+end
+
+-- The backdrop's inset from the frame: the ring's outer edge on Classic's
+-- (negative for a ring thinner than Classic's).
+local function backInset()
+    return ringWidth(S("borderStyle"), S("borderSize")) - classicRing()
+end
+
+-- Where the header's grip (else its title) starts under a theme with a
+-- wedge, from the header's left (= the frame's); nil without one.
+function ThemeArt.TitleLeft()
+    local look = ns.Themes.Spec(ns.Themes.Current()).art
+    if not (look and look.wedge) then return nil end
+    local inset = backInset()
+    return inset + wedgeReach(ns.Header.HEIGHT - inset, ns.Header.HEIGHT / 2 - inset) + TITLE_GAP
 end
 
 -- The current theme's art on frame (with .bg). radius: the frame's corner
@@ -138,10 +155,8 @@ function ThemeArt.Style(frame, radius)
         ns.Corners.Fit(art.clip, art.back, 0, { art.back })
         return frame, radius
     end
-    -- The ring's outer edge on Classic's: the backdrop (its inner edge)
-    -- that much inside the frame; negative for a ring thinner than Classic's.
     local ring = ringWidth(S("borderStyle"), S("borderSize"))
-    local inset = ring - classicRing()
+    local inset = backInset()
     art.back:ClearAllPoints()
     art.back:SetPoint("TOPLEFT", frame, "TOPLEFT", inset, -inset)
     art.back:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -inset, inset)

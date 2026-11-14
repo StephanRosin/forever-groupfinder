@@ -290,7 +290,21 @@ return function(t)
     check("pitwall: header font", S("headerFont"), "Titillium Web Bold Italic")
     check("pitwall: a carbon hairline", S("borderStyle") .. S("borderSize"), "FLAT1")
     check("pitwall: black title strip as high as the header", art.strip:IsShown() and table.concat(art.strip._texColor or art.strip._vertex, ",") .. " " .. art.strip:GetHeight(), "0,0,0,1 " .. ns.Header.HEIGHT)
-    check("pitwall: red wedge before the grip", art.wedge:IsShown() and rgb(art.wedge._vertex) .. "/" .. art.wedge:GetWidth(), "0.88,0.02,0/8")
+    check("pitwall: red wedge", art.wedge:IsShown() and rgb(art.wedge._vertex), "0.88,0.02,0")
+    -- The family's wedge: as high as the strip, as wide as high, the grip or
+    -- title 8 past its right edge at the header's middle.
+    local stripH = art.strip:GetHeight()
+    check("pitwall: wedge as high as the strip, as wide as high", art.wedge:GetHeight() .. "x" .. art.wedge:GetWidth(),
+        stripH .. "x" .. stripH)
+    local inset = ns.Header.HEIGHT - stripH
+    local start = inset + math.floor(0.98 * stripH - 0.36 * (ns.Header.HEIGHT / 2 - inset) + 0.5) + 8
+    local ph = ns.Header.Create(CreateFrame("Frame", nil, UIParent), { movable = function() return false end })
+    ns.Header.Layout(ph)
+    check("pitwall: title 8 past the wedge", ph.title._points.LEFT[3], start)
+    ph.movable = function() return true end
+    ns.Header.Layout(ph)
+    check("pitwall: grip 8 past the wedge, title after it as usual", ph.grip._points.LEFT[3] .. "/" .. ph.title._points.LEFT[3],
+        start .. "/" .. (start + 18))
     Themes.SetColor("TEAL")
     ns.ThemeArt.Style(frame, 0)
     check("pitwall teal: the wedge's colour", rgb(art.wedge._vertex), "0,0.63,0.61")
