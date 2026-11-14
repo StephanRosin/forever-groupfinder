@@ -24,7 +24,7 @@ Themes.IDS = { "CLASSIC", "WOOD", "TECH", "PARCHMENT", "RUNESTONE", "GLASS", "CO
 -- Raised whenever SPECS change a look: theme sets stored before are made
 -- anew from CLASSIC (Themes.Upgrade), so a changed theme shows as it is
 -- now. CLASSIC is never touched.
-Themes.REVISION = 2
+Themes.REVISION = 3
 
 -- The theme fonts have Latin letters only: on a client whose names are
 -- written otherwise the header keeps its font.
@@ -33,7 +33,7 @@ local LATIN_CLIENTS = { enUS = true, enGB = true, deDE = true, frFR = true, esES
 
 -- look: settings the theme sets (Settings.DEFAULTS keys). font: the
 -- header's font; fontSizeAdd: how much larger it must be to read like the
--- others. The header always has the client's outline (THICKOUTLINE for
+-- others. The header always has the client's outline (OUTLINE for
 -- the comic): a hand-made soft outline under these fonts showed black
 -- text in Forever Unit Frames.
 -- art (ThemeArt.lua): back = backdrop file in Media/Themes, tint = its
@@ -97,7 +97,7 @@ Themes.SPECS = {
         font = "Bangers", fontSizeAdd = 2,
         look = { borderStyle = "FLAT", borderSize = 3, borderColor = { 0.07, 0.07, 0.07, 1 }, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.1, 0.1, 0.12 }, bgAlpha = 100, shadowEnabled = false,
-            headerFlag = "THICKOUTLINE", headerColor = { 1, 0.85, 0.1 } },
+            headerFlag = "OUTLINE", headerColor = { 1, 0.85, 0.1 } },
         -- The paper grey as in Forever Quest Log, the same in every Forever addon.
         art = { back = "ComicBack", tint = { 0.7, 0.7, 0.7, 1 }, padding = 4 },
         iconColor = { 0.1, 0.1, 0.1 }, iconHoverColor = { 0.4, 0.4, 0.4 },
