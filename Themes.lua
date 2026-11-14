@@ -37,12 +37,13 @@ local LATIN_CLIENTS = { enUS = true, enGB = true, deDE = true, frFR = true, esES
 -- the comic): a hand-made soft outline under these fonts showed black
 -- text in Forever Unit Frames.
 -- art (ThemeArt.lua): back = backdrop file in Media/Themes, tint = its
--- colour (light papers toned down, so they do not glare), padding = how far it reaches out of the frame to the border
--- (it frames the window), header = false keeps the title on the body
+-- colour (light papers toned down, so they do not glare), padding = the
+-- width of the backdrop band inside the ring (band and ring fit in the
+-- frames' inner padding of 8), header = false keeps the title on the body
 -- colour; ornament = corner piece, corners = which ones (Corners.POINTS
 -- order: 1 top left, 2 top right, 3 bottom left, 4 bottom right),
--- ornamentInset = how far in from the ring's outer corner (negative:
--- further out), hardShadow = offset of a solid shadow.
+-- ornamentInset = how far in from the ring's outer corner. Nothing
+-- reaches outside Classic's edge (ThemeArt.lua).
 -- iconColor / iconHoverColor: the header's icons and note in dark ink, for
 -- a header on light paper.
 -- The body colour stays dark everywhere: the list's light text sits on it.
@@ -54,7 +55,7 @@ Themes.SPECS = {
         look = { borderStyle = "FLAT", borderSize = 3, borderColor = { 0.66, 0.48, 0.2, 1 }, cornerRadius = 3,
             bgMode = "SOLID", bgColor = { 0.1, 0.06, 0.02 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 60,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 1, 0.86, 0.6 } },
-        art = { back = "WoodBack", padding = 8, ornament = "Rivet", corners = { 1, 2, 3, 4 }, ornamentSize = 11,
+        art = { back = "WoodBack", padding = 5, ornament = "Rivet", corners = { 1, 2, 3, 4 }, ornamentSize = 9,
             ornamentInset = 1 },
     },
     -- Dark navy with a faint grid, a thin cyan line.
@@ -63,7 +64,7 @@ Themes.SPECS = {
         look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.25, 0.88, 0.94, 0.9 }, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.02, 0.05, 0.08 }, bgAlpha = 100, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 0.6, 0.95, 1 } },
-        art = { back = "TechBack", padding = 5 },
+        art = { back = "TechBack", padding = 4 },
     },
     -- Parchment round the window, a brown ink line, a wax seal.
     PARCHMENT = {
@@ -71,8 +72,8 @@ Themes.SPECS = {
         look = { borderStyle = "FLAT", borderSize = 2, borderColor = { 0.29, 0.2, 0.12, 1 }, cornerRadius = 2,
             bgMode = "SOLID", bgColor = { 0.13, 0.09, 0.05 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 45,
             shadowSize = 5, headerFlag = "OUTLINE", headerColor = { 1, 0.93, 0.78 } },
-        art = { back = "ParchmentBack", tint = { 0.82, 0.78, 0.72, 1 }, padding = 8, ornament = "Seal", corners = { 3 }, ornamentSize = 26,
-            ornamentInset = -6 },
+        art = { back = "ParchmentBack", tint = { 0.82, 0.78, 0.72, 1 }, padding = 5, ornament = "Seal", corners = { 3 },
+            ornamentSize = 20, ornamentInset = 0 },
     },
     -- Grey granite, a dark chiselled edge, glowing runes.
     RUNESTONE = {
@@ -80,8 +81,8 @@ Themes.SPECS = {
         look = { borderStyle = "FLAT", borderSize = 2, borderColor = { 0.1, 0.1, 0.12, 1 }, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.04, 0.05, 0.06 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 70,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 0.55, 1, 0.9 } },
-        art = { back = "StoneBack", padding = 8, ornament = "Rune", corners = { 1, 2 }, ornamentSize = 14,
-            ornamentInset = 2, ornamentColor = { 0.35, 0.95, 0.85, 1 } },
+        art = { back = "StoneBack", padding = 5, ornament = "Rune", corners = { 1, 2 }, ornamentSize = 10,
+            ornamentInset = 1, ornamentColor = { 0.35, 0.95, 0.85, 1 } },
     },
     -- A mosaic of coloured glass round the window, dark lead, a dark title.
     GLASS = {
@@ -89,16 +90,16 @@ Themes.SPECS = {
         look = { borderStyle = "FLAT", borderSize = 3, borderColor = { 0.07, 0.06, 0.05, 1 }, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.05, 0.04, 0.06 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 55,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 1, 0.82, 0.29 } },
-        art = { back = "GlassBack", padding = 10, header = false },
+        art = { back = "GlassBack", padding = 5, header = false },
     },
-    -- Thick ink line, halftone paper, a solid shadow.
+    -- Thick ink line, halftone paper.
     COMIC = {
         font = "Bangers", fontSizeAdd = 2,
         look = { borderStyle = "FLAT", borderSize = 3, borderColor = { 0.07, 0.07, 0.07, 1 }, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.1, 0.1, 0.12 }, bgAlpha = 100, shadowEnabled = false,
             headerFlag = "THICKOUTLINE", headerColor = { 1, 0.85, 0.1 } },
         -- The paper grey as in Forever Quest Log, the same in every Forever addon.
-        art = { back = "ComicBack", tint = { 0.7, 0.7, 0.7, 1 }, padding = 4, hardShadow = 5 },
+        art = { back = "ComicBack", tint = { 0.7, 0.7, 0.7, 1 }, padding = 4 },
         iconColor = { 0.1, 0.1, 0.1 }, iconHoverColor = { 0.4, 0.4, 0.4 },
     },
     -- Translucent ice, a pale rim, rounded.
@@ -108,15 +109,15 @@ Themes.SPECS = {
             bgMode = "SOLID", bgColor = { 0.04, 0.12, 0.22 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 55,
             shadowSize = 8, headerFlag = "OUTLINE", headerColor = { 0.86, 0.96, 1 } },
         -- The cracks dimmed: the title sits on them.
-        art = { back = "FrostBack", padding = 5, tint = { 0.6, 0.62, 0.66, 1 } },
+        art = { back = "FrostBack", padding = 4, tint = { 0.6, 0.62, 0.66, 1 } },
     },
-    -- A light pixel frame, scan lines, a solid shadow.
+    -- A light pixel frame, scan lines.
     PIXEL = {
         font = "VT323", fontSizeAdd = 4,
         look = { borderStyle = "FLAT", borderSize = 3, borderColor = { 1, 0.95, 0.91, 1 }, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0, 0, 0 }, bgAlpha = 100, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 0.6, 1, 0.5 } },
-        art = { back = "PixelBack", padding = 3, hardShadow = 4 },
+        art = { back = "PixelBack", padding = 4 },
     },
 }
 
@@ -150,6 +151,11 @@ local function storedSets()
         sets.revision = Themes.REVISION
     end
     return sets
+end
+
+-- The stored CLASSIC set while a theme is in use, else nil.
+function Themes.ClassicSet()
+    return storedSets()[Themes.CLASSIC]
 end
 
 function Themes.Current()

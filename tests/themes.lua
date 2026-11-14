@@ -127,25 +127,41 @@ return function(t)
     check("options: no reset on classic", general[5].visible(), false)
     check("options: classic restored", S("width") .. "/" .. S("cornerRadius"), "800/8")
 
-    -- The art: the ring goes round the backdrop, ornaments at its corners.
+    -- The art: the ring goes round the backdrop, all of it inside the edge
+    -- Classic has (frame plus Classic's ring of 1), ornaments too.
     local frame = CreateFrame("Frame", nil, UIParent)
     frame.bg = frame:CreateTexture(nil, "BACKGROUND")
     Themes.Switch("WOOD")
     local box, radius = ns.ThemeArt.Style(frame, 3)
     local art = frame.themeArt
     check("art: the ring round the backdrop", box, art.back)
-    check("art: backdrop reaches out by the padding", art.back._points.TOPLEFT[3], -8)
-    check("art: rounding grows by the padding", radius, 11)
+    check("art: frame's rounding", radius, 3)
     check("art: body below the header", frame.bg._points.TOPLEFT[4], -ns.Header.HEIGHT)
     check("art: four rivets", art.ornaments[4]:IsShown(), true)
-    check("art: rivet at the ring's outer corner", art.ornaments[1]._points.TOPLEFT[3], 1 - S("borderSize"))
-    check("art: no solid shadow", art.shadow:IsShown(), false)
+    for _, id in ipairs(Themes.IDS) do
+        if id ~= Themes.CLASSIC then
+            Themes.Switch(id)
+            Settings.Set("borderSize", Themes.SPECS[id].look.borderSize)
+            ns.ThemeArt.Style(frame, 3)
+            local ring, inset = S("borderSize"), art.back._points.TOPLEFT[3]
+            check(id .. ": outer edge where Classic's is", ring - inset, 1)
+            local body = frame.bg._points.BOTTOMRIGHT[4]
+            check(id .. ": band within the frames' inner padding", body >= 0 and body <= 8, true)
+            for i, piece in ipairs(art.ornaments) do
+                if piece:IsShown() then
+                    local point = piece._points[ns.Corners.POINTS[i]]
+                    local x = (i == 1 or i == 3) and point[3] or -point[3]
+                    check(id .. ": ornament " .. i .. " inside the edge", x + ring >= 0, true)
+                end
+            end
+        end
+    end
+    Themes.Switch("WOOD")
     Themes.Switch("PARCHMENT")
     ns.ThemeArt.Style(frame, 2)
     check("art: one seal", tostring(art.ornaments[3]:IsShown()) .. tostring(art.ornaments[1]:IsShown()), "truefalse")
     Themes.Switch("COMIC")
     ns.ThemeArt.Style(frame, 0)
-    check("art: comic shadow", art.shadow:IsShown(), true)
     local h = ns.Header.Create(CreateFrame("Frame", nil, UIParent))
     local b = ns.Header.Button(h, "Gear", "", function() end)
     ns.Header.Layout(h)
@@ -161,25 +177,20 @@ return function(t)
     Themes.Switch("COMIC")
     Themes.Switch("GLASS")
     ns.ThemeArt.Style(frame, 0)
-    check("art: glass title on the dark body", frame.bg._points.TOPLEFT, nil)
+    check("art: glass title on the dark body", frame.bg._points.TOPLEFT[4], -frame.bg._points.TOPLEFT[3])
     check("glass: the list keeps its font", S("commentFont") .. "/" .. S("nameFont"), "Friz Quadrata/Friz Quadrata")
     Themes.Switch("FROST")
     check("frost: body opaque over the cracks", S("bgAlpha"), 100)
     Themes.Switch("COMIC")
-    check("art: comic square", select(2, ns.ThemeArt.Style(frame, 0)), 0)
     Themes.Switch("CLASSIC")
     box, radius = ns.ThemeArt.Style(frame, 10)
     check("classic: ring round the frame", box, frame)
     check("classic: own radius", radius, 10)
     check("classic: no backdrop", art.back:IsShown(), false)
     check("classic: body everywhere", frame.bg._points.TOPLEFT, nil)
-    check("classic: nothing reaches out", ns.ThemeArt.Reach(), 0)
     b.hover = false
     ns.Header.Paint(b)
     check("classic: header icon as before", b.paintColor, ns.Header.IDLE)
-    Themes.Switch("PIXEL")
-    check("pixel: padding and ring reach out", ns.ThemeArt.Reach(), 3 + 3)
-    Themes.Switch("CLASSIC")
 
     -- A font the client refuses at first use: the default meanwhile, then
     -- tried again.

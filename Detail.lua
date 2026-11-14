@@ -21,7 +21,6 @@ local function buttonH() return Controls.ButtonHeight() end
 local HEADER_H = ns.Header.HEIGHT
 local TITLE_H = 22          -- the embedded host's title line
 local PAD, GAP = 8, 4
-local DOCK_GAP = 4          -- between the window and the docked panel
 local LINE_H, MEMBER_H, ICON = 16, 18, 14
 
 local p            -- the floating panel (SIDEBAR)
@@ -338,16 +337,15 @@ function Detail.Dock()
     if not (p and window) then return end
     local right = window:GetRight()
     local scale = window:GetEffectiveScale() / UIParent:GetEffectiveScale()
-    local gap = DOCK_GAP + 2 * ns.ThemeArt.Reach()
-    local roomRight = not right or (right + gap + WIDTH) * scale <= UIParent:GetWidth()
+    local roomRight = not right or (right + 4 + WIDTH) * scale <= UIParent:GetWidth()
     p.side = roomRight and "RIGHT" or "LEFT"
     p:ClearAllPoints()
     if roomRight then
-        p:SetPoint("TOPLEFT", window, "TOPRIGHT", gap, 0)
-        p:SetPoint("BOTTOMLEFT", window, "BOTTOMRIGHT", gap, 0)
+        p:SetPoint("TOPLEFT", window, "TOPRIGHT", 4, 0)
+        p:SetPoint("BOTTOMLEFT", window, "BOTTOMRIGHT", 4, 0)
     else
-        p:SetPoint("TOPRIGHT", window, "TOPLEFT", -gap, 0)
-        p:SetPoint("BOTTOMRIGHT", window, "BOTTOMLEFT", -gap, 0)
+        p:SetPoint("TOPRIGHT", window, "TOPLEFT", -4, 0)
+        p:SetPoint("BOTTOMRIGHT", window, "BOTTOMLEFT", -4, 0)
     end
 end
 
