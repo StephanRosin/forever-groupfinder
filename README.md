@@ -46,8 +46,8 @@ Then `/reload` or restart the game.
 - **Details**: members, free slots, whisper and whisper templates, seen, hide,
   ignore with undo.
 - **Leader help**: missing roles, fitting players, one-click invite.
-- **Themes (beta)**: Classic plus eight looks (wooden plaque, technology, parchment,
-  runestone, stained glass, comic, frost, pixel) for the window and its panels; each
+- **Themes (beta)**: Classic plus eleven looks (wooden plaque, technology, parchment,
+  runestone, stained glass, comic, frost, pixel, Swiss, console, pitwall) for the window and its panels; each
   theme keeps a whole set of settings of its own, Classic stays as you set it up.
 - **Options** in the Forever style: list look (font and icon sizes), button
   sizes, profiles shared across characters, export and import as text.

@@ -19,7 +19,8 @@ ns.Themes = Themes
 
 Themes.CLASSIC = "CLASSIC"
 -- In the options' order; new themes go at the end.
-Themes.IDS = { "CLASSIC", "WOOD", "TECH", "PARCHMENT", "RUNESTONE", "GLASS", "COMIC", "FROST", "PIXEL" }
+Themes.IDS = { "CLASSIC", "WOOD", "TECH", "PARCHMENT", "RUNESTONE", "GLASS", "COMIC", "FROST", "PIXEL", "SWISS",
+    "CONSOLE", "PITWALL" }
 
 -- Raised whenever SPECS change a look: theme sets stored before are made
 -- anew from CLASSIC (Themes.Upgrade), so a changed theme shows as it is
@@ -42,7 +43,10 @@ local LATIN_CLIENTS = { enUS = true, enGB = true, deDE = true, frFR = true, esES
 -- frames' inner padding of 8), header = false keeps the title on the body
 -- colour; ornament = corner piece, corners = which ones (Corners.POINTS
 -- order: 1 top left, 2 top right, 3 bottom left, 4 bottom right),
--- ornamentInset = how far in from the ring's outer corner. Nothing
+-- ornamentInset = how far in from the ring's outer corner; rule = a line
+-- ruleSize thick along the top, over the ring; strip = the header's colour
+-- over the backdrop, wedge = a slanted band at its left in wedgeColor.
+-- Nothing
 -- reaches outside Classic's edge (ThemeArt.lua).
 -- iconColor / iconHoverColor: the header's icons and note in dark ink, for
 -- a header on light paper.
@@ -119,16 +123,47 @@ Themes.SPECS = {
             headerFlag = "OUTLINE", headerColor = { 0.6, 1, 0.5 } },
         art = { back = "PixelBack", padding = 4 },
     },
+    -- Swiss style: flat black, a hairline, one white rule along the top,
+    -- the title in the one red accent; the icons stay grey and white.
+    SWISS = {
+        font = "Inter Tight Bold",
+        look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.16, 0.16, 0.16, 1 }, cornerRadius = 0,
+            bgMode = "SOLID", bgColor = { 0.04, 0.04, 0.04 }, bgAlpha = 100, shadowEnabled = false,
+            headerFlag = "OUTLINE", headerColor = { 1, 0.18, 0.13 } },
+        art = { back = "SwissBack", padding = 4, rule = { 0.95, 0.95, 0.95, 1 }, ruleSize = 3 },
+        iconColor = { 0.55, 0.55, 0.55 }, iconHoverColor = { 0.95, 0.95, 0.95 },
+    },
+    -- A terminal: near black with faint scan lines, a thin mint line.
+    CONSOLE = {
+        font = "IBM Plex Sans Condensed",
+        look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.31, 0.93, 0.69, 1 }, cornerRadius = 0,
+            bgMode = "SOLID", bgColor = { 0.06, 0.06, 0.07 }, bgAlpha = 100, shadowEnabled = false,
+            headerFlag = "OUTLINE", headerColor = { 0.31, 0.93, 0.69 } },
+        art = { back = "ConsoleBack", padding = 4 },
+    },
+    -- A timing screen: carbon, no ring, a dark title strip with a red wedge.
+    PITWALL = {
+        font = "Titillium Web Bold Italic",
+        look = { borderStyle = "NONE", borderSize = 1, cornerRadius = 0, bgMode = "SOLID",
+            bgColor = { 0.09, 0.09, 0.11 }, bgAlpha = 100, shadowEnabled = false, headerFlag = "OUTLINE",
+            headerColor = { 0.95, 0.95, 0.96 } },
+        art = { back = "PitwallBack", padding = 4, strip = { 0.14, 0.15, 0.17, 1 }, wedge = "PitwallWedge",
+            wedgeColor = { 0.88, 0.02, 0, 1 } },
+    },
 }
 
 -- Each theme's colours, the same in every Forever addon (none for CLASSIC).
 -- The first is the theme as it is. Any other draws the backdrop from the
 -- theme's grey texture (<back>Grey), tinted so its mean lands on `back`
 -- (vertex colour = back / GREY_MEAN, at most 1), and brings its accent
--- (nil: the theme's own). The comic keeps its paper tint (COMIC_PAINT).
+-- (nil: the theme's own). Themes with one dark backdrop in every colour
+-- (SWISS, CONSOLE, PITWALL) change only the accent, the ring or the wedge.
+-- The comic keeps its paper tint (COMIC_PAINT).
 local GREY_MEAN = { WoodBack = 0.800, TechBack = 0.705, ParchmentBack = 0.799, StoneBack = 0.800,
     GlassBack = 0.777, FrostBack = 0.796, PixelBack = 0.800 }
-local function colour(id, back, accent) return { id = id, back = back, accent = accent } end
+local function colour(id, back, accent, rim, wedge)
+    return { id = id, back = back, accent = accent, rim = rim, wedge = wedge }
+end
 Themes.COLORS = {
     WOOD = {
         colour("OAK"),
@@ -186,6 +221,25 @@ Themes.COLORS = {
         colour("BLACK", { 0.03, 0.03, 0.04 }, { 0, 0.89, 0.21 }),
         colour("TEAL", { 0.02, 0.17, 0.22 }, { 0.16, 0.68, 1 }),
         colour("PURPLE", { 0.15, 0.1, 0.25 }, { 1, 0.47, 0.66 }),
+        colour("HANDHELD", { 0.06, 0.12, 0.06 }, { 0.78, 0.94, 0.44 }),
+    },
+    SWISS = {
+        colour("RED"),
+        colour("BLUE", nil, { 0.18, 0.42, 1 }),
+        colour("YELLOW", nil, { 1, 0.82, 0 }),
+        colour("WHITE", nil, { 0.95, 0.95, 0.95 }),
+    },
+    CONSOLE = {
+        colour("MINT"),
+        colour("AMBER", nil, { 1, 0.69, 0 }, { 1, 0.69, 0, 1 }),
+        colour("PHOSPHOR", nil, { 0.22, 1, 0.08 }, { 0.22, 1, 0.08, 1 }),
+        colour("VIOLET", nil, { 0.63, 0.47, 1 }, { 0.63, 0.47, 1, 1 }),
+    },
+    PITWALL = {
+        colour("RED"),
+        colour("ORANGE", nil, nil, nil, { 1, 0.54, 0, 1 }),
+        colour("TEAL", nil, nil, nil, { 0, 0.63, 0.61, 1 }),
+        colour("SILVER", nil, nil, nil, { 0.79, 0.81, 0.84, 1 }),
     },
     COMIC = { colour("GREY"), colour("DARKGREY"), colour("BLACK"), colour("WHITE"), colour("YELLOW"),
         colour("BLUE"), colour("RED"), colour("GREEN"), colour("PURPLE") },
@@ -298,13 +352,16 @@ end
 
 -- Any other theme's colour in use when it is not the theme's own look.
 local function themePaint()
-    local c = colourOf(Themes.Current(), Themes.Color())
-    return c and c.back and c or nil
+    local id = Themes.Current()
+    local c = colourOf(id, Themes.Color())
+    return c and c ~= Themes.COLORS[id][1] and c or nil
 end
 
--- The backdrop's texture (art: the theme's): the grey one under a colour.
+-- The backdrop's texture (art: the theme's): the grey one under a colour
+-- that tints it.
 function Themes.Back(art)
-    return themePaint() and art.back .. "Grey" or art.back
+    local c = themePaint()
+    return c and c.back and art.back .. "Grey" or art.back
 end
 
 -- The backdrop's tint (art: the theme's): the comic's paper in its colour,
@@ -313,7 +370,7 @@ function Themes.Tint(art)
     local paint = comicPaint()
     if paint and art.tint then return { paint.paper[1], paint.paper[2], paint.paper[3], art.tint[4] } end
     local c = themePaint()
-    if c then
+    if c and c.back then
         local mean = GREY_MEAN[art.back]
         return { math.min(1, c.back[1] / mean), math.min(1, c.back[2] / mean), math.min(1, c.back[3] / mean),
             art.tint and art.tint[4] or 1 }
@@ -325,6 +382,18 @@ end
 function Themes.Accent()
     local paint = comicPaint() or themePaint()
     return paint and paint.accent
+end
+
+-- The ring's colour the theme's colour sets, else nil (the setting's).
+function Themes.Rim()
+    local c = themePaint()
+    return c and c.rim
+end
+
+-- The wedge's colour (art: the theme's): the colour's, else the theme's.
+function Themes.WedgeColor(art)
+    local c = themePaint()
+    return c and c.wedge or art.wedgeColor
 end
 
 -- On a dark paper the header's dark ink (iconColor) turns light: icons

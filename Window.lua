@@ -536,7 +536,7 @@ function Window.ApplyLook(frame, width, height)
     -- A theme's backdrop frames the window: the ring goes round it.
     local box, ringRadius = ns.ThemeArt.Style(frame, radius)
     ns.Border.Draw(frame, box, {
-        style = S("borderStyle"), size = S("borderSize"), color = S("borderColor"), radius = ringRadius,
+        style = S("borderStyle"), size = S("borderSize"), color = ns.Themes.Rim() or S("borderColor"), radius = ringRadius,
         shadow = S("shadowEnabled"), shadowSize = S("shadowSize"), shadowAlpha = S("shadowAlpha") / 100,
     })
 end

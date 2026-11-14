@@ -21,11 +21,16 @@ ns.ThemeArt = ThemeArt
 
 local PATH = "Interface\\AddOns\\ForeverGroupFinder\\Media\\Themes\\"
 local OVER_LEVELS = 20   -- the ornaments lie above every part of the frame
+-- The wedge stays left of the header's grip (Header.lua: at 8); its band
+-- fills the left 17 of the texture's 32 columns.
+local WEDGE_WIDTH, WEDGE_RIGHT = 8, 17 / 32
 
 local function build(frame)
     local art = {}
     -- Below the body colour (sublevel 0).
     art.back = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+    art.strip = frame:CreateTexture(nil, "BACKGROUND", nil, -6)
+    art.wedge = frame:CreateTexture(nil, "BACKGROUND", nil, -5)
     -- Its own rounding, concentric with the ring.
     art.clip = { mask = frame:CreateMaskTexture() }
     art.over = CreateFrame("Frame", nil, frame)
@@ -33,6 +38,7 @@ local function build(frame)
     art.over:SetFrameLevel(frame:GetFrameLevel() + OVER_LEVELS)
     art.ornaments = {}
     for i = 1, 4 do art.ornaments[i] = art.over:CreateTexture(nil, "OVERLAY") end
+    art.rule = art.over:CreateTexture(nil, "OVERLAY")
     frame.themeArt = art
     return art
 end
@@ -70,6 +76,41 @@ local function placeOrnaments(art, look, ring)
     end
 end
 
+-- The rule along the top, over the ring, inside the edge.
+local function placeRule(art, look, ring)
+    art.rule:SetShown(look.rule ~= nil)
+    if not look.rule then return end
+    art.rule:ClearAllPoints()
+    art.rule:SetPoint("TOPLEFT", art.back, "TOPLEFT", -ring, ring)
+    art.rule:SetPoint("TOPRIGHT", art.back, "TOPRIGHT", ring, ring)
+    art.rule:SetHeight(look.ruleSize)
+    art.rule:SetColorTexture(look.rule[1], look.rule[2], look.rule[3], look.rule[4])
+end
+
+-- The header's strip over the backdrop (inset: the backdrop's from the
+-- frame) and the wedge at its left.
+local function placeStrip(art, look, inset)
+    local height = ns.Header.HEIGHT - inset
+    art.strip:SetShown(look.strip ~= nil)
+    if look.strip then
+        art.strip:ClearAllPoints()
+        art.strip:SetPoint("TOPLEFT", art.back, "TOPLEFT", 0, 0)
+        art.strip:SetPoint("TOPRIGHT", art.back, "TOPRIGHT", 0, 0)
+        art.strip:SetHeight(height)
+        art.strip:SetColorTexture(look.strip[1], look.strip[2], look.strip[3], look.strip[4])
+    end
+    art.wedge:SetShown(look.wedge ~= nil)
+    if look.wedge then
+        art.wedge:ClearAllPoints()
+        art.wedge:SetPoint("TOPLEFT", art.back, "TOPLEFT", 0, 0)
+        art.wedge:SetSize(WEDGE_WIDTH, height)
+        art.wedge:SetTexture(PATH .. look.wedge)
+        art.wedge:SetTexCoord(0, WEDGE_RIGHT, 0, 1)
+        local c = ns.Themes.WedgeColor(look)
+        art.wedge:SetVertexColor(c[1], c[2], c[3], c[4])
+    end
+end
+
 local function ringWidth(style, size)
     return style ~= "NONE" and ns.Border.Snap(size, 1) or 0
 end
@@ -90,6 +131,9 @@ function ThemeArt.Style(frame, radius)
     if not look then
         frame.bg:SetAllPoints()
         art.back:Hide()
+        art.strip:Hide()
+        art.wedge:Hide()
+        art.rule:Hide()
         for _, piece in ipairs(art.ornaments) do piece:Hide() end
         ns.Corners.Fit(art.clip, art.back, 0, { art.back })
         return frame, radius
@@ -108,5 +152,7 @@ function ThemeArt.Style(frame, radius)
     frame.bg:SetPoint("TOPLEFT", frame, "TOPLEFT", body, -top)
     frame.bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -body, body)
     placeOrnaments(art, look, ring)
+    placeRule(art, look, ring)
+    placeStrip(art, look, inset)
     return art.back, radius
 end
