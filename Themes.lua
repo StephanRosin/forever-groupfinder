@@ -25,7 +25,7 @@ Themes.IDS = { "CLASSIC", "WOOD", "TECH", "PARCHMENT", "RUNESTONE", "GLASS", "CO
 -- Raised whenever SPECS change a look: theme sets stored before are made
 -- anew from CLASSIC (Themes.Upgrade), so a changed theme shows as it is
 -- now. CLASSIC is never touched.
-Themes.REVISION = 3
+Themes.REVISION = 4
 
 -- The theme fonts have Latin letters only: on a client whose names are
 -- written otherwise the header keeps its font.
@@ -53,10 +53,10 @@ local LATIN_CLIENTS = { enUS = true, enGB = true, deDE = true, frFR = true, esES
 -- The body colour stays dark everywhere: the list's light text sits on it.
 Themes.SPECS = {
     CLASSIC = {},
-    -- Oak boards round the window, a brass rim, brass rivets.
+    -- Oak boards round the window, the family's gold ring, brass rivets.
     WOOD = {
         font = "Cinzel",
-        look = { borderStyle = "FLAT", borderSize = 3, borderColor = { 0.66, 0.48, 0.2, 1 }, cornerRadius = 3,
+        look = { borderStyle = "GOLD", borderSize = 3, cornerRadius = 3,
             bgMode = "SOLID", bgColor = { 0.1, 0.06, 0.02 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 60,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 1, 0.86, 0.6 } },
         art = { back = "WoodBack", padding = 5, ornament = "Rivet", corners = { 1, 2, 3, 4 }, ornamentSize = 9,
