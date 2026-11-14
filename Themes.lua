@@ -43,6 +43,8 @@ local LATIN_CLIENTS = { enUS = true, enGB = true, deDE = true, frFR = true, esES
 -- order: 1 top left, 2 top right, 3 bottom left, 4 bottom right),
 -- ornamentInset = how far in from the ring's outer corner (negative:
 -- further out), hardShadow = offset of a solid shadow.
+-- iconColor / iconHoverColor: the header's icons and note in dark ink, for
+-- a header on light paper.
 -- The body colour stays dark everywhere: the list's light text sits on it.
 Themes.SPECS = {
     CLASSIC = {},
@@ -97,6 +99,7 @@ Themes.SPECS = {
             headerFlag = "THICKOUTLINE", headerColor = { 1, 0.85, 0.1 } },
         -- The paper grey as in Forever Quest Log, the same in every Forever addon.
         art = { back = "ComicBack", tint = { 0.7, 0.7, 0.7, 1 }, padding = 4, hardShadow = 5 },
+        iconColor = { 0.1, 0.1, 0.1 }, iconHoverColor = { 0.4, 0.4, 0.4 },
     },
     -- Translucent ice, a pale rim, rounded.
     FROST = {

@@ -39,14 +39,21 @@ end
 -- The resting colour: on / off for a toggle (isActive), idle otherwise;
 -- activeColor / offColor override them (the lock: blue while unlocked;
 -- the refresh button: gold while the list is outdated, idle otherwise).
+-- A theme with a light header (Themes.lua: iconColor) draws the icons,
+-- off or idle, and the note in its ink; the lock's blue stays.
+local function ink()
+    return ns.Themes.Spec(ns.Themes.Current()).iconColor
+end
+
 function Header.ButtonColor(b)
-    if b.isActive and b.isActive() then return b.activeColor or Header.ON end
-    if b.isActive then return b.offColor or Header.OFF end
-    return Header.IDLE
+    if b.isActive and b.isActive() then return b.activeColor or ink() or Header.ON end
+    if b.isActive then return b.offColor or ink() or Header.OFF end
+    return ink() or Header.IDLE
 end
 
 function Header.Paint(b, color)
-    color = color or (b.hover and Header.HOVER) or Header.ButtonColor(b)
+    local hover = ink() and ns.Themes.Spec(ns.Themes.Current()).iconHoverColor or Header.HOVER
+    color = color or (b.hover and hover) or Header.ButtonColor(b)
     b.paintColor = color
     if b.icon then b.icon:SetVertexColor(color[1], color[2], color[3]) end
     for _, t in ipairs(b.lines or {}) do t:SetColorTexture(color[1], color[2], color[3], 1) end
@@ -106,7 +113,7 @@ function Header.NoteStyle()
     local style = Settings.TextStyle("small")
     style.size = math.max(8, S("headerSize") - 3)
     style.flag = ""
-    style.color = Header.NOTE
+    style.color = ink() or Header.NOTE
     return style
 end
 
