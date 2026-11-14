@@ -24,7 +24,7 @@ Themes.IDS = { "CLASSIC", "WOOD", "TECH", "PARCHMENT", "RUNESTONE", "GLASS", "CO
 -- Raised whenever SPECS change a look: theme sets stored before are made
 -- anew from CLASSIC (Themes.Upgrade), so a changed theme shows as it is
 -- now. CLASSIC is never touched.
-Themes.REVISION = 1
+Themes.REVISION = 2
 
 -- The theme fonts have Latin letters only: on a client whose names are
 -- written otherwise the header keeps its font.
@@ -37,7 +37,7 @@ local LATIN_CLIENTS = { enUS = true, enGB = true, deDE = true, frFR = true, esES
 -- the comic): a hand-made soft outline under these fonts showed black
 -- text in Forever Unit Frames.
 -- art (ThemeArt.lua): back = backdrop file in Media/Themes, tint = its
--- colour, padding = how far it reaches out of the frame to the border
+-- colour (light papers toned down, so they do not glare), padding = how far it reaches out of the frame to the border
 -- (it frames the window), header = false keeps the title on the body
 -- colour; ornament = corner piece, corners = which ones (Corners.POINTS
 -- order: 1 top left, 2 top right, 3 bottom left, 4 bottom right),
@@ -70,7 +70,7 @@ Themes.SPECS = {
         look = { borderStyle = "FLAT", borderSize = 2, borderColor = { 0.29, 0.2, 0.12, 1 }, cornerRadius = 2,
             bgMode = "SOLID", bgColor = { 0.13, 0.09, 0.05 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 45,
             shadowSize = 5, headerFlag = "OUTLINE", headerColor = { 1, 0.93, 0.78 } },
-        art = { back = "ParchmentBack", padding = 8, ornament = "Seal", corners = { 3 }, ornamentSize = 26,
+        art = { back = "ParchmentBack", tint = { 0.82, 0.78, 0.72, 1 }, padding = 8, ornament = "Seal", corners = { 3 }, ornamentSize = 26,
             ornamentInset = -6 },
     },
     -- Grey granite, a dark chiselled edge, glowing runes.
@@ -96,15 +96,16 @@ Themes.SPECS = {
         look = { borderStyle = "FLAT", borderSize = 3, borderColor = { 0.07, 0.07, 0.07, 1 }, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.1, 0.1, 0.12 }, bgAlpha = 100, shadowEnabled = false,
             headerFlag = "THICKOUTLINE", headerColor = { 1, 0.85, 0.1 } },
-        art = { back = "ComicBack", padding = 4, hardShadow = 5 },
+        art = { back = "ComicBack", tint = { 0.9, 0.87, 0.8, 1 }, padding = 4, hardShadow = 5 },
     },
     -- Translucent ice, a pale rim, rounded.
     FROST = {
         font = "Cormorant SC", fontSizeAdd = 2,
         look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.86, 0.96, 1, 0.8 }, cornerRadius = 6,
-            bgMode = "SOLID", bgColor = { 0.04, 0.12, 0.22 }, bgAlpha = 92, shadowEnabled = true, shadowAlpha = 55,
+            bgMode = "SOLID", bgColor = { 0.04, 0.12, 0.22 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 55,
             shadowSize = 8, headerFlag = "OUTLINE", headerColor = { 0.86, 0.96, 1 } },
-        art = { back = "FrostBack", padding = 5, tint = { 1, 1, 1, 0.75 } },
+        -- The cracks dimmed: the title sits on them.
+        art = { back = "FrostBack", padding = 5, tint = { 0.6, 0.62, 0.66, 1 } },
     },
     -- A light pixel frame, scan lines, a solid shadow.
     PIXEL = {
