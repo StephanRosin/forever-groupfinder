@@ -179,7 +179,7 @@ return function(t)
     local entry = _G.ForeverThemes.ForeverGroupFinder
     local function paper() ns.ThemeArt.Style(frame, 0); return table.concat(art.back._vertex, ",") end
     local function accent() return table.concat(Settings.TextStyle("header").color, ",") end
-    check("comic colours: list", table.concat(entry.ComicColors, ","), "GREY,YELLOW,BLUE,RED,GREEN,PURPLE")
+    check("comic colours: list", table.concat(entry.ComicColors, ","), "GREY,DARKGREY,BLACK,WHITE,YELLOW,BLUE,RED,GREEN,PURPLE")
     check("comic colours: grey by default", entry.ComicColor(), "GREY")
     check("comic grey: headers as today", accent(), "1,0.85,0.1")
     check("comic blue: set", entry.SetComicColor("BLUE"), true)
@@ -194,6 +194,26 @@ return function(t)
     check("comic colour: chosen under wood", Themes.SetComicColor("RED"), true)
     Themes.Switch("COMIC")
     check("comic colour: survives the switch", entry.ComicColor() .. " " .. paper(), "RED 0.86,0.44,0.4,1")
+    check("comic black: set", Themes.SetComicColor("BLACK"), true)
+    check("comic black: paper", paper(), "0.16,0.16,0.16,1")
+    check("comic black: headers yellow", accent(), "1,0.9,0.1")
+    b.hover = false
+    ns.Header.Paint(b)
+    check("comic black: header icon light", b.paintColor[1], 0.85)
+    b.hover = true
+    ns.Header.Paint(b)
+    check("comic black: hover brighter", b.paintColor[1], 1)
+    b.hover = false
+    check("comic black: note light", ns.Header.NoteStyle().color[1], 0.9)
+    local toggle = { isActive = function() return false end }
+    check("comic black: off icon", ns.Header.ButtonColor(toggle)[1], 0.55)
+    toggle.isActive = function() return true end
+    check("comic black: on icon in the accent", table.concat(ns.Header.ButtonColor(toggle), ","), "1,0.9,0.1")
+    check("comic white: set", Themes.SetComicColor("WHITE"), true)
+    check("comic white: paper", paper(), "1,1,1,1")
+    check("comic white: headers blue", accent(), "0.15,0.45,0.95")
+    ns.Header.Paint(b)
+    check("comic white: header icon in ink", b.paintColor[1], 0.1)
     ns.AccountDB().comicColor = "NOPE"
     check("comic colour: unknown stored reads grey", Themes.ComicColor(), "GREY")
     check("comic grey back: set", Themes.SetComicColor("GREY"), true)

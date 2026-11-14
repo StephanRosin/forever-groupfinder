@@ -41,18 +41,23 @@ end
 -- the refresh button: gold while the list is outdated, idle otherwise).
 -- A theme with a light header (Themes.lua: iconColor) draws the icons,
 -- off or idle, and the note in its ink; the lock's blue stays.
+-- On a dark comic paper that ink is light (Themes.DarkInk).
 local function ink()
+    local dark = ns.Themes.DarkInk()
+    if dark then return dark.idle end
     return ns.Themes.Spec(ns.Themes.Current()).iconColor
 end
 
 function Header.ButtonColor(b)
-    if b.isActive and b.isActive() then return b.activeColor or ink() or Header.ON end
-    if b.isActive then return b.offColor or ink() or Header.OFF end
+    local dark = ns.Themes.DarkInk()
+    if b.isActive and b.isActive() then return b.activeColor or (dark and dark.on) or ink() or Header.ON end
+    if b.isActive then return b.offColor or (dark and dark.off) or ink() or Header.OFF end
     return ink() or Header.IDLE
 end
 
 function Header.Paint(b, color)
-    local hover = ink() and ns.Themes.Spec(ns.Themes.Current()).iconHoverColor or Header.HOVER
+    local dark = ns.Themes.DarkInk()
+    local hover = dark and dark.hover or ink() and ns.Themes.Spec(ns.Themes.Current()).iconHoverColor or Header.HOVER
     color = color or (b.hover and hover) or Header.ButtonColor(b)
     b.paintColor = color
     if b.icon then b.icon:SetVertexColor(color[1], color[2], color[3]) end
@@ -113,7 +118,8 @@ function Header.NoteStyle()
     local style = Settings.TextStyle("small")
     style.size = math.max(8, S("headerSize") - 3)
     style.flag = ""
-    style.color = ink() or Header.NOTE
+    local dark = ns.Themes.DarkInk()
+    style.color = dark and dark.text or ink() or Header.NOTE
     return style
 end
 

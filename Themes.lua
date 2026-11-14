@@ -124,10 +124,13 @@ Themes.SPECS = {
 -- The comic's colours, the same in every Forever addon: the paper's tint
 -- and the accent (the headers' colour). GREY is the comic as it is (accent
 -- nil: the set's own). Stored account wide, outside profiles and theme sets.
-Themes.COMIC_COLORS = { "GREY", "YELLOW", "BLUE", "RED", "GREEN", "PURPLE" }
+Themes.COMIC_COLORS = { "GREY", "DARKGREY", "BLACK", "WHITE", "YELLOW", "BLUE", "RED", "GREEN", "PURPLE" }
 local COMIC_YELLOW = { 1, 0.9, 0.1 }
 local COMIC_PAINT = {
     GREY = { paper = { 0.70, 0.70, 0.70 } },
+    DARKGREY = { paper = { 0.38, 0.38, 0.38 }, accent = COMIC_YELLOW, dark = true },
+    BLACK = { paper = { 0.16, 0.16, 0.16 }, accent = COMIC_YELLOW, dark = true },
+    WHITE = { paper = { 1, 1, 1 }, accent = { 0.15, 0.45, 0.95 } },
     YELLOW = { paper = { 0.86, 0.76, 0.36 }, accent = { 0.15, 0.45, 0.95 } },
     BLUE = { paper = { 0.45, 0.60, 0.86 }, accent = COMIC_YELLOW },
     RED = { paper = { 0.86, 0.44, 0.40 }, accent = COMIC_YELLOW },
@@ -204,6 +207,16 @@ end
 function Themes.ComicAccent()
     local paint = comicPaint()
     return paint and paint.accent
+end
+
+-- On a dark paper the header's dark ink (iconColor) turns light: icons
+-- idle, hovered, off, on (the accent), and the note. nil on any other.
+local DARK_INK = { idle = { 0.85, 0.85, 0.85 }, hover = { 1, 1, 1 }, off = { 0.55, 0.55, 0.55 },
+    text = { 0.9, 0.9, 0.9 } }
+function Themes.DarkInk()
+    local paint = comicPaint()
+    if not (paint and paint.dark) then return nil end
+    return { idle = DARK_INK.idle, hover = DARK_INK.hover, off = DARK_INK.off, text = DARK_INK.text, on = paint.accent }
 end
 
 -- Our frames are not protected: no combat lock.
