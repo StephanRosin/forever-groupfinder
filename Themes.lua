@@ -55,14 +55,13 @@ Themes.SPECS = {
         art = { back = "WoodBack", padding = 8, ornament = "Rivet", corners = { 1, 2, 3, 4 }, ornamentSize = 11,
             ornamentInset = 1 },
     },
-    -- Dark navy with a faint grid, a thin cyan line, corner brackets.
+    -- Dark navy with a faint grid, a thin cyan line.
     TECH = {
         font = "Space Grotesk",
         look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.25, 0.88, 0.94, 0.9 }, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.02, 0.05, 0.08 }, bgAlpha = 100, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 0.6, 0.95, 1 } },
-        art = { back = "TechBack", padding = 5, ornament = "Bracket", corners = { 1, 2, 3, 4 }, ornamentSize = 14,
-            ornamentInset = -3, ornamentColor = { 0.25, 0.88, 0.94, 1 } },
+        art = { back = "TechBack", padding = 5 },
     },
     -- Parchment round the window, a brown ink line, a wax seal.
     PARCHMENT = {
@@ -96,7 +95,8 @@ Themes.SPECS = {
         look = { borderStyle = "FLAT", borderSize = 3, borderColor = { 0.07, 0.07, 0.07, 1 }, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.1, 0.1, 0.12 }, bgAlpha = 100, shadowEnabled = false,
             headerFlag = "THICKOUTLINE", headerColor = { 1, 0.85, 0.1 } },
-        art = { back = "ComicBack", tint = { 0.9, 0.87, 0.8, 1 }, padding = 4, hardShadow = 5 },
+        -- The paper grey as in Forever Quest Log, the same in every Forever addon.
+        art = { back = "ComicBack", tint = { 0.7, 0.7, 0.7, 1 }, padding = 4, hardShadow = 5 },
     },
     -- Translucent ice, a pale rim, rounded.
     FROST = {
