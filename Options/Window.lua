@@ -102,7 +102,7 @@ local Lib = LibForeverThemes
 local function followsHub() return Lib.Follows(ADDON) end
 local function ownTheme() return not followsHub() end
 local function noHub() return Lib.Hub() == nil end
-local function hubText(key) return function() return Lib.Text(key) end end
+local function hubText(key) return function() return Lib.Text(key, ns.Locale.Current()) end end
 
 local function themeRows()
     local Themes = ns.Themes
@@ -141,7 +141,7 @@ local function themeRows()
         -- Without the hub: where to get it.
         visibleIf({ type = "text", label = hubText("HUB_MISSING") }, noHub),
         visibleIf({ type = "buttons", buttons = {
-            { label = hubText("HUB_LINK"), width = 200, onClick = function() Lib.ShowHubLink() end },
+            { label = hubText("HUB_LINK"), width = 200, onClick = function() Lib.ShowHubLink(nil, ns.Locale.Current()) end },
         } }, noHub),
         { type = "text", label = "OPT_THEME_HINT", height = 66 },
         visibleIf({ type = "buttons", buttons = {

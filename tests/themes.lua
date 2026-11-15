@@ -208,6 +208,9 @@ return function(t)
         OpenOptions = function() opened = true end })
     check("hub, following: locked, line, button, no apply to all", rowsShown(),
         "OPT_THEME OPT_THEME_CHOICE- OPT_THEME_COLOR- Follows Forever Themes Open Forever Themes OPT_THEME_HINT")
+    ns.Locale.Set("deDE")   -- the addon's own language, not the (English) client's
+    check("german addon, english client: the line", rowsShown():find("Folgt Forever Themes", 1, true) ~= nil, true)
+    ns.Locale.Set("AUTO")
     general[5].buttons[1].onClick()
     check("hub: the button opens its window", opened, true)
     -- A profile switch, reset or import replaced our theme: the hub puts its own back.
