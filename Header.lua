@@ -42,6 +42,8 @@ end
 -- A theme with a light header (Themes.lua: iconColor) draws the icons,
 -- off or idle, and the note in its ink; the lock's blue stays.
 -- On a dark comic paper that ink is light (Themes.DarkInk).
+-- Every other theme draws the icons in its colour's accent
+-- (Themes.IconTones), the lock too: there its shape tells the state.
 local function ink()
     local dark = ns.Themes.DarkInk()
     if dark then return dark.idle end
@@ -49,15 +51,18 @@ local function ink()
 end
 
 function Header.ButtonColor(b)
-    local dark = ns.Themes.DarkInk()
-    if b.isActive and b.isActive() then return b.activeColor or (dark and dark.on) or ink() or Header.ON end
-    if b.isActive then return b.offColor or (dark and dark.off) or ink() or Header.OFF end
-    return ink() or Header.IDLE
+    local dark, tones = ns.Themes.DarkInk(), ns.Themes.IconTones()
+    if b.isActive and b.isActive() then
+        return tones and tones.on or b.activeColor or (dark and dark.on) or ink() or Header.ON
+    end
+    if b.isActive then return b.offColor or (dark and dark.off) or tones and tones.off or ink() or Header.OFF end
+    return tones and tones.idle or ink() or Header.IDLE
 end
 
 function Header.Paint(b, color)
-    local dark = ns.Themes.DarkInk()
-    local hover = dark and dark.hover or ink() and ns.Themes.Spec(ns.Themes.Current()).iconHoverColor or Header.HOVER
+    local dark, tones = ns.Themes.DarkInk(), ns.Themes.IconTones()
+    local hover = dark and dark.hover or tones and tones.hover
+        or ink() and ns.Themes.Spec(ns.Themes.Current()).iconHoverColor or Header.HOVER
     color = color or (b.hover and hover) or Header.ButtonColor(b)
     b.paintColor = color
     if b.icon then b.icon:SetVertexColor(color[1], color[2], color[3]) end

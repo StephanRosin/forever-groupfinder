@@ -288,10 +288,12 @@ return function(t)
     check("swiss: grey hairline", rgb(S("borderColor")) .. "/" .. S("borderSize"), "0.16,0.16,0.16/1")
     check("swiss: white rule along the top over the ring", art.rule:IsShown() and art.rule._points.TOPLEFT[4] .. "/" .. art.rule:GetHeight(), "1/3")
     check("swiss: red title", accent(), "1,0.18,0.13")
-    check("swiss: icons grey, not red", ns.Header.ButtonColor({})[1], 0.55)
+    check("swiss: icons in the red accent", rgb(ns.Header.ButtonColor({})), "1,0.18,0.13")
+    check("swiss: the note grey as without a theme", rgb(ns.Header.NoteStyle().color), rgb(ns.Header.NOTE))
     check("swiss blue: set", Themes.SetColor("BLUE"), true)
     check("swiss blue: backdrop kept", look(), PATH .. "SwissBack 1,1,1,1")
     check("swiss blue: title", accent(), "0.18,0.42,1")
+    check("swiss blue: icons follow", rgb(ns.Header.ButtonColor({})), "0.18,0.42,1")
     Themes.SetColor("RED")
     Themes.Switch("CONSOLE")
     ns.ThemeArt.Style(frame, 0)
@@ -321,10 +323,40 @@ return function(t)
     ns.Header.Layout(ph)
     check("pitwall: grip 8 past the wedge, title after it as usual", ph.grip._points.LEFT[3] .. "/" .. ph.title._points.LEFT[3],
         start .. "/" .. (start + 18))
+    local pb, lockOpen = ns.Header.Button(ph, "Gear", "", function() end), false
+    local lock = ns.Header.Button(ph, "Lock", "", function() end, function() return lockOpen end)
+    lock.activeColor = { 0.31, 0.76, 0.97 }
+    ns.Header.Layout(ph)
+    check("pitwall: header icon in the wedge's red", rgb(pb.paintColor), "0.88,0.02,0")
+    check("pitwall: a toggle off the red darker", rgb(lock.paintColor), rgb({ 0.88 * 0.6, 0.02 * 0.6, 0 }))
+    lockOpen = true
+    ns.Header.Layout(ph)
+    check("pitwall: unlocked lock in the red, not blue", rgb(lock.paintColor), "0.88,0.02,0")
+    pb.hover = true
+    ns.Header.Paint(pb)
+    check("pitwall: hover half way to white", rgb(pb.paintColor), "0.94,0.51,0.5")
+    pb.hover = false
     Themes.SetColor("TEAL")
     ns.ThemeArt.Style(frame, 0)
+    ns.Header.Layout(ph)
     check("pitwall teal: the wedge's colour", rgb(art.wedge._vertex), "0,0.63,0.61")
     check("pitwall teal: title kept", accent(), rgb(Themes.SPECS.PITWALL.look.headerColor))
+    check("pitwall teal: header icon follows the wedge", rgb(pb.paintColor), "0,0.63,0.61")
+    -- Every icon accent readable on its backdrop (back, else the black
+    -- header): at least 3:1, the contrast WCAG asks of icons.
+    local function luminance(c)
+        local function lin(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
+        return 0.2126 * lin(c[1]) + 0.7152 * lin(c[2]) + 0.0722 * lin(c[3])
+    end
+    for id, colours in pairs(Themes.COLORS) do
+        for _, c in ipairs(id ~= "COMIC" and colours or {}) do
+            local a = c.accent or c.wedge
+            if a then
+                local ratio = (luminance(a) + 0.05) / (luminance(c.back or { 0, 0, 0 }) + 0.05)
+                check(id .. " " .. c.id .. ": icon accent readable", ratio >= 3, true)
+            end
+        end
+    end
     Themes.SetColor("RED")
     -- Swiss and Pitwall share one black with every Forever addon: the flat
     -- backdrop untinted, the background #0a0a0a, opaque.

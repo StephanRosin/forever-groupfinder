@@ -126,14 +126,13 @@ Themes.SPECS = {
         art = { back = "PixelBack", padding = 4 },
     },
     -- Swiss style: flat black, a hairline, one white rule along the top,
-    -- the title in the one red accent; the icons stay grey and white.
+    -- the title and the icons in the one red accent.
     SWISS = {
         font = "Inter Tight Bold",
         look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.16, 0.16, 0.16, 1 }, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.039, 0.039, 0.039 }, bgAlpha = 100, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 1, 0.18, 0.13 } },
         art = { back = "SwissBack", padding = 4, rule = { 0.95, 0.95, 0.95, 1 }, ruleSize = 3 },
-        iconColor = { 0.55, 0.55, 0.55 }, iconHoverColor = { 0.95, 0.95, 0.95 },
     },
     -- A terminal: near black with faint scan lines, a thin mint line.
     CONSOLE = {
@@ -399,6 +398,24 @@ end
 function Themes.WedgeColor(art)
     local c = themePaint()
     return c and c.wedge or art.wedgeColor
+end
+
+-- The header icons in the colour's accent (the title's; on Pitwall the
+-- wedge's, as the colour changes it there): idle and on the accent, under a
+-- hover half way to white, off 40 % darker, as in every Forever addon. nil
+-- under CLASSIC and a theme with its own ink (iconColor, COMIC).
+local ICON_HOVER, ICON_OFF = 0.5, 0.4
+local function mix(c, to, f)
+    return { c[1] + (to - c[1]) * f, c[2] + (to - c[2]) * f, c[3] + (to - c[3]) * f }
+end
+function Themes.IconTones()
+    local id = Themes.Current()
+    local spec = Themes.Spec(id)
+    if id == Themes.CLASSIC or spec.iconColor then return nil end
+    local art = spec.art or {}
+    local c = art.wedge and Themes.WedgeColor(art) or Themes.Accent() or S("headerColor")
+    local a = { c[1], c[2], c[3] }
+    return { idle = a, on = a, hover = mix(a, 1, ICON_HOVER), off = mix(a, 0, ICON_OFF) }
 end
 
 -- On a dark paper the header's dark ink (iconColor) turns light: icons

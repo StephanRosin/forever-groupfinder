@@ -450,7 +450,7 @@ end
 -- Header ---------------------------------------------------------------------------------------
 
 -- The header: the lock is blue while unlocked, dim while locked (as the
--- quest log's). The list's age and the refresh live in the filter row.
+-- quest log's; under a theme in its accent, Header.ButtonColor). The list's age and the refresh live in the filter row.
 function Window.UpdateHeader()
     if not f then return end
     local h = f.header
