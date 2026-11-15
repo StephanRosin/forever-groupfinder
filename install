@@ -18,6 +18,7 @@ done
 # Textures the Lua code loads by path.
 mkdir -p "$TARGET/Media"
 cp "$HERE"/Media/*.tga "$TARGET/Media/"
-# The themes' backdrops, ornaments and fonts (with their licence).
-cp -r "$HERE/Media/Themes" "$HERE/Media/Fonts" "$TARGET/Media/"
+# The themes' backdrops, ornaments and fonts (with their licence), in the
+# embedded LibForeverThemes.
+cp -r "$HERE/Libs/LibForeverThemes/Media" "$TARGET/Libs/LibForeverThemes/"
 echo "Installed to $TARGET"

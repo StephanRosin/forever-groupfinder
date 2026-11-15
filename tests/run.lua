@@ -3714,6 +3714,22 @@ for _, f in ipairs(LINT_FILES) do
 end
 
 
+section("Embedded LibForeverThemes")
+-- The copy in Libs/ is the library's own (ForeverThemes, tools/sync there):
+-- checked when that repository sits next to this one (not in CI).
+do
+local LIBREPO = ROOT .. "/../ForeverThemes"
+if io.open(LIBREPO .. "/LibForeverThemes.lua") then
+    local diff = io.popen("diff -rq '" .. LIBREPO .. "/LibForeverThemes.lua' '" .. ROOT
+        .. "/Libs/LibForeverThemes/LibForeverThemes.lua' && diff -rq '" .. LIBREPO .. "/Media' '" .. ROOT
+        .. "/Libs/LibForeverThemes/Media' 2>&1"):read("*a")
+    check("copy equals ForeverThemes (run its tools/sync)", diff, "")
+else
+    print("  (skipped: ForeverThemes not next to this addon)")
+end
+end
+check("library loaded from our copy", LibForeverThemes.FOLDER, ADDON)
+
 section("No accidental globals")
 local allowed = { SLASH_FOREVERGROUPFINDER1 = true, SLASH_FOREVERGROUPFINDER2 = true, ForeverGroupFinderProfiles = true,
     ForeverGroupFinderChar = true, ForeverGroupFinder_OnAddonCompartmentClick = true,

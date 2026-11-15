@@ -31,35 +31,13 @@ Media.BLIZZARD = {
         { name = "Blizzard Raid Bar", path = "Interface\\RaidFrame\\Raid-Bar-Hp-Fill" },
     },
 }
--- The themes' fonts, shipped in Media/Fonts (SIL Open Font License, see
--- OFL.txt and FONTS.txt there). Latin letters only.
-local FONTS = ICONS .. "Fonts\\"
-Media.OWN = {
-    font = {
-        { name = "Bangers", path = FONTS .. "Bangers-Regular.ttf" },
-        { name = "Cinzel", path = FONTS .. "Cinzel-Bold.ttf" },
-        { name = "IBM Plex Sans Condensed", path = FONTS .. "IBMPlexSansCondensed-Bold.ttf" },
-        { name = "IM Fell English SC", path = FONTS .. "IMFeENsc28P.ttf" },
-        { name = "Julius Sans One", path = FONTS .. "JuliusSansOne-Regular.ttf" },
-        { name = "Inter Tight Bold", path = FONTS .. "InterTight-Bold.ttf" },
-        { name = "Marcellus", path = FONTS .. "Marcellus-Regular.ttf" },
-        { name = "Space Grotesk", path = FONTS .. "SpaceGrotesk-Bold.ttf" },
-        { name = "Titillium Web Bold Italic", path = FONTS .. "TitilliumWeb-BoldItalic.ttf" },
-        { name = "VT323", path = FONTS .. "VT323-Regular.ttf" },
-    },
-    background = {},
-    statusbar = {},
-}
+-- The themes' fonts come with the embedded LibForeverThemes (SIL Open
+-- Font License, see its Media/Fonts), which also loads them early. Read at
+-- use: a newer copy of the library loading after us replaces the list.
+local Lib = LibForeverThemes
+Media.OWN = setmetatable({ background = {}, statusbar = {} }, {
+    __index = function(_, kind) if kind == "font" then return Lib.FONTS end end })
 local SOURCES = { Media.BLIZZARD, Media.OWN }
-
--- Our font files loaded while the addon loads: a file used for the first
--- time can be refused (ApplyText tries again), so the first restyle
--- should not be its first use.
-do
-    local holder = CreateFrame("Frame")
-    holder:Hide()
-    for _, f in ipairs(Media.OWN.font) do holder:CreateFontString():SetFont(f.path, 12, "") end
-end
 
 Media.DEFAULT = {
     font = "Fonts\\FRIZQT__.TTF",
@@ -93,8 +71,10 @@ function Media.Names(kind)
     return names
 end
 
--- The file for a name; unknown names get the kind's default.
+-- The file for a name; unknown names get the kind's default. A font stored
+-- under an older name (LibForeverThemes' aliases) finds its file.
 function Media.Path(kind, name)
+    if kind == "font" then name = Lib.FontName(name) end
     for _, source in ipairs(SOURCES) do
         for _, f in ipairs(source[kind]) do
             if f.name == name then return f.path end

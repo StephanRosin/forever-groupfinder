@@ -242,7 +242,7 @@ return function(t)
     -- texture tinted to target / mean, with its accent on the headers.
     local function rgb(t) return table.concat({ t[1], t[2], t[3] }, ",") end
     local function look() ns.ThemeArt.Style(frame, 0); return art.back._texture .. " " .. table.concat(art.back._vertex, ",") end
-    local PATH = "Interface\\AddOns\\ForeverGroupFinder\\Media\\Themes\\"
+    local PATH = "Interface\\AddOns\\ForeverGroupFinder\\Libs\\LibForeverThemes\\Media\\Themes\\"
     for _, id in ipairs(Themes.IDS) do
         if id ~= "CLASSIC" and id ~= "COMIC" then
             Themes.Switch(id)
@@ -285,19 +285,19 @@ return function(t)
     Themes.Switch("SWISS")
     ns.ThemeArt.Style(frame, 0)
     check("swiss: header font", S("headerFont") .. "/" .. S("headerSize"), "Inter Tight Bold/" .. Themes.ClassicSet().headerSize)
-    check("swiss: grey hairline", rgb(S("borderColor")) .. "/" .. S("borderSize"), "0.16,0.16,0.16/1")
+    check("swiss: grey hairline", rgb(S("borderColor")) .. "/" .. S("borderSize"), "0.165,0.165,0.165/1")
     check("swiss: white rule along the top over the ring", art.rule:IsShown() and art.rule._points.TOPLEFT[4] .. "/" .. art.rule:GetHeight(), "1/3")
-    check("swiss: red title", accent(), "1,0.18,0.13")
-    check("swiss: icons in the red accent", rgb(ns.Header.ButtonColor({})), "1,0.18,0.13")
+    check("swiss: red title", accent(), "1,0.176,0.125")
+    check("swiss: icons in the red accent", rgb(ns.Header.ButtonColor({})), "1,0.176,0.125")
     check("swiss: the note grey as without a theme", rgb(ns.Header.NoteStyle().color), rgb(ns.Header.NOTE))
     check("swiss blue: set", Themes.SetColor("BLUE"), true)
     check("swiss blue: backdrop kept", look(), PATH .. "SwissBack 1,1,1,1")
-    check("swiss blue: title", accent(), "0.18,0.42,1")
-    check("swiss blue: icons follow", rgb(ns.Header.ButtonColor({})), "0.18,0.42,1")
+    check("swiss blue: title", accent(), "0.176,0.42,1")
+    check("swiss blue: icons follow", rgb(ns.Header.ButtonColor({})), "0.176,0.42,1")
     Themes.SetColor("RED")
     Themes.Switch("CONSOLE")
     ns.ThemeArt.Style(frame, 0)
-    check("console: header font", S("headerFont"), "IBM Plex Sans Condensed")
+    check("console: header font", S("headerFont"), "IBM Plex Sans Condensed Bold")
     check("console: mint ring, no rule", rgb(Themes.RingColor()) .. tostring(art.rule:IsShown()), "0.306,0.929,0.69false")
     Themes.SetColor("AMBER")
     check("console amber: the ring follows the accent", rgb(Themes.RingColor()) .. "/" .. accent(), "1,0.69,0/1,0.69,0")
@@ -308,7 +308,7 @@ return function(t)
     check("pitwall: header font", S("headerFont"), "Titillium Web Bold Italic")
     check("pitwall: a carbon hairline", S("borderStyle") .. S("borderSize"), "FLAT1")
     check("pitwall: black title strip as high as the header", art.strip:IsShown() and table.concat(art.strip._texColor or art.strip._vertex, ",") .. " " .. art.strip:GetHeight(), "0,0,0,1 " .. ns.Header.HEIGHT)
-    check("pitwall: red wedge", art.wedge:IsShown() and rgb(art.wedge._vertex), "0.88,0.02,0")
+    check("pitwall: red wedge", art.wedge:IsShown() and rgb(art.wedge._vertex), "0.882,0.024,0")
     -- The family's wedge: as high as the strip, as wide as high, the grip or
     -- title 8 past its right edge at the header's middle.
     local stripH = art.strip:GetHeight()
@@ -327,21 +327,21 @@ return function(t)
     local lock = ns.Header.Button(ph, "Lock", "", function() end, function() return lockOpen end)
     lock.activeColor = { 0.31, 0.76, 0.97 }
     ns.Header.Layout(ph)
-    check("pitwall: header icon in the wedge's red", rgb(pb.paintColor), "0.88,0.02,0")
-    check("pitwall: a toggle off the red darker", rgb(lock.paintColor), rgb({ 0.88 * 0.6, 0.02 * 0.6, 0 }))
+    check("pitwall: header icon in the wedge's red", rgb(pb.paintColor), "0.882,0.024,0")
+    check("pitwall: a toggle off the red darker", rgb(lock.paintColor), rgb({ 0.882 * 0.6, 0.024 * 0.6, 0 }))
     lockOpen = true
     ns.Header.Layout(ph)
-    check("pitwall: unlocked lock in the red, not blue", rgb(lock.paintColor), "0.88,0.02,0")
+    check("pitwall: unlocked lock in the red, not blue", rgb(lock.paintColor), "0.882,0.024,0")
     pb.hover = true
     ns.Header.Paint(pb)
-    check("pitwall: hover half way to white", rgb(pb.paintColor), "0.94,0.51,0.5")
+    check("pitwall: hover half way to white", rgb(pb.paintColor), "0.941,0.512,0.5")
     pb.hover = false
     Themes.SetColor("TEAL")
     ns.ThemeArt.Style(frame, 0)
     ns.Header.Layout(ph)
-    check("pitwall teal: the wedge's colour", rgb(art.wedge._vertex), "0,0.63,0.61")
+    check("pitwall teal: the wedge's colour", rgb(art.wedge._vertex), "0,0.631,0.612")
     check("pitwall teal: title kept", accent(), rgb(Themes.SPECS.PITWALL.look.headerColor))
-    check("pitwall teal: header icon follows the wedge", rgb(pb.paintColor), "0,0.63,0.61")
+    check("pitwall teal: header icon follows the wedge", rgb(pb.paintColor), "0,0.631,0.612")
     -- Every icon accent readable on its backdrop (back, else the black
     -- header): at least 3:1, the contrast WCAG asks of icons.
     local function luminance(c)
@@ -370,7 +370,7 @@ return function(t)
     -- recolour it.
     local RINGS = { TECH = "0.25,0.88,0.94,0.9", PARCHMENT = "0.29,0.2,0.12,1", RUNESTONE = "0.1,0.1,0.12,1",
         GLASS = "0.07,0.06,0.05,1", COMIC = "0.07,0.07,0.07,1", FROST = "0.86,0.96,1,0.8", PIXEL = "1,0.95,0.91,1",
-        SWISS = "0.16,0.16,0.16,1", PITWALL = "0.043,0.047,0.055,1" }
+        SWISS = "0.165,0.165,0.165,1", PITWALL = "0.043,0.047,0.055,1" }
     local OWN_RING = { CONSOLE = { MINT = "0.306,0.929,0.69,1", AMBER = "1,0.69,0,1", PHOSPHOR = "0.224,1,0.078,1",
         VIOLET = "0.627,0.471,1,1" }, PIXEL = { HANDHELD = "0.784,0.941,0.439,1" } }
     for _, id in ipairs(Themes.IDS) do

@@ -14,18 +14,13 @@ local S = ns.Settings.Get
 -- the content keeps its place. The header shows the art too (unless
 -- art.header is false). No solid shadow: it would reach outside.
 -- Everything is a child of its frame: it shows, hides and resizes with it.
--- Plain textures only, nothing clickable. The textures come from Forever
--- Unit Frames (tools/make_themes.py there).
+-- Plain textures only, nothing clickable. The textures come with the
+-- embedded LibForeverThemes, as Pitwall's wedge rule.
 local ThemeArt = {}
 ns.ThemeArt = ThemeArt
 
-local PATH = "Interface\\AddOns\\ForeverGroupFinder\\Media\\Themes\\"
+local Lib = LibForeverThemes
 local OVER_LEVELS = 20   -- the ornaments lie above every part of the frame
--- Pitwall's wedge, as in every Forever addon: the texture's left 0.53, as
--- wide as the strip is high; its right edge runs from 0.98 of that width at
--- the top to 0.62 at the bottom. The grip or title starts TITLE_GAP past it.
-local WEDGE_PART, TITLE_GAP = 0.53, 8
-local function wedgeReach(h, y) return math.floor(0.98 * h - 0.36 * y + 0.5) end
 
 local function build(frame)
     local art = {}
@@ -46,7 +41,7 @@ local function build(frame)
 end
 
 local function paintBack(texture, look)
-    texture:SetTexture(PATH .. ns.Themes.Back(look), "REPEAT", "REPEAT")
+    texture:SetTexture(Lib.Texture(ns.Themes.Back(look)), "REPEAT", "REPEAT")
     texture:SetHorizTile(true)
     texture:SetVertTile(true)
     local tint = ns.Themes.Tint(look) or { 1, 1, 1, 1 }
@@ -70,7 +65,7 @@ local function placeOrnaments(art, look, ring)
             piece:ClearAllPoints()
             piece:SetPoint(point, art.back, point, dx, dy)
             piece:SetSize(size, size)
-            piece:SetTexture(PATH .. look.ornament)
+            piece:SetTexture(Lib.Texture(look.ornament))
             local m = ns.Corners.COORDS[i]
             piece:SetTexCoord(m[1], m[2], m[3], m[4])
             piece:SetVertexColor(c[1], c[2], c[3], c[4])
@@ -106,8 +101,8 @@ local function placeStrip(art, look, inset)
         art.wedge:ClearAllPoints()
         art.wedge:SetPoint("TOPLEFT", art.back, "TOPLEFT", 0, 0)
         art.wedge:SetSize(height, height)
-        art.wedge:SetTexture(PATH .. look.wedge)
-        art.wedge:SetTexCoord(0, WEDGE_PART, 0, 1)
+        art.wedge:SetTexture(Lib.Texture(look.wedge))
+        art.wedge:SetTexCoord(0, Lib.WEDGE_PART, 0, 1)
         local c = ns.Themes.WedgeColor(look)
         art.wedge:SetVertexColor(c[1], c[2], c[3], c[4])
     end
@@ -135,7 +130,7 @@ function ThemeArt.TitleLeft()
     local look = ns.Themes.Spec(ns.Themes.Current()).art
     if not (look and look.wedge) then return nil end
     local inset = backInset()
-    return inset + wedgeReach(ns.Header.HEIGHT - inset, ns.Header.HEIGHT / 2 - inset) + TITLE_GAP
+    return inset + Lib.WedgeReach(ns.Header.HEIGHT - inset, ns.Header.HEIGHT / 2 - inset) + Lib.TITLE_GAP
 end
 
 -- The current theme's art on frame (with .bg). radius: the frame's corner

@@ -73,7 +73,9 @@ Bump `## Version` in the TOC before a release.
 
 ## License note
 
-The theme fonts in `Media/Fonts` are under the SIL Open Font License (see `OFL.txt`
+The themes (textures, fonts, colours) come from the embedded library LibForeverThemes in
+`Libs/LibForeverThemes` (source: https://github.com/StephanRosin/ForeverThemes, copied in with
+its `tools/sync`). Its fonts in `Media/Fonts` are under the SIL Open Font License (see `OFL.txt`
 and `FONTS.txt` there).
 
 Forever Group Finder is written from scratch.
