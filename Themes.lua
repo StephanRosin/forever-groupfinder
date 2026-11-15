@@ -25,7 +25,7 @@ Themes.IDS = { "CLASSIC", "WOOD", "TECH", "PARCHMENT", "RUNESTONE", "GLASS", "CO
 -- Raised whenever SPECS change a look: theme sets stored before are made
 -- anew from CLASSIC (Themes.Upgrade), so a changed theme shows as it is
 -- now. CLASSIC is never touched.
-Themes.REVISION = 7
+Themes.REVISION = 10
 
 -- The theme fonts have Latin letters only: on a client whose names are
 -- written otherwise the header keeps its font.
@@ -33,8 +33,9 @@ local LATIN_CLIENTS = { enUS = true, enGB = true, deDE = true, frFR = true, esES
     ptBR = true }
 
 -- look: settings the theme sets (Settings.DEFAULTS keys). font: the
--- header's font; fontSizeAdd: how much larger it must be to read like the
--- others. The header has the client's outline (OUTLINE for
+-- header's font; bodyFont: every other text's (nil: as they are);
+-- fontSizeAdd: how much larger the header must be to read like the others.
+-- The header has the client's outline (OUTLINE for
 -- the comic): a hand-made soft outline under these fonts showed black
 -- text in Forever Unit Frames. Frost's has a soft drop shadow (SHADOW)
 -- instead of an outline.
@@ -58,16 +59,16 @@ Themes.SPECS = {
     WOOD = {
         font = "Cinzel",
         look = { borderStyle = "GOLD", borderSize = 3, cornerRadius = 3,
-            bgMode = "SOLID", bgColor = { 0.1, 0.06, 0.02 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 60,
+            bgMode = "SOLID", bgColor = { 0.1, 0.06, 0.02 }, bgAlpha = 0, shadowEnabled = true, shadowAlpha = 60,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 1, 0.86, 0.6 } },
-        art = { back = "WoodBack", padding = 5, ornament = "Rivet", corners = { 1, 2, 3, 4 }, ornamentSize = 9,
+        art = { back = "WoodBack", tint = { 0.5, 0.5, 0.5, 1 }, padding = 5, ornament = "Rivet", corners = { 1, 2, 3, 4 }, ornamentSize = 9,
             ornamentInset = 1 },
     },
     -- Dark navy with a faint grid, a thin cyan line.
     TECH = {
         font = "Space Grotesk",
         look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.25, 0.88, 0.94, 0.9 }, cornerRadius = 0,
-            bgMode = "SOLID", bgColor = { 0.02, 0.05, 0.08 }, bgAlpha = 100, shadowEnabled = false,
+            bgMode = "SOLID", bgColor = { 0.02, 0.05, 0.08 }, bgAlpha = 0, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 0.6, 0.95, 1 } },
         art = { back = "TechBack", padding = 4 },
     },
@@ -75,25 +76,25 @@ Themes.SPECS = {
     PARCHMENT = {
         font = "IM Fell English SC", fontSizeAdd = 1,
         look = { borderStyle = "FLAT", borderSize = 2, borderColor = { 0.29, 0.2, 0.12, 1 }, cornerRadius = 2,
-            bgMode = "SOLID", bgColor = { 0.13, 0.09, 0.05 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 45,
+            bgMode = "SOLID", bgColor = { 0.13, 0.09, 0.05 }, bgAlpha = 0, shadowEnabled = true, shadowAlpha = 45,
             shadowSize = 5, headerFlag = "OUTLINE", headerColor = { 1, 0.93, 0.78 } },
-        art = { back = "ParchmentBack", tint = { 0.82, 0.78, 0.72, 1 }, padding = 5, ornament = "Seal", corners = { 3 },
+        art = { back = "ParchmentBack", tint = { 0.45, 0.45, 0.45, 1 }, padding = 5, ornament = "Seal", corners = { 3 },
             ornamentSize = 20, ornamentInset = 0 },
     },
     -- Grey granite, a dark chiselled edge, glowing runes.
     RUNESTONE = {
         font = "Marcellus", fontSizeAdd = 1,
         look = { borderStyle = "FLAT", borderSize = 2, borderColor = { 0.1, 0.1, 0.12, 1 }, cornerRadius = 0,
-            bgMode = "SOLID", bgColor = { 0.04, 0.05, 0.06 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 70,
+            bgMode = "SOLID", bgColor = { 0.04, 0.05, 0.06 }, bgAlpha = 0, shadowEnabled = true, shadowAlpha = 70,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 0.55, 1, 0.9 } },
-        art = { back = "StoneBack", padding = 5, ornament = "Rune", corners = { 1, 2 }, ornamentSize = 10,
+        art = { back = "StoneBack", tint = { 0.55, 0.55, 0.55, 1 }, padding = 5, ornament = "Rune", corners = { 1, 2 }, ornamentSize = 10,
             ornamentInset = 1, ornamentColor = { 0.35, 0.95, 0.85, 1 } },
     },
     -- A mosaic of coloured glass round the window, dark lead, a dark title.
     GLASS = {
         font = "Morpheus", fontSizeAdd = 1,
         look = { borderStyle = "FLAT", borderSize = 3, borderColor = { 0.07, 0.06, 0.05, 1 }, cornerRadius = 0,
-            bgMode = "SOLID", bgColor = { 0.05, 0.04, 0.06 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 55,
+            bgMode = "SOLID", bgColor = { 0.05, 0.04, 0.06 }, bgAlpha = 90, shadowEnabled = true, shadowAlpha = 55,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 1, 0.82, 0.29 } },
         art = { back = "GlassBack", padding = 5, header = false },
     },
@@ -109,18 +110,18 @@ Themes.SPECS = {
     },
     -- Translucent ice, a pale rim, rounded.
     FROST = {
-        font = "Cinzel",
+        font = "Julius Sans One", bodyFont = "Julius Sans One",
         look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.86, 0.96, 1, 0.8 }, cornerRadius = 6,
-            bgMode = "SOLID", bgColor = { 0.04, 0.12, 0.22 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 55,
+            bgMode = "SOLID", bgColor = { 0.02, 0.07, 0.15 }, bgAlpha = 45, shadowEnabled = true, shadowAlpha = 55,
             shadowSize = 8, headerFlag = "SHADOW", headerColor = { 0.86, 0.96, 1 } },
         -- The cracks dimmed: the title sits on them.
-        art = { back = "FrostBack", padding = 4, tint = { 0.6, 0.62, 0.66, 1 } },
+        art = { back = "FrostBack", padding = 4, tint = { 0.55, 0.55, 0.55, 0.85 } },
     },
     -- A light pixel frame, scan lines.
     PIXEL = {
         font = "VT323", fontSizeAdd = 4,
         look = { borderStyle = "FLAT", borderSize = 3, borderColor = { 1, 0.95, 0.91, 1 }, cornerRadius = 0,
-            bgMode = "SOLID", bgColor = { 0, 0, 0 }, bgAlpha = 100, shadowEnabled = false,
+            bgMode = "SOLID", bgColor = { 0, 0, 0 }, bgAlpha = 0, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 0.6, 1, 0.5 } },
         art = { back = "PixelBack", padding = 4 },
     },
@@ -138,7 +139,7 @@ Themes.SPECS = {
     CONSOLE = {
         font = "IBM Plex Sans Condensed",
         look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.306, 0.929, 0.69, 1 }, cornerRadius = 0,
-            bgMode = "SOLID", bgColor = { 0.06, 0.06, 0.07 }, bgAlpha = 100, shadowEnabled = false,
+            bgMode = "SOLID", bgColor = { 0.06, 0.06, 0.07 }, bgAlpha = 0, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 0.306, 0.929, 0.69 } },
         art = { back = "ConsoleBack", padding = 4 },
     },
@@ -225,7 +226,7 @@ Themes.COLORS = {
         colour("BLACK", { 0.03, 0.03, 0.04 }, { 0, 0.89, 0.21 }),
         colour("TEAL", { 0.02, 0.17, 0.22 }, { 0.16, 0.68, 1 }),
         colour("PURPLE", { 0.15, 0.1, 0.25 }, { 1, 0.47, 0.66 }),
-        colour("HANDHELD", { 0.06, 0.12, 0.06 }, { 0.784, 0.941, 0.439 }, { 0.784, 0.941, 0.439, 1 }),
+        colour("HANDHELD", { 0.059, 0.122, 0.059 }, { 0.784, 0.941, 0.439 }, { 0.784, 0.941, 0.439, 1 }),
     },
     SWISS = {
         colour("RED"),
@@ -427,6 +428,11 @@ function Themes.Seed(id, base)
     local set = settingsOf(base)
     for key, value in pairs(spec.look or {}) do set[key] = copy(value) end
     if spec.font and LATIN_CLIENTS[GetLocale()] then set.headerFont = spec.font end
+    if spec.bodyFont and LATIN_CLIENTS[GetLocale()] then
+        for _, name in ipairs(Settings.TEXT_STYLES) do
+            if name ~= "header" then set[name .. "Font"] = spec.bodyFont end
+        end
+    end
     if spec.fontSizeAdd then
         local size = base.headerSize or Settings.DEFAULTS.headerSize
         set.headerSize = Settings.Clamp("headerSize", size + spec.fontSizeAdd)

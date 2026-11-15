@@ -40,6 +40,7 @@ Media.OWN = {
         { name = "Cinzel", path = FONTS .. "Cinzel-Bold.ttf" },
         { name = "IBM Plex Sans Condensed", path = FONTS .. "IBMPlexSansCondensed-Bold.ttf" },
         { name = "IM Fell English SC", path = FONTS .. "IMFeENsc28P.ttf" },
+        { name = "Julius Sans One", path = FONTS .. "JuliusSansOne-Regular.ttf" },
         { name = "Inter Tight Bold", path = FONTS .. "InterTight-Bold.ttf" },
         { name = "Marcellus", path = FONTS .. "Marcellus-Regular.ttf" },
         { name = "Space Grotesk", path = FONTS .. "SpaceGrotesk-Bold.ttf" },
