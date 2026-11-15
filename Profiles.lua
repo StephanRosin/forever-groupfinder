@@ -75,8 +75,11 @@ function ns.ProfileList()
     return list
 end
 
+-- A switch, copy or fallback replaced the theme: a hub that sets ours puts
+-- its own back.
 local function applyLook()
     if ns.Settings then ns.Settings.Changed(nil) end
+    LibForeverThemes.HubSync()
 end
 
 -- Switches to a profile. A name that does not exist yet is created from the

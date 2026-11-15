@@ -19,15 +19,13 @@ ns.Themes = Themes
 
 local Lib = LibForeverThemes
 Themes.CLASSIC = Lib.CLASSIC
--- In the options' order (the family's, LibForeverThemes).
-Themes.IDS = Lib.IDS
 
 -- Raised whenever SPECS change a look: theme sets stored before are made
 -- anew from CLASSIC (Themes.Upgrade), so a changed theme shows as it is
 -- now. CLASSIC is never touched. The library's part counts too: a change
--- there to what seeding copies (fonts, sizes, ring colour) raises it.
+-- there to what seeding copies (fonts, sizes, ring colour) reseeds as well
+-- (Lib.NeedsReseed).
 local OWN_REVISION = 10
-Themes.REVISION = OWN_REVISION + Lib.SEED_REVISION * Lib.SEED_STEP
 
 -- Each theme's identity (backdrop, tint, ornament, wedge, ring colour,
 -- fonts) is LibForeverThemes'; here only the window's part on top.
@@ -49,7 +47,6 @@ Themes.REVISION = OWN_REVISION + Lib.SEED_REVISION * Lib.SEED_STEP
 -- iconColor / iconHoverColor (the library's comic ink): the header's icons
 -- and note in dark ink, for a header on light paper.
 -- The body colour stays dark everywhere: the list's light text sits on it.
-local T = Lib.THEMES
 Themes.SPECS = Lib.Specs({
     -- Oak boards round the window, the family's gold ring, brass rivets.
     WOOD = {
@@ -61,7 +58,7 @@ Themes.SPECS = Lib.Specs({
     },
     -- Dark navy with a faint grid, a thin cyan line.
     TECH = {
-        look = { borderStyle = "FLAT", borderSize = 1, borderColor = T.TECH.rim, cornerRadius = 0,
+        look = { borderStyle = "FLAT", borderSize = 1, borderColor = Lib.THEMES.TECH.rim, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.02, 0.05, 0.08 }, bgAlpha = 0, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 0.6, 0.95, 1 } },
         art = { padding = 4 },
@@ -69,14 +66,14 @@ Themes.SPECS = Lib.Specs({
     -- Parchment round the window, a brown ink line, a wax seal.
     PARCHMENT = {
         bodyFont = false,
-        look = { borderStyle = "FLAT", borderSize = 2, borderColor = T.PARCHMENT.rim, cornerRadius = 2,
+        look = { borderStyle = "FLAT", borderSize = 2, borderColor = Lib.THEMES.PARCHMENT.rim, cornerRadius = 2,
             bgMode = "SOLID", bgColor = { 0.13, 0.09, 0.05 }, bgAlpha = 0, shadowEnabled = true, shadowAlpha = 45,
             shadowSize = 5, headerFlag = "OUTLINE", headerColor = { 1, 0.93, 0.78 } },
         art = { padding = 5, ornamentSize = 20, ornamentInset = 0 },
     },
     -- Grey granite, a dark chiselled edge, glowing runes.
     RUNESTONE = {
-        look = { borderStyle = "FLAT", borderSize = 2, borderColor = T.RUNESTONE.rim, cornerRadius = 0,
+        look = { borderStyle = "FLAT", borderSize = 2, borderColor = Lib.THEMES.RUNESTONE.rim, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.04, 0.05, 0.06 }, bgAlpha = 0, shadowEnabled = true, shadowAlpha = 70,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 0.55, 1, 0.9 } },
         art = { padding = 5, ornamentSize = 10, ornamentInset = 1 },
@@ -84,7 +81,7 @@ Themes.SPECS = Lib.Specs({
     -- A mosaic of coloured glass round the window, dark lead, a dark title.
     GLASS = {
         bodyFont = false,
-        look = { borderStyle = "FLAT", borderSize = 3, borderColor = T.GLASS.rim, cornerRadius = 0,
+        look = { borderStyle = "FLAT", borderSize = 3, borderColor = Lib.THEMES.GLASS.rim, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.05, 0.04, 0.06 }, bgAlpha = 90, shadowEnabled = true, shadowAlpha = 55,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 1, 0.82, 0.29 } },
         art = { padding = 5, header = false },
@@ -92,21 +89,21 @@ Themes.SPECS = Lib.Specs({
     -- Thick ink line, halftone paper.
     COMIC = {
         bodyFont = false,
-        look = { borderStyle = "FLAT", borderSize = 3, borderColor = T.COMIC.rim, cornerRadius = 0,
+        look = { borderStyle = "FLAT", borderSize = 3, borderColor = Lib.THEMES.COMIC.rim, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.1, 0.1, 0.12 }, bgAlpha = 100, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 1, 0.85, 0.1 } },
         art = { padding = 4 },
     },
     -- Translucent ice, a pale rim, rounded.
     FROST = {
-        look = { borderStyle = "FLAT", borderSize = 1, borderColor = T.FROST.rim, cornerRadius = 6,
+        look = { borderStyle = "FLAT", borderSize = 1, borderColor = Lib.THEMES.FROST.rim, cornerRadius = 6,
             bgMode = "SOLID", bgColor = { 0.02, 0.07, 0.15 }, bgAlpha = 45, shadowEnabled = true, shadowAlpha = 55,
             shadowSize = 8, headerFlag = "SHADOW", headerColor = { 0.86, 0.96, 1 } },
         art = { padding = 4 },
     },
     -- A light pixel frame, scan lines.
     PIXEL = {
-        look = { borderStyle = "FLAT", borderSize = 3, borderColor = T.PIXEL.rim, cornerRadius = 0,
+        look = { borderStyle = "FLAT", borderSize = 3, borderColor = Lib.THEMES.PIXEL.rim, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0, 0, 0 }, bgAlpha = 0, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 0.6, 1, 0.5 } },
         art = { padding = 4 },
@@ -115,7 +112,7 @@ Themes.SPECS = Lib.Specs({
     -- the title and the icons in the one red accent.
     SWISS = {
         bodyFont = false,
-        look = { borderStyle = "FLAT", borderSize = 1, borderColor = T.SWISS.rim, cornerRadius = 0,
+        look = { borderStyle = "FLAT", borderSize = 1, borderColor = Lib.THEMES.SWISS.rim, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.039, 0.039, 0.039 }, bgAlpha = 100, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 1, 0.176, 0.125 } },
         art = { padding = 4 },
@@ -123,7 +120,7 @@ Themes.SPECS = Lib.Specs({
     -- A terminal: near black with faint scan lines, a thin mint line.
     CONSOLE = {
         bodyFont = false,
-        look = { borderStyle = "FLAT", borderSize = 1, borderColor = T.CONSOLE.rim, cornerRadius = 0,
+        look = { borderStyle = "FLAT", borderSize = 1, borderColor = Lib.THEMES.CONSOLE.rim, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.06, 0.06, 0.07 }, bgAlpha = 0, shadowEnabled = false,
             headerFlag = "OUTLINE", headerColor = { 0.306, 0.929, 0.69 } },
         art = { padding = 4 },
@@ -131,7 +128,7 @@ Themes.SPECS = Lib.Specs({
     -- A timing screen: flat black, a carbon hairline, a black title strip with a red wedge.
     PITWALL = {
         bodyFont = false,
-        look = { borderStyle = "FLAT", borderSize = 1, borderColor = T.PITWALL.rim, cornerRadius = 0,
+        look = { borderStyle = "FLAT", borderSize = 1, borderColor = Lib.THEMES.PITWALL.rim, cornerRadius = 0,
             bgMode = "SOLID",
             bgColor = { 0.039, 0.039, 0.039 }, bgAlpha = 100, shadowEnabled = false, headerFlag = "OUTLINE",
             headerColor = { 0.949, 0.953, 0.961 } },
@@ -143,7 +140,6 @@ Themes.SPECS = Lib.Specs({
 -- Forever addon; which one is chosen is stored account wide, outside
 -- profiles and theme sets (AccountDB().themeColors). The accent is the
 -- headers' colour.
-Themes.COLORS = Lib.COLORS
 
 -- What "Take positions from" copies: the window's place and every size.
 Themes.PLACEMENT = { "point", "relPoint", "x", "y", "width", "height", "detailsWidth", "detailsHeight", "sideWidth",
@@ -163,16 +159,16 @@ local function settingsOf(db)
     return set
 end
 
--- The active profile's stored sets; those of an older REVISION dropped.
+-- The active profile's stored sets; those of an older revision dropped.
 local function storedSets()
     local db = ns.DB()
-    if type(db.themeSets) ~= "table" then db.themeSets = { revision = Themes.REVISION } end
+    if type(db.themeSets) ~= "table" then db.themeSets = {} end
     local sets = db.themeSets
-    if sets.revision ~= Themes.REVISION then
-        for _, id in ipairs(Themes.IDS) do
+    if Lib.NeedsReseed(sets, OWN_REVISION) then
+        for id in pairs(Themes.SPECS) do
             if id ~= Themes.CLASSIC then sets[id] = nil end
         end
-        sets.revision = Themes.REVISION
+        Lib.MarkSeeded(sets, OWN_REVISION)
     end
     return sets
 end
@@ -338,10 +334,10 @@ function Themes.Reset()
     return true
 end
 
--- The themes with stored settings to copy from, in IDS order.
+-- The themes with stored settings to copy from, in the menu's order.
 function Themes.Stored()
     local sets, list = storedSets(), {}
-    for _, id in ipairs(Themes.IDS) do
+    for _, id in ipairs(Lib.SpecIds(Themes.SPECS)) do
         if sets[id] and id ~= Themes.Current() then list[#list + 1] = id end
     end
     return list
@@ -368,11 +364,11 @@ function Themes.Restore(undo)
     return true
 end
 
--- At login: a theme in use made under an older REVISION is made anew from
+-- At login: a theme in use made under an older revision is made anew from
 -- CLASSIC; the stale stored sets go.
 function Themes.Upgrade()
     local sets = ns.DB().themeSets
-    if type(sets) ~= "table" or sets.revision == Themes.REVISION then return end
+    if type(sets) ~= "table" or not Lib.NeedsReseed(sets, OWN_REVISION) then return end
     local current, base = Themes.Current(), sets[Themes.CLASSIC]
     storedSets()
     if current == Themes.CLASSIC or not base then return end

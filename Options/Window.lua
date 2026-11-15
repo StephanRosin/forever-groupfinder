@@ -98,33 +98,11 @@ end
 
 -- While the hub addon "Forever Themes" sets our theme, its window is the
 -- place to change it; asked on every refresh (the flag can change in game).
-local function followsHub()
-    local hub = LibForeverThemes.Hub()
-    return hub ~= nil and hub.Follows(ADDON) == true
-end
+local Lib = LibForeverThemes
+local function followsHub() return Lib.Follows(ADDON) end
 local function ownTheme() return not followsHub() end
-local function noHub() return LibForeverThemes.Hub() == nil end
-
--- WoW opens no browser: the hub's download link in Blizzard's text popup,
--- selected for copying.
-local HUB_URL = "https://www.curseforge.com/wow/addons/forever-themes"
-if StaticPopupDialogs then
-    StaticPopupDialogs.FOREVERGROUPFINDER_HUB_LINK = {
-        text = "", button1 = OKAY or "OK", hasEditBox = 1, editBoxWidth = 350,
-        maxLetters = 0,   -- the edit box is shared; another dialog may leave its limit behind
-        OnShow = function(dialog)
-            local box = dialog.GetEditBox and dialog:GetEditBox()
-            if box then box:SetText(HUB_URL); box:HighlightText(); box:SetFocus() end
-        end,
-        EditBoxOnEnterPressed = function(box) box:GetParent():Hide() end,
-        EditBoxOnEscapePressed = function(box) box:GetParent():Hide() end,
-        timeout = 0, whileDead = true, hideOnEscape = true,
-    }
-end
-function ns.ShowHubLink()
-    StaticPopupDialogs.FOREVERGROUPFINDER_HUB_LINK.text = L.POPUP_HUB_LINK
-    StaticPopup_Show("FOREVERGROUPFINDER_HUB_LINK")
-end
+local function noHub() return Lib.Hub() == nil end
+local function hubText(key) return function() return Lib.Text(key) end end
 
 local function themeRows()
     local Themes = ns.Themes
@@ -135,7 +113,7 @@ local function themeRows()
             key = "theme", type = "select", label = "OPT_THEME_CHOICE",
             choices = function()
                 local list = {}
-                for _, id in ipairs(Themes.IDS) do list[#list + 1] = { label = L["THEME_" .. id], value = id } end
+                for _, id in ipairs(Lib.SpecIds(Themes.SPECS)) do list[#list + 1] = { label = L["THEME_" .. id], value = id } end
                 return list
             end,
             get = function() return Themes.Current() end,
@@ -156,14 +134,14 @@ local function themeRows()
             set = function(v) refused(Themes.SetColor(v)) end,
             enabled = ownTheme,
         }, function() return #Themes.Colors() > 0 end),
-        visibleIf({ type = "text", label = "OPT_THEME_FOLLOWS" }, followsHub),
+        visibleIf({ type = "text", label = hubText("HUB_FOLLOWS") }, followsHub),
         visibleIf({ type = "buttons", buttons = {
-            { label = "OPT_THEME_OPEN_HUB", width = 240, onClick = function() LibForeverThemes.Hub().OpenOptions() end },
+            { label = hubText("HUB_OPEN"), width = 240, onClick = function() Lib.Hub().OpenOptions() end },
         } }, followsHub),
         -- Without the hub: where to get it.
-        visibleIf({ type = "text", label = "OPT_THEME_HUB_HINT" }, noHub),
+        visibleIf({ type = "text", label = hubText("HUB_MISSING") }, noHub),
         visibleIf({ type = "buttons", buttons = {
-            { label = "OPT_THEME_HUB_LINK", width = 200, onClick = function() ns.ShowHubLink() end },
+            { label = hubText("HUB_LINK"), width = 200, onClick = function() Lib.ShowHubLink() end },
         } }, noHub),
         { type = "text", label = "OPT_THEME_HINT", height = 66 },
         visibleIf({ type = "buttons", buttons = {

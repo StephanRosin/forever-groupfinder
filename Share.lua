@@ -227,5 +227,6 @@ function Share.Import(text)
         if not Settings.SameValue(v, Settings.DEFAULTS[key]) then db[key] = v end
     end
     Settings.Changed(nil)
+    LibForeverThemes.HubSync()   -- a hub that sets our theme keeps it
     return true
 end

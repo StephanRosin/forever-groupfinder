@@ -108,7 +108,7 @@ return function(t)
     Themes.Switch("WOOD")
     Settings.Set("x", 77)
     local db = ns.DB()
-    db.themeSets.revision = Themes.REVISION - 1
+    db.themeSets.revision = 9
     db.themeSets.TECH = { theme = "TECH", x = 5 }
     Settings.Set("borderSize", 7)
     Themes.Upgrade()
@@ -116,11 +116,19 @@ return function(t)
     check("upgrade: from classic", S("x"), -120)
     check("upgrade: stale set dropped", db.themeSets.TECH, nil)
     check("upgrade: classic kept", db.themeSets.CLASSIC.width, 800)
-    check("upgrade: revision noted", db.themeSets.revision, Themes.REVISION)
-    check("revision 10: sets rebuilt (Frost all in Julius Sans One)", Themes.REVISION, 10)
+    check("revision 10: sets rebuilt (Frost all in Julius Sans One)", db.themeSets.revision, 10)
+    check("upgrade: library seed noted", db.themeSets.seedRevision, LibForeverThemes.SEED_REVISION)
     Settings.Set("borderSize", 5)
     Themes.Upgrade()
     check("upgrade: once only", S("borderSize"), 5)
+    -- Sets stored by the release before MINOR 3 (revision 10, no seed
+    -- revision) survive a login untouched.
+    db.themeSets.seedRevision = nil
+    db.themeSets.TECH = { theme = "TECH", x = 5 }
+    Themes.Upgrade()
+    check("upgrade: the current release's sets survive", db.themeSets.TECH and db.themeSets.TECH.x, 5)
+    check("upgrade: theme in use kept", S("borderSize"), 5)
+    db.themeSets.TECH = nil
 
     -- A first pick ships the author's look: the stored sets (place, size, lock,
     -- layout, filters, category and templates left out) equal the seeds.
@@ -177,7 +185,9 @@ return function(t)
         local out = {}
         for _, r in ipairs(general) do
             if not r.visible or r.visible() then
-                out[#out + 1] = (r.label or r.buttons[1].label) .. (r.enabled and (r.enabled() and "+" or "-") or "")
+                local label = r.label or r.buttons[1].label
+                if type(label) == "function" then label = label() end
+                out[#out + 1] = label .. (r.enabled and (r.enabled() and "+" or "-") or "")
             end
         end
         return table.concat(out, " ", 1, 6)
@@ -186,20 +196,28 @@ return function(t)
     local others = Themes.HasOthers
     Themes.HasOthers = function() return true end
     check("no hub: where to get it", rowsShown(),
-        "OPT_THEME OPT_THEME_CHOICE+ OPT_THEME_COLOR+ OPT_THEME_HUB_HINT OPT_THEME_HUB_LINK OPT_THEME_HINT")
+        "OPT_THEME OPT_THEME_CHOICE+ OPT_THEME_COLOR+ " .. Lib.Text("HUB_MISSING") .. " Download link OPT_THEME_HINT")
     M.popups = {}
     general[7].buttons[1].onClick()
-    check("no hub: link in Blizzard's text popup", M.popups[1] and M.popups[1].which, "FOREVERGROUPFINDER_HUB_LINK")
+    check("no hub: link in Blizzard's text popup", M.popups[1] and M.popups[1].which, "LIBFOREVERTHEMES_HUB_LINK")
     local box = { SetText = function(self, text) self.text = text end, HighlightText = function() end,
         SetFocus = function() end }
-    StaticPopupDialogs.FOREVERGROUPFINDER_HUB_LINK.OnShow({ GetEditBox = function() return box end })
+    StaticPopupDialogs.LIBFOREVERTHEMES_HUB_LINK.OnShow({ GetEditBox = function() return box end })
     check("no hub: the hub's CurseForge page", box.text, "https://www.curseforge.com/wow/addons/forever-themes")
     Lib.SetHub({ Follows = function(folder) return folder == "ForeverGroupFinder" and follows end,
         OpenOptions = function() opened = true end })
     check("hub, following: locked, line, button, no apply to all", rowsShown(),
-        "OPT_THEME OPT_THEME_CHOICE- OPT_THEME_COLOR- OPT_THEME_FOLLOWS OPT_THEME_OPEN_HUB OPT_THEME_HINT")
+        "OPT_THEME OPT_THEME_CHOICE- OPT_THEME_COLOR- Follows Forever Themes Open Forever Themes OPT_THEME_HINT")
     general[5].buttons[1].onClick()
     check("hub: the button opens its window", opened, true)
+    -- A profile switch, reset or import replaced our theme: the hub puts its own back.
+    local synced = 0
+    Lib.SetHub({ Follows = function(folder) return folder == "ForeverGroupFinder" and follows end,
+        OpenOptions = function() opened = true end, Sync = function() synced = synced + 1 end })
+    Settings.ResetProfile()
+    ns.Share.Import(ns.Share.Export())
+    ns.SwitchProfile(ns.ActiveProfile())
+    check("hub: synced after reset, import, switch", synced, 3)
     follows = false
     check("hub, own theme: as today", rowsShown(),
         "OPT_THEME OPT_THEME_CHOICE+ OPT_THEME_COLOR+ OPT_THEME_HINT OPT_THEME_ALL OPT_THEME_COPY_FROM")
@@ -218,7 +236,7 @@ return function(t)
     check("art: frame's rounding", radius, 3)
     check("art: body below the header", frame.bg._points.TOPLEFT[4], -ns.Header.HEIGHT)
     check("art: four rivets", art.ornaments[4]:IsShown(), true)
-    for _, id in ipairs(Themes.IDS) do
+    for _, id in ipairs(LibForeverThemes.SpecIds(Themes.SPECS)) do
         if id ~= Themes.CLASSIC then
             Themes.Switch(id)
             Settings.Set("borderSize", Themes.SPECS[id].look.borderSize)
@@ -302,7 +320,7 @@ return function(t)
     local function rgb(t) return table.concat({ t[1], t[2], t[3] }, ",") end
     local function look() ns.ThemeArt.Style(frame, 0); return art.back._texture .. " " .. table.concat(art.back._vertex, ",") end
     local PATH = "Interface\\AddOns\\ForeverGroupFinder\\Libs\\LibForeverThemes\\Media\\Themes\\"
-    for _, id in ipairs(Themes.IDS) do
+    for _, id in ipairs(LibForeverThemes.SpecIds(Themes.SPECS)) do
         if id ~= "CLASSIC" and id ~= "COMIC" then
             Themes.Switch(id)
             local a, colours = Themes.SPECS[id].art, entry.Colors()
@@ -407,7 +425,7 @@ return function(t)
         local function lin(v) return v <= 0.03928 and v / 12.92 or ((v + 0.055) / 1.055) ^ 2.4 end
         return 0.2126 * lin(c[1]) + 0.7152 * lin(c[2]) + 0.0722 * lin(c[3])
     end
-    for id, colours in pairs(Themes.COLORS) do
+    for id, colours in pairs(LibForeverThemes.COLORS) do
         for _, c in ipairs(id ~= "COMIC" and colours or {}) do
             local a = c.accent or c.wedge
             if a then
@@ -432,7 +450,7 @@ return function(t)
         SWISS = "0.165,0.165,0.165,1", PITWALL = "0.043,0.047,0.055,1" }
     local OWN_RING = { CONSOLE = { MINT = "0.306,0.929,0.69,1", AMBER = "1,0.69,0,1", PHOSPHOR = "0.224,1,0.078,1",
         VIOLET = "0.627,0.471,1,1" }, PIXEL = { HANDHELD = "0.784,0.941,0.439,1" } }
-    for _, id in ipairs(Themes.IDS) do
+    for _, id in ipairs(LibForeverThemes.SpecIds(Themes.SPECS)) do
         if id ~= "CLASSIC" then
             Themes.Switch(id)
             local chosen = entry.Color()

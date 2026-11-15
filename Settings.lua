@@ -259,4 +259,5 @@ function Settings.ResetProfile()
     end
     db.themeSets = sets
     Settings.Changed(nil)
+    LibForeverThemes.HubSync()
 end

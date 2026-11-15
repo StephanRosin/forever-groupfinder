@@ -71,10 +71,10 @@ function Media.Names(kind)
     return names
 end
 
--- The file for a name; unknown names get the kind's default. A font stored
--- under an older name (LibForeverThemes' aliases) finds its file.
+-- The file for a name: ours, LibSharedMedia's, then the library's fonts
+-- (a font stored under an older name, its aliases, finds its file there);
+-- unknown names get the kind's default.
 function Media.Path(kind, name)
-    if kind == "font" then name = Lib.FontName(name) end
     for _, source in ipairs(SOURCES) do
         for _, f in ipairs(source[kind]) do
             if f.name == name then return f.path end
@@ -82,6 +82,7 @@ function Media.Path(kind, name)
     end
     local lsm = sharedMedia()
     local path = lsm and lsm:Fetch(kind, name, true)
+    if not path and kind == "font" then path = Lib.FontPath(name) end
     return path or Media.DEFAULT[kind]
 end
 
