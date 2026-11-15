@@ -122,6 +122,27 @@ return function(t)
     Themes.Upgrade()
     check("upgrade: once only", S("borderSize"), 5)
 
+    -- A first pick ships the author's look: the stored sets (place, size, lock,
+    -- layout, filters, category and templates left out) equal the seeds.
+    local function sameSet(a, b)
+        for k, v in pairs(a) do if not Settings.SameValue(v, b[k]) then return k end end
+        for k in pairs(b) do if a[k] == nil then return k end end
+        return true
+    end
+    check("seed: the author's Parchment", sameSet(Themes.Seed("PARCHMENT", {}), { theme = "PARCHMENT",
+        borderStyle = "FLAT", borderSize = 2, borderColor = { 0.29, 0.2, 0.12, 1 }, cornerRadius = 2,
+        bgColor = { 0.13, 0.09, 0.05 }, bgAlpha = 0, shadowSize = 5, shadowAlpha = 45, headerFlag = "OUTLINE",
+        headerFont = "IM Fell English SC", headerSize = 18, headerColor = { 1, 0.93, 0.78 } }), true)
+    check("seed: the author's Pixel", sameSet(Themes.Seed("PIXEL", {}), { theme = "PIXEL",
+        borderStyle = "FLAT", borderSize = 3, borderColor = { 1, 0.95, 0.91, 1 }, cornerRadius = 0,
+        bgColor = { 0, 0, 0 }, bgAlpha = 0, shadowEnabled = false, headerFlag = "OUTLINE",
+        headerFont = "VT323", headerSize = 21, headerColor = { 0.6, 1, 0.5 } }), true)
+    -- A set stored before stays as it is through a login.
+    db.themeSets.TECH = { theme = "TECH", borderSize = 4 }
+    Themes.Upgrade()
+    check("login: stored set untouched", db.themeSets.TECH and db.themeSets.TECH.borderSize, 4)
+    db.themeSets.TECH = nil
+
     -- The registry for a central theme picker.
     local entry = ForeverThemes and ForeverThemes.ForeverGroupFinder
     check("registry entry", entry ~= nil and entry.title, "Forever Group Finder")
@@ -137,12 +158,12 @@ return function(t)
     check("options: theme choice", general[2].key, "theme")
     general[2].set("RUNESTONE")
     check("options: choosing switches", Themes.Current(), "RUNESTONE")
-    check("options: copy row while themed", general[8].visible(), true)
+    check("options: copy row while themed", general[10].visible(), true)
     check("options: colours under any theme", general[3].visible(), true)
     general[2].set("CLASSIC")
-    check("options: no copy row on classic", general[8].visible(), false)
+    check("options: no copy row on classic", general[10].visible(), false)
     check("options: no colours on classic", general[3].visible(), false)
-    check("options: no reset on classic", general[9].visible(), false)
+    check("options: no reset on classic", general[11].visible(), false)
     general[2].set("COMIC")
     check("options: comic colour under the comic", general[3].visible() and general[3].get(), "GREY")
     general[2].set("CLASSIC")
@@ -164,8 +185,15 @@ return function(t)
     Themes.Switch("WOOD")
     local others = Themes.HasOthers
     Themes.HasOthers = function() return true end
-    check("no hub: as today", rowsShown(),
-        "OPT_THEME OPT_THEME_CHOICE+ OPT_THEME_COLOR+ OPT_THEME_HINT OPT_THEME_ALL OPT_THEME_COPY_FROM")
+    check("no hub: where to get it", rowsShown(),
+        "OPT_THEME OPT_THEME_CHOICE+ OPT_THEME_COLOR+ OPT_THEME_HUB_HINT OPT_THEME_HUB_LINK OPT_THEME_HINT")
+    M.popups = {}
+    general[7].buttons[1].onClick()
+    check("no hub: link in Blizzard's text popup", M.popups[1] and M.popups[1].which, "FOREVERGROUPFINDER_HUB_LINK")
+    local box = { SetText = function(self, text) self.text = text end, HighlightText = function() end,
+        SetFocus = function() end }
+    StaticPopupDialogs.FOREVERGROUPFINDER_HUB_LINK.OnShow({ GetEditBox = function() return box end })
+    check("no hub: the hub's CurseForge page", box.text, "https://www.curseforge.com/wow/addons/forever-themes")
     Lib.SetHub({ Follows = function(folder) return folder == "ForeverGroupFinder" and follows end,
         OpenOptions = function() opened = true end })
     check("hub, following: locked, line, button, no apply to all", rowsShown(),
