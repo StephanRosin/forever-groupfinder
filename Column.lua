@@ -80,7 +80,7 @@ function Column.Layout(width)
     for i, row in ipairs(fitting) do
         local b = chip(i)
         b.row = row
-        b.role:SetAtlas(Rows.RoleAtlas(wantedRole(row)))
+        b.role:SetTexture(Rows.RoleTexture(wantedRole(row)))
         b:SetLabel(row.leader)
         local member = type(row.members) == "table" and row.members[1] or {}   -- plain: Finder converted the row
         b.label:SetTextColor(Rows.ClassColor(member.classFile))

@@ -22,7 +22,7 @@ local EDIT_ICON = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up"   -- a penc
 local PILL_PAD = 6   -- the status pill's sides
 local ROLE_SIZE = 28              -- a role icon toggle
 local LABEL_MIN, LABEL_MAX, COL_GAP = 44, 96, 8   -- the label column
-local ROLE_ATLAS = { tank = "TANK", healer = "HEALER", dps = "DAMAGER" }
+local ROLE_ID = { tank = "TANK", healer = "HEALER", dps = "DAMAGER" }
 local BUTTON_GAP = 4
 local ROLE_KEYS = { "tank", "healer", "dps" }
 local ROLE_LABEL = { tank = "ROLE_TANK", healer = "ROLE_HEALER", dps = "ROLE_DAMAGER" }
@@ -424,7 +424,7 @@ end
 
 -- Building -------------------------------------------------------------------------------------
 
--- A large role icon (Blizzard's role atlas, as in the rows); see paintRole.
+-- A large role icon (our role badge, as in the rows); see paintRole.
 local function roleToggle(k)
     local b = CreateFrame("Button", nil, p)
     b:SetSize(ROLE_SIZE, ROLE_SIZE)
@@ -432,7 +432,7 @@ local function roleToggle(k)
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetPoint("TOPLEFT", 2, -2)
     b.icon:SetPoint("BOTTOMRIGHT", -2, 2)
-    b.icon:SetAtlas(ns.Rows.RoleAtlas(ROLE_ATLAS[k]))
+    b.icon:SetTexture(ns.Rows.RoleTexture(ROLE_ID[k]))
     b.ring = Controls.Outline(b, { 0, 0, 0, 0 }, "OVERLAY")
     b.roleKey = k
     b:SetScript("OnClick", function() Panel.ToggleRole(k) end)

@@ -1774,11 +1774,11 @@ check("guild tag", used[2].entry.id == 1 and used[2].tag:GetText() or used[3].ta
 local g1 = used[2]
 check("free slots from the counts (tank, healer)", (function()
     local free = {}
-    for _, sq in ipairs(g1.squares) do if sq:IsShown() and sq.free then free[#free + 1] = sq.role._atlas end end
+    for _, sq in ipairs(g1.squares) do if sq:IsShown() and sq.free then free[#free + 1] = sq.role._texture end end
     return table.concat(free, ",")
-end)(), "groupfinder-icon-role-large-tank,groupfinder-icon-role-large-heal")
+end)(), "Interface\\AddOns\\ForeverGroupFinder\\Media\\IconRoleTank.tga,Interface\\AddOns\\ForeverGroupFinder\\Media\\IconRoleHealer.tga")
 check("free tank and healer first (slots by role)", g1.squares[1].free and g1.squares[2].free and not g1.squares[3].free, true)
-check("member slot shows the role on the class colour", g1.squares[3].role._atlas == "groupfinder-icon-role-large-dps"
+check("member slot shows the role on the class colour", g1.squares[3].role._texture == "Interface\\AddOns\\ForeverGroupFinder\\Media\\IconRoleDamage.tga"
     and g1.squares[3].fill:IsShown(), true)
 check("room filter on: no green edge (every row has room)", g1.edge:IsShown(), false)
 Settings.Set("filterMyRole", false)   -- the edge tells rows apart only with the filter off
@@ -1811,7 +1811,7 @@ check("row tooltip keeps full names", (function()
     return false
 end)(), true)
 check("player role column: tank and damage, large", p1.roles[1]:IsShown() and p1.roles[3]:IsShown()
-    and not p1.roles[2]:IsShown() and p1.roles[1]._atlas, "groupfinder-icon-role-large-tank")
+    and not p1.roles[2]:IsShown() and p1.roles[1]._texture, "Interface\\AddOns\\ForeverGroupFinder\\Media\\IconRoleTank.tga")
 check("role icons side by side, the same size", p1.roles[1]._w == p1.roles[3]._w and p1.roles[1]._w >= 18, true)
 check("one role fills the row height", (ns.Rows.RoleColumn(34, 1)), 28)
 check("level beside the roles, larger", p1.level._font[2] > S("nameSize"), true)
@@ -2330,7 +2330,17 @@ check("Edit right after the comment text", lp.comment._points.LEFT[3], vx + lp.c
 check("Edit on the comment row", lp.comment._points.LEFT[4], lp.commentText._points.LEFT[4])
 check("Edit label and pencil", lp.comment.label:GetText() == "Edit" and lp.comment.icon ~= nil, true)
 check("nothing right-aligned to the edge", lp.comment._points.TOPRIGHT == nil and lp.post._points.TOPRIGHT == nil, true)
-check("role icon is the role atlas", lp.roles.tank.icon._atlas, "groupfinder-icon-role-large-tank")
+check("role icon is our role badge", lp.roles.tank.icon._texture, "Interface\\AddOns\\ForeverGroupFinder\\Media\\IconRoleTank.tga")
+check("healer toggle: our healer badge", lp.roles.healer.icon._texture, "Interface\\AddOns\\ForeverGroupFinder\\Media\\IconRoleHealer.tga")
+check("damage toggle: our damage badge", lp.roles.dps.icon._texture, "Interface\\AddOns\\ForeverGroupFinder\\Media\\IconRoleDamage.tga")
+check("the role badges ship", (function()
+    for _, role in ipairs({ "TANK", "HEALER", "DAMAGER" }) do
+        local file = io.open(ADDONDIR .. "/" .. ns.Rows.RoleTexture(role):gsub("^Interface\\AddOns\\ForeverGroupFinder\\", ""):gsub("\\", "/"), "rb")
+        if not file then return role end
+        file:close()
+    end
+    return true
+end)(), true)
 check("chosen role: full colour, gold ring", lp.roles.tank.icon._desaturated ~= true and lp.roles.tank.icon:GetAlpha() == 1
     and lp.roles.tank.ring[1]._texColor[1] == ns.Controls.GOLD[1], true)
 check("unchosen role: grey at 55 %", lp.roles.healer.icon._desaturated == true and lp.roles.healer.icon:GetAlpha(), 0.55)
@@ -3257,7 +3267,7 @@ end)(), "Healy")
 check("Fitting: none when not leading", #Column.Fitting(W.Built().players, nil), 0)
 local chip1 = f.column.chips[1]
 check("leader line: a chip per player", chip1:IsShown() and chip1.label:GetText() == chip1.row.leader, true)
-check("leader line: role icon", chip1.role._atlas ~= nil, true)
+check("leader line: role icon", chip1.role._texture, "Interface\\AddOns\\ForeverGroupFinder\\Media\\IconRoleTank.tga")
 click(chip1)
 check("one-click invite", M.invited[#M.invited], chip1.row.leader)
 Settings.Set("layout", "SIDEBAR")

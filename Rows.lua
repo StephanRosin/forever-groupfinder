@@ -27,9 +27,10 @@ local FREE_ICON_ALPHA = 0.5                -- a free place's role icon
 local FREE_EDGE = { 0.78, 0.74, 0.62, 0.9 } -- and its outline
 local CLASS_SHEET = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes"
 local PIN_ATLAS = "Waypoint-MapPin-Untracked"
--- Blizzard's own finder icons (Blizzard_LFGVanilla_Browse.lua).
-local ROLE_ATLAS = { TANK = "groupfinder-icon-role-large-tank", HEALER = "groupfinder-icon-role-large-heal",
-    DAMAGER = "groupfinder-icon-role-large-dps" }
+-- Our own round role badges (Media/IconRole*.tga): Blizzard's finder icons
+-- blur when scaled up.
+local ROLE_TEXTURE = { TANK = ns.Media.Icon("RoleTank"), HEALER = ns.Media.Icon("RoleHealer"),
+    DAMAGER = ns.Media.Icon("RoleDamage") }
 local ROLE_ORDER = { "tank", "healer", "dps" }
 local ROLE_OF = { tank = "TANK", healer = "HEALER", dps = "DAMAGER" }
 -- Members and free slots: tanks, then healers, then damage, then unknown.
@@ -41,7 +42,7 @@ Rows.ROLE_LABEL = ROLE_LABEL
 
 Rows.DIVIDER_H = DIVIDER_H
 
-function Rows.RoleAtlas(role) return ROLE_ATLAS[role] end
+function Rows.RoleTexture(role) return ROLE_TEXTURE[role] end
 
 -- The slots of a group: { member = m, role = } for every member and
 -- { free = true, role = } per free place from the counts' *_REMAINING, all
@@ -459,7 +460,7 @@ Rows.NewSlot = newSquare
 function Rows.PaintSlot(sq, slot)
     sq.free = slot.free == true
     if slot.role then   -- plain: our own value
-        sq.role:SetAtlas(ROLE_ATLAS[slot.role])
+        sq.role:SetTexture(ROLE_TEXTURE[slot.role])
         sq.role:SetAlpha(sq.free and FREE_ICON_ALPHA or 1)
         sq.role:Show()
     else
@@ -720,7 +721,7 @@ local function layoutRoles(row, entry, x, h)
     for _, tex in ipairs(row.roles) do tex:Hide() end
     for k, i in ipairs(wanted) do
         local tex = row.roles[i]
-        tex:SetAtlas(ROLE_ATLAS[ROLE_OF[ROLE_ORDER[i]]])
+        tex:SetTexture(ROLE_TEXTURE[ROLE_OF[ROLE_ORDER[i]]])
         tex:SetSize(size, size)
         tex:ClearAllPoints()
         tex:SetPoint("LEFT", row, "LEFT", start + (k - 1) * (size + 1), 0)
