@@ -95,7 +95,7 @@ return function(t)
         end
     end
     local frostHeader = UIParent:CreateFontString()
-    ns.Media.ApplyText(frostHeader, { font = "Cormorant SC", size = 16, flag = Themes.SPECS.FROST.look.headerFlag,
+    ns.Media.ApplyText(frostHeader, { font = "Cinzel", size = 16, flag = Themes.SPECS.FROST.look.headerFlag,
         color = { 1, 1, 1 } })
     check("frost: header drawn without outline, shadowed", select(3, frostHeader:GetFont()) .. " "
         .. table.concat({ frostHeader:GetShadowOffset() }, ","), " 1,-1")
@@ -113,7 +113,7 @@ return function(t)
     check("upgrade: stale set dropped", db.themeSets.TECH, nil)
     check("upgrade: classic kept", db.themeSets.CLASSIC.width, 800)
     check("upgrade: revision noted", db.themeSets.revision, Themes.REVISION)
-    check("revision 6: sets rebuilt (Frost's header shadowed)", Themes.REVISION, 6)
+    check("revision 7: sets rebuilt (Frost's header in Cinzel)", Themes.REVISION, 7)
     Settings.Set("borderSize", 5)
     Themes.Upgrade()
     check("upgrade: once only", S("borderSize"), 5)

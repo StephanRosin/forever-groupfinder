@@ -38,7 +38,6 @@ Media.OWN = {
     font = {
         { name = "Bangers", path = FONTS .. "Bangers-Regular.ttf" },
         { name = "Cinzel", path = FONTS .. "Cinzel-Bold.ttf" },
-        { name = "Cormorant SC", path = FONTS .. "CormorantSC-Bold.ttf" },
         { name = "IBM Plex Sans Condensed", path = FONTS .. "IBMPlexSansCondensed-Bold.ttf" },
         { name = "IM Fell English SC", path = FONTS .. "IMFeENsc28P.ttf" },
         { name = "Inter Tight Bold", path = FONTS .. "InterTight-Bold.ttf" },
