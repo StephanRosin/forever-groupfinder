@@ -137,16 +137,47 @@ return function(t)
     check("options: theme choice", general[2].key, "theme")
     general[2].set("RUNESTONE")
     check("options: choosing switches", Themes.Current(), "RUNESTONE")
-    check("options: copy row while themed", general[6].visible(), true)
+    check("options: copy row while themed", general[8].visible(), true)
     check("options: colours under any theme", general[3].visible(), true)
     general[2].set("CLASSIC")
-    check("options: no copy row on classic", general[6].visible(), false)
+    check("options: no copy row on classic", general[8].visible(), false)
     check("options: no colours on classic", general[3].visible(), false)
-    check("options: no reset on classic", general[7].visible(), false)
+    check("options: no reset on classic", general[9].visible(), false)
     general[2].set("COMIC")
     check("options: comic colour under the comic", general[3].visible() and general[3].get(), "GREY")
     general[2].set("CLASSIC")
     check("options: classic restored", S("width") .. "/" .. S("cornerRadius"), "800/8")
+
+    -- Following the hub "Forever Themes": pickers locked, a line and a
+    -- button to its window, no "Apply to all"; own theme / no hub: as before.
+    local Lib = LibForeverThemes
+    local follows, opened = true, false
+    local function rowsShown()
+        local out = {}
+        for _, r in ipairs(general) do
+            if not r.visible or r.visible() then
+                out[#out + 1] = (r.label or r.buttons[1].label) .. (r.enabled and (r.enabled() and "+" or "-") or "")
+            end
+        end
+        return table.concat(out, " ", 1, 6)
+    end
+    Themes.Switch("WOOD")
+    local others = Themes.HasOthers
+    Themes.HasOthers = function() return true end
+    check("no hub: as today", rowsShown(),
+        "OPT_THEME OPT_THEME_CHOICE+ OPT_THEME_COLOR+ OPT_THEME_HINT OPT_THEME_ALL OPT_THEME_COPY_FROM")
+    Lib.SetHub({ Follows = function(folder) return folder == "ForeverGroupFinder" and follows end,
+        OpenOptions = function() opened = true end })
+    check("hub, following: locked, line, button, no apply to all", rowsShown(),
+        "OPT_THEME OPT_THEME_CHOICE- OPT_THEME_COLOR- OPT_THEME_FOLLOWS OPT_THEME_OPEN_HUB OPT_THEME_HINT")
+    general[5].buttons[1].onClick()
+    check("hub: the button opens its window", opened, true)
+    follows = false
+    check("hub, own theme: as today", rowsShown(),
+        "OPT_THEME OPT_THEME_CHOICE+ OPT_THEME_COLOR+ OPT_THEME_HINT OPT_THEME_ALL OPT_THEME_COPY_FROM")
+    Lib.SetHub(nil)
+    Themes.HasOthers = others
+    Themes.Switch("CLASSIC")
 
     -- The art: the ring goes round the backdrop, all of it inside the edge
     -- Classic has (frame plus Classic's ring of 1), ornaments too.

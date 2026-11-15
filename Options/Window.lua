@@ -96,6 +96,14 @@ local function refused(ok, why)
     if not ok then ns.Print(L[("MSG_THEME_%s"):format(why)]) end
 end
 
+-- While the hub addon "Forever Themes" sets our theme, its window is the
+-- place to change it; asked on every refresh (the flag can change in game).
+local function followsHub()
+    local hub = LibForeverThemes.Hub()
+    return hub ~= nil and hub.Follows(ADDON) == true
+end
+local function ownTheme() return not followsHub() end
+
 local function themeRows()
     local Themes = ns.Themes
     local function themed() return Themes.Current() ~= Themes.CLASSIC end
@@ -110,6 +118,7 @@ local function themeRows()
             end,
             get = function() return Themes.Current() end,
             set = function(v) refused(Themes.Switch(v)) end,
+            enabled = ownTheme,
         },
         -- The current theme's colours, kept apart from the theme sets.
         visibleIf({
@@ -123,13 +132,18 @@ local function themeRows()
             end,
             get = function() return Themes.Color() end,
             set = function(v) refused(Themes.SetColor(v)) end,
+            enabled = ownTheme,
         }, function() return #Themes.Colors() > 0 end),
+        visibleIf({ type = "text", label = "OPT_THEME_FOLLOWS" }, followsHub),
+        visibleIf({ type = "buttons", buttons = {
+            { label = "OPT_THEME_OPEN_HUB", width = 240, onClick = function() LibForeverThemes.Hub().OpenOptions() end },
+        } }, followsHub),
         { type = "text", label = "OPT_THEME_HINT", height = 66 },
         visibleIf({ type = "buttons", buttons = {
             { label = "OPT_THEME_ALL", width = 240, onClick = function()
                 ns.Print(L.MSG_THEME_ALL, Themes.ApplyToAll())
             end },
-        } }, Themes.HasOthers),
+        } }, function() return Themes.HasOthers() and ownTheme() end),
         visibleIf({
             type = "select", label = "OPT_THEME_COPY_FROM",
             choices = function()
@@ -710,7 +724,7 @@ local function buildRows(page, spec)
         local row, height = widgetFor(page, opt)
         row.labelKey = type(opt.label) == "string" and opt.label or nil
         stack.add(row, height)
-        row.stackHeight, row.visibleIf = height or row:GetHeight(), opt.visible
+        row.stackHeight, row.visibleIf, row.enabledIf = height or row:GetHeight(), opt.visible, opt.enabled
         page.allRows[#page.allRows + 1] = row
     end
     page.rows, page.height = stack.rows, stack.y + PAGE_BOTTOM
@@ -724,6 +738,7 @@ local function stackVisible(page)
     for _, row in ipairs(page.allRows) do
         local shown = not row.visibleIf or row.visibleIf()
         row:SetShown(shown)
+        if shown and row.enabledIf then row:SetEnabled(row.enabledIf()) end
         if shown then
             if row.isSection and #rows > 0 then y = y + SECTION_GAP end
             row:ClearAllPoints()
