@@ -88,6 +88,18 @@ return function(t)
     M.locale = "enUS"
     Themes.Switch("CLASSIC")
 
+    -- Frost's header: a 1 px drop shadow, no outline; every other theme outlined.
+    for id, spec in pairs(Themes.SPECS) do
+        if spec.look then
+            check(id .. ": header flag", spec.look.headerFlag, id == "FROST" and "SHADOW" or "OUTLINE")
+        end
+    end
+    local frostHeader = UIParent:CreateFontString()
+    ns.Media.ApplyText(frostHeader, { font = "Cormorant SC", size = 16, flag = Themes.SPECS.FROST.look.headerFlag,
+        color = { 1, 1, 1 } })
+    check("frost: header drawn without outline, shadowed", select(3, frostHeader:GetFont()) .. " "
+        .. table.concat({ frostHeader:GetShadowOffset() }, ","), " 1,-1")
+
     -- A theme stored under an older revision is made anew; Classic stays.
     Themes.Switch("WOOD")
     Settings.Set("x", 77)
@@ -101,7 +113,7 @@ return function(t)
     check("upgrade: stale set dropped", db.themeSets.TECH, nil)
     check("upgrade: classic kept", db.themeSets.CLASSIC.width, 800)
     check("upgrade: revision noted", db.themeSets.revision, Themes.REVISION)
-    check("revision 5: sets rebuilt (Swiss and Pitwall in one black)", Themes.REVISION, 5)
+    check("revision 6: sets rebuilt (Frost's header shadowed)", Themes.REVISION, 6)
     Settings.Set("borderSize", 5)
     Themes.Upgrade()
     check("upgrade: once only", S("borderSize"), 5)

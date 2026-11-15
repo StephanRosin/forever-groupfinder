@@ -25,7 +25,7 @@ Themes.IDS = { "CLASSIC", "WOOD", "TECH", "PARCHMENT", "RUNESTONE", "GLASS", "CO
 -- Raised whenever SPECS change a look: theme sets stored before are made
 -- anew from CLASSIC (Themes.Upgrade), so a changed theme shows as it is
 -- now. CLASSIC is never touched.
-Themes.REVISION = 5
+Themes.REVISION = 6
 
 -- The theme fonts have Latin letters only: on a client whose names are
 -- written otherwise the header keeps its font.
@@ -34,9 +34,10 @@ local LATIN_CLIENTS = { enUS = true, enGB = true, deDE = true, frFR = true, esES
 
 -- look: settings the theme sets (Settings.DEFAULTS keys). font: the
 -- header's font; fontSizeAdd: how much larger it must be to read like the
--- others. The header always has the client's outline (OUTLINE for
+-- others. The header has the client's outline (OUTLINE for
 -- the comic): a hand-made soft outline under these fonts showed black
--- text in Forever Unit Frames.
+-- text in Forever Unit Frames. Frost's has a drop shadow (SHADOW)
+-- instead: Cormorant's hairlines drowned in an outline.
 -- art (ThemeArt.lua): back = backdrop file in Media/Themes, tint = its
 -- colour (light papers toned down, so they do not glare), padding = the
 -- width of the backdrop band inside the ring (band and ring fit in the
@@ -111,7 +112,7 @@ Themes.SPECS = {
         font = "Cormorant SC", fontSizeAdd = 2,
         look = { borderStyle = "FLAT", borderSize = 1, borderColor = { 0.86, 0.96, 1, 0.8 }, cornerRadius = 6,
             bgMode = "SOLID", bgColor = { 0.04, 0.12, 0.22 }, bgAlpha = 100, shadowEnabled = true, shadowAlpha = 55,
-            shadowSize = 8, headerFlag = "OUTLINE", headerColor = { 0.86, 0.96, 1 } },
+            shadowSize = 8, headerFlag = "SHADOW", headerColor = { 0.86, 0.96, 1 } },
         -- The cracks dimmed: the title sits on them.
         art = { back = "FrostBack", padding = 4, tint = { 0.6, 0.62, 0.66, 1 } },
     },
