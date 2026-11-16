@@ -2086,12 +2086,18 @@ local function slotText(entry)
 end
 check("slots ordered by role", slotText({ activityIDs = { 22 }, members = {
     { name = "D", role = "DAMAGER" }, { name = "X" }, { name = "H", role = "HEALER" }, { name = "T", role = "TANK" } },
-    counts = { TANK_REMAINING = 0, HEALER_REMAINING = 1, DAMAGER_REMAINING = 2 } }),
-    "T:TANK,H:HEALER,free:HEALER,D:DAMAGER,free:DAMAGER,free:DAMAGER,X:nil")
+    counts = { TANK_REMAINING = 0, HEALER_REMAINING = 0, DAMAGER_REMAINING = 1 } }),
+    "T:TANK,H:HEALER,D:DAMAGER,free:DAMAGER,X:nil")
 check("free tank and healer before members of DPS", slotText({ activityIDs = { 22 }, members = {
     { name = "A", role = "DAMAGER" }, { name = "B", role = "DAMAGER" } },
     counts = { TANK_REMAINING = 1, HEALER_REMAINING = 1, DAMAGER_REMAINING = 1 } }),
     "free:TANK,free:HEALER,A:DAMAGER,B:DAMAGER,free:DAMAGER")
+lfg.activities[98] = { categoryID = 2, fullName = "Upper Blackrock Spire", shortName = "UBRS", minLevelSuggestion = 59, maxLevelSuggestion = 60, maxNumPlayers = 10 }
+do local ubrs = slotText({ activityIDs = { 98 }, members = { { name = "T", role = "TANK" }, { name = "H", role = "HEALER" },
+    { name = "A", role = "DAMAGER" }, { name = "B", role = "DAMAGER" }, { name = "C", role = "DAMAGER" }, { name = "D", role = "DAMAGER" } },
+    counts = { TANK_REMAINING = 9, HEALER_REMAINING = 9, DAMAGER_REMAINING = 6 } })
+check("raid: per-role counts beyond the size are no limits (UBRS 6/10)", ubrs,
+    "T:TANK,H:HEALER,A:DAMAGER,B:DAMAGER,C:DAMAGER,D:DAMAGER,free:nil,free:nil,free:nil,free:nil") end
 check("without counts free places up to the size", slotText({ activityIDs = { 22 }, members = { { name = "A", role = "TANK" } } }),
     "A:TANK,free:nil,free:nil,free:nil,free:nil")
 local flagged = D.Lines({ activityIDs = { 22 }, leader = "L", voice = 1, newPlayerFriendly = true, friend = 2, guild = 0,

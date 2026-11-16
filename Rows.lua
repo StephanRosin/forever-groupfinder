@@ -57,16 +57,25 @@ function Rows.Slots(entry)
         slots[#slots + 1] = { member = m, role = role, index = i }
     end
     local counts = type(entry.counts) == "table" and entry.counts or {}
-    local known = false
+    local max = Rows.MaxPlayers(entry.activityIDs)
+    local free = max - #members
+    -- Raids (UBRS: 10) give every role "size minus that role", not a limit
+    -- per role: 6/10 came out as 24 free places. Counts that do not fit the
+    -- free places are no role limits; then the free places have no role.
+    local remaining, sum = {}, 0
     for _, role in ipairs(Rows.ROLES) do
         local n = counts[role .. "_REMAINING"]
         if type(n) == "number" then
-            known = true
-            for _ = 1, n do slots[#slots + 1] = { free = true, role = role, index = #slots + 1 } end
+            remaining[#remaining + 1] = { role = role, n = n }
+            sum = sum + n
         end
     end
-    if not known then
-        for _ = #members + 1, Rows.MaxPlayers(entry.activityIDs) do slots[#slots + 1] = { free = true, index = #slots + 1 } end
+    if #remaining > 0 and (max == 0 or sum <= free) then
+        for _, r in ipairs(remaining) do
+            for _ = 1, r.n do slots[#slots + 1] = { free = true, role = r.role, index = #slots + 1 } end
+        end
+    else
+        for _ = 1, free do slots[#slots + 1] = { free = true, index = #slots + 1 } end
     end
     table.sort(slots, Rows.SlotOrder)
     return slots
