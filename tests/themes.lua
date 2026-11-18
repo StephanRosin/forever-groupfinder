@@ -88,10 +88,12 @@ return function(t)
     M.locale = "enUS"
     Themes.Switch("CLASSIC")
 
+    check("glass HD: lighter fill to show the glass", Themes.SPECS.GLASS_HD.look.bgAlpha .. "/"
+        .. Themes.SPECS.GLASS.look.bgAlpha, "60/90")
     -- Frost's header: a 1 px drop shadow, no outline; every other theme outlined.
     for id, spec in pairs(Themes.SPECS) do
         if spec.look then
-            check(id .. ": header flag", spec.look.headerFlag, id == "FROST" and "SHADOW" or "OUTLINE")
+            check(id .. ": header flag", spec.look.headerFlag, LibForeverThemes.BaseTheme(id) == "FROST" and "SHADOW" or "OUTLINE")
         end
     end
     local frostHeader = UIParent:CreateFontString()
@@ -343,6 +345,19 @@ return function(t)
     check("pixel plum: grey texture tinted", look(), PATH .. "PixelBackGrey " .. rgb({ 0.23 / 0.8, 0.08 / 0.8, 0.16 / 0.8 }) .. ",1")
     check("pixel plum: headers in its accent", accent(), "1,0.93,0.15")
     check("pixel handheld: listed last", entry.Colors()[9], "HANDHELD")
+    -- An HD colour: its own finished backdrop, untinted, at the base's alpha.
+    Themes.Switch("WOOD_HD")
+    check("wood hd: offered", Themes.Current(), "WOOD_HD")
+    check("wood hd: the base's look", S("borderStyle"), "GOLD")
+    entry.SetColor("EBONY")
+    check("wood hd ebony: its own texture, white", look(), PATH .. "WoodHDEbony 1,1,1,1")
+    Themes.Switch("COMIC_HD")
+    entry.SetColor("NOIR")
+    check("comic hd noir: dark paper, light ink", Themes.DarkInk() ~= nil, true)
+    entry.SetColor("NEWSPRINT")
+    check("comic hd newsprint: dark ink", Themes.DarkInk(), nil)
+    Themes.SetColor("OAK", "WOOD_HD")
+    Themes.Switch("PIXEL")
     Themes.SetColor("HANDHELD")
     check("pixel handheld: grey texture tinted", look(), PATH .. "PixelBackGrey " .. rgb({ 0.059 / 0.8, 0.122 / 0.8, 0.059 / 0.8 }) .. ",1")
     check("pixel handheld: headers in its accent", accent(), "0.784,0.941,0.439")
@@ -456,14 +471,14 @@ return function(t)
     for _, id in ipairs(LibForeverThemes.SpecIds(Themes.SPECS)) do
         if id ~= "CLASSIC" then
             Themes.Switch(id)
-            local chosen = entry.Color()
+            local chosen, base = entry.Color(), LibForeverThemes.BaseTheme(id)   -- an HD theme: its base's ring
             for _, c in ipairs(entry.Colors()) do
                 Themes.SetColor(c)
-                if id == "WOOD" then
+                if base == "WOOD" then
                     check("ring " .. id .. " " .. c, S("borderStyle"), "GOLD")
                 else
                     check("ring " .. id .. " " .. c, S("borderStyle") .. " " .. table.concat(Themes.RingColor(), ","),
-                        "FLAT " .. ((OWN_RING[id] or {})[c] or RINGS[id]))
+                        "FLAT " .. ((OWN_RING[id] or {})[c] or RINGS[base]))
                 end
             end
             Themes.SetColor(chosen)

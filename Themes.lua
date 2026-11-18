@@ -47,6 +47,8 @@ local OWN_REVISION = 10
 -- iconColor / iconHoverColor (the library's comic ink): the header's icons
 -- and note in dark ink, for a header on light paper.
 -- The body colour stays dark everywhere: the list's light text sits on it.
+-- The HD themes (WOOD_HD, ...) are their base's part here over a finer
+-- backdrop of their own (Lib.Specs, withHd).
 Themes.SPECS = Lib.Specs({
     -- Oak boards round the window, the family's gold ring, brass rivets.
     WOOD = {
@@ -134,7 +136,9 @@ Themes.SPECS = Lib.Specs({
             headerColor = { 0.949, 0.953, 0.961 } },
         art = { padding = 4 },
     },
-})
+}, true)
+-- Glass HD is there to show its glass: the dark fill over it at 60 % (Glass: 90 %).
+Themes.SPECS.GLASS_HD.look.bgAlpha = 60
 
 -- The theme colours are the library's (Lib.COLORS), the same in every
 -- Forever addon; which one is chosen is stored account wide, outside
