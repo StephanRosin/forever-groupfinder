@@ -107,6 +107,10 @@ local function newWidget(name, kind)
     function w:SetAtlas(a) self._atlas = a end
     function w:SetDesaturated(v) self._desaturated = v and true or false end
     function w:SetTexCoord(...) self._texCoord = { ... } end
+    function w:SetHorizTile(v) self._horizTile = v == true end
+    function w:GetHorizTile() return self._horizTile == true end
+    function w:SetVertTile(v) self._vertTile = v == true end
+    function w:GetVertTile() return self._vertTile == true end
     function w:AddMaskTexture(m) self._masks = (self._masks or 0) + 1 end
     function w:RemoveMaskTexture(m) self._masks = (self._masks or 1) - 1 end
     function w:CreateMaskTexture() return newWidget(nil, "MaskTexture") end

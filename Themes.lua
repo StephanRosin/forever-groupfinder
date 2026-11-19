@@ -49,6 +49,9 @@ local OWN_REVISION = 10
 -- The body colour stays dark everywhere: the list's light text sits on it.
 -- The HD themes (WOOD_HD, ...) are their base's part here over a finer
 -- backdrop of their own (Lib.Specs, withHd).
+-- The framed themes' frame, narrower than the library's 7: frame and ring
+-- stay inside Classic's edge, and the activity popup's list starts 6 in.
+local FRAME = 4
 Themes.SPECS = Lib.Specs({
     -- Oak boards round the window, the family's gold ring, brass rivets.
     WOOD = {
@@ -135,6 +138,27 @@ Themes.SPECS = Lib.Specs({
             bgColor = { 0.039, 0.039, 0.039 }, bgAlpha = 100, shadowEnabled = false, headerFlag = "OUTLINE",
             headerColor = { 0.949, 0.953, 0.961 } },
         art = { padding = 4 },
+    },
+    -- A window of the game's own world: a walnut frame, a gold ring and
+    -- corners, the title on a red banner in gold (never ink on the red).
+    -- The parchment under a dark body, as Parchment's: the list's light
+    -- text stays as it is.
+    AZEROTH = {
+        bodyFont = false,
+        look = { borderStyle = "FLAT", borderSize = 2, borderColor = Lib.THEMES.AZEROTH.rim, cornerRadius = 0,
+            bgMode = "SOLID", bgColor = { 0.09, 0.06, 0.03 }, bgAlpha = 82, shadowEnabled = true, shadowAlpha = 60,
+            shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 1, 0.82, 0 }, headerLine = false },
+        art = { padding = 1, frameSize = FRAME, ornamentSize = 16, ornamentInset = 0 },
+    },
+    -- A goblin workshop: sooty sheet metal in a copper frame with rivets, a
+    -- thin strip of warning stripes along the top (never text on it).
+    GOBLIN = {
+        -- Bungee runs wide: a point smaller keeps the title on one line.
+        bodyFont = false, fontSizeAdd = -1,
+        look = { borderStyle = "FLAT", borderSize = 2, borderColor = Lib.THEMES.GOBLIN.rim, cornerRadius = 0,
+            bgMode = "SOLID", bgColor = { 0.05, 0.05, 0.05 }, bgAlpha = 0, shadowEnabled = true, shadowAlpha = 60,
+            shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 0.95, 0.76, 0.19 }, headerLine = false },
+        art = { padding = 1, frameSize = FRAME, ornamentSize = 9, ornamentInset = 1, stripHeight = 5 },
     },
 }, true)
 -- Glass HD is there to show its glass: the dark fill over it at 60 % (Glass: 90 %).
@@ -231,6 +255,14 @@ end
 function Themes.Accent()
     return Lib.Accent(Themes.Current(), Themes.Color())
 end
+
+-- Whether the theme's title band is a banner (Azeroth's red): the
+-- header's title, icons and grip in its gold, notes in HEADER_INK.
+function Themes.Banner()
+    local art = Themes.Spec(Themes.Current()).art
+    return art ~= nil and art.banner ~= nil and art.bannerEnd ~= nil
+end
+Themes.HEADER_INK = { 0.96, 0.89, 0.72 }
 
 -- The ring's colour: the theme's colour's where it has one, else the setting.
 function Themes.RingColor()

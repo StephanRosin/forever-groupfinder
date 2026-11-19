@@ -108,6 +108,20 @@ local refusedFonts = {}
 -- chosen a second time). Setting it again a little later, through another
 -- font, as that second choice did, draws them. Once per text and font.
 local REDRAW_DELAYS = { 0.5, 2 }
+
+-- Texts were measured while they had another font (the client's): a much
+-- wider theme font (Bungee) was then cut off until some later layout. Once
+-- the font is there, the window lays out anew (queued: once per frame).
+local relayoutQueued = false
+local function fontArrived()
+    if relayoutQueued or not (ns.Window and ns.Window.Refresh) then return end
+    relayoutQueued = true
+    C_Timer.After(0, function()
+        relayoutQueued = false
+        ns.Window.Refresh()
+    end)
+end
+
 local function redrawLater(fs, path, size, flags, wanted)
     if fs.fontDrawn == wanted then return end
     fs.fontDrawn = wanted
@@ -133,6 +147,8 @@ function Media.ApplyText(fs, style, retries)
     fs.fontWanted = wanted
     if fs:SetFont(path, style.size, outline) and hasFont(fs, path) then
         redrawLater(fs, path, style.size, outline, wanted)
+        -- Taken on a later try: measured with the client's font until now.
+        if retries then fontArrived() end
     else
         fs:SetFont(Media.DEFAULT.font, style.size, outline)
         retries = retries or FONT_RETRIES

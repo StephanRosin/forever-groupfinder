@@ -315,7 +315,9 @@ return function(t)
             Themes.Switch(id)
             Settings.Set("borderSize", Themes.SPECS[id].look.borderSize)
             ns.ThemeArt.Style(frame, 3)
-            local ring = S("borderStyle") == "NONE" and 0 or S("borderSize")
+            -- A framed theme's frame lies round the ring, inside the edge too.
+            local ring = (S("borderStyle") == "NONE" and 0 or S("borderSize"))
+                + (art.frame[1]:IsShown() and Themes.SPECS[id].art.frameSize or 0)
             local inset = art.back._points.TOPLEFT[3]
             check(id .. ": outer edge where Classic's is", ring - inset, 1)
             local body = frame.bg._points.BOTTOMRIGHT[4]
@@ -536,7 +538,8 @@ return function(t)
     -- recolour it.
     local RINGS = { TECH = "0.25,0.88,0.94,0.9", PARCHMENT = "0.29,0.2,0.12,1", RUNESTONE = "0.1,0.1,0.12,1",
         GLASS = "0.07,0.06,0.05,1", COMIC = "0.07,0.07,0.07,1", FROST = "0.86,0.96,1,0.8", PIXEL = "1,0.95,0.91,1",
-        SWISS = "0.165,0.165,0.165,1", PITWALL = "0.043,0.047,0.055,1" }
+        SWISS = "0.165,0.165,0.165,1", PITWALL = "0.043,0.047,0.055,1", AZEROTH = "0.79,0.635,0.29,1",
+        GOBLIN = "0.23,0.11,0.05,1" }
     local OWN_RING = { CONSOLE = { MINT = "0.306,0.929,0.69,1", AMBER = "1,0.69,0,1", PHOSPHOR = "0.224,1,0.078,1",
         VIOLET = "0.627,0.471,1,1" }, PIXEL = { HANDHELD = "0.784,0.941,0.439,1" } }
     for _, id in ipairs(LibForeverThemes.SpecIds(Themes.SPECS)) do
@@ -555,6 +558,54 @@ return function(t)
             Themes.SetColor(chosen)
         end
     end
+    -- The framed themes (LibForeverThemes 10): a material frame round the
+    -- ring, a textured title band; on Azeroth's red banner nothing in ink.
+    local function file(tex) return tex._texture and tex._texture:match("[^\\]+$") end
+    Themes.Switch("AZEROTH")
+    ns.ThemeArt.Style(frame, 0)
+    check("azeroth: fonts", S("headerFont") .. "/" .. S("commentFont"), "Cinzel/Friz Quadrata")
+    local framed = 0
+    for _, strip in ipairs(art.frame) do
+        if strip:IsShown() and file(strip) == "WoodHDWalnut" then framed = framed + 1 end
+    end
+    check("azeroth: walnut frame on four sides", framed, 4)
+    local top = art.frame[1]._points.TOPLEFT
+    check("azeroth: frame round the ring", top[3] .. "/" .. top[4], -(2 + 4) .. "/" .. (2 + 4))
+    check("azeroth: banner as the title strip", art.strip:IsShown() and file(art.strip), "AzerothBanner")
+    check("azeroth: banner ends, the right one mirrored", art.ends[1]:IsShown() and art.ends[2]._texCoord[1], 1)
+    local stripH = ns.Header.HEIGHT - art.back._points.TOPLEFT[3]
+    local endW = math.floor(stripH / 2 + 0.5)
+    check("azeroth: banner between its ends, header high", art.strip._points.TOPLEFT[3] .. "/" .. art.strip:GetHeight(),
+        endW .. "/" .. stripH)
+    check("azeroth: gold corners on the frame", art.ornaments[1]:IsShown() and file(art.ornaments[1]), "Bracket")
+    local ah = ns.Header.Create(CreateFrame("Frame", nil, UIParent), { movable = function() return true end })
+    local ab = ns.Header.Button(ah, "Gear", "", function() end)
+    ns.Header.Layout(ah)
+    local inset = art.back._points.TOPLEFT[3]
+    check("azeroth: grip past the banner's end", ah.grip._points.LEFT[3], inset + endW + 4)
+    check("azeroth: buttons clear of the right end", ab._points.RIGHT[3], -(5 + inset + endW))
+    check("azeroth: grip in the icons' gold, not blue", rgb(ah.grip._vertex), rgb(ab.paintColor))
+    check("azeroth: icons gold", rgb(ab.paintColor), "1,0.82,0")
+    check("azeroth: title gold", accent(), "1,0.82,0")
+    check("azeroth: the note light", rgb(ns.Header.NoteStyle().color), rgb(Themes.HEADER_INK))
+    check("azeroth: no gold line under the banner", S("headerLine"), false)
+    Themes.Switch("GOBLIN")
+    ns.ThemeArt.Style(frame, 0)
+    check("goblin: fonts, the title a point smaller", S("headerFont") .. "/" .. S("headerSize"),
+        "Bungee/" .. (Themes.ClassicSet().headerSize - 1))
+    check("goblin: copper frame", art.frame[1]:IsShown() and file(art.frame[1]), "GoblinCopper")
+    check("goblin: hazard strip 5 high, repeating", file(art.strip) .. " " .. art.strip:GetHeight() .. " "
+        .. tostring(art.strip:GetHorizTile()), "GoblinHazard 5 true")
+    check("goblin: no banner ends", art.ends[1]:IsShown(), false)
+    ns.Header.Layout(ah)
+    check("goblin: grip blue, the note grey as elsewhere", rgb(ah.grip._vertex) .. " " .. rgb(ns.Header.NoteStyle().color),
+        rgb(ns.Controls.ACCENT) .. " " .. rgb(ns.Header.NOTE))
+    check("goblin: buttons in their usual place", ab._points.RIGHT[3], -5)
+    Themes.Switch("PITWALL")
+    ns.ThemeArt.Style(frame, 0)
+    check("pitwall after them: no frame, no ends", art.frame[1]:IsShown() or art.ends[1]:IsShown(), false)
+    check("pitwall after them: the strip a colour again", tostring(art.strip:GetHorizTile()) .. " " .. art.strip:GetHeight(),
+        "false " .. ns.Header.HEIGHT)
     Themes.Switch("TECH")
     ns.ThemeArt.Style(frame, 0)
     check("tech: no strip, wedge or rule", tostring(art.strip:IsShown()) .. tostring(art.wedge:IsShown()) .. tostring(art.rule:IsShown()), "falsefalsefalse")
@@ -572,6 +623,7 @@ return function(t)
     check("classic: ring round the frame", box, frame)
     check("classic: own radius", radius, 10)
     check("classic: no backdrop", art.back:IsShown(), false)
+    check("classic: no frame, no banner ends", art.frame[1]:IsShown() or art.ends[1]:IsShown(), false)
     check("classic: body everywhere", frame.bg._points.TOPLEFT, nil)
     b.hover = false
     ns.Header.Paint(b)
@@ -587,8 +639,13 @@ return function(t)
     end
     ns.Media.ApplyText(fs, { font = "Cinzel", size = 14, flag = "OUTLINE", color = { 1, 1, 1 } })
     check("refused: default font meanwhile", (fs:GetFont()), ns.Media.DEFAULT.font)
+    local refresh, relaid = ns.Window.Refresh, 0
+    ns.Window.Refresh = function() relaid = relaid + 1 end
     M.RunTimers()
     check("tried again: taken", (fs:GetFont()), ns.Media.FontPath("Cinzel"))
+    -- Measured with the client's font so far (a wide font was cut off).
+    check("taken: the window laid out anew, once", relaid, 1)
+    ns.Window.Refresh = refresh
     check("theme fonts listed", (function()
         for _, name in ipairs(ns.Media.Names("font")) do if name == "Marcellus" then return true end end
         return false
