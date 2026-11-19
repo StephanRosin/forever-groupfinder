@@ -563,7 +563,7 @@ return function(t)
     local function file(tex) return tex._texture and tex._texture:match("[^\\]+$") end
     Themes.Switch("AZEROTH")
     ns.ThemeArt.Style(frame, 0)
-    check("azeroth: fonts", S("headerFont") .. "/" .. S("commentFont"), "Cinzel/Friz Quadrata")
+    check("azeroth: fonts", S("headerFont") .. "/" .. S("commentFont"), "Cinzel/Alegreya")
     local framed = 0
     for _, strip in ipairs(art.frame) do
         if strip:IsShown() and file(strip) == "WoodHDWalnut" then framed = framed + 1 end
@@ -577,7 +577,7 @@ return function(t)
     local endW = math.floor(stripH / 2 + 0.5)
     check("azeroth: banner between its ends, header high", art.strip._points.TOPLEFT[3] .. "/" .. art.strip:GetHeight(),
         endW .. "/" .. stripH)
-    check("azeroth: gold corners on the frame", art.ornaments[1]:IsShown() and file(art.ornaments[1]), "Bracket")
+    check("azeroth: no corner pieces", art.ornaments[1]:IsShown(), false)
     local ah = ns.Header.Create(CreateFrame("Frame", nil, UIParent), { movable = function() return true end })
     local ab = ns.Header.Button(ah, "Gear", "", function() end)
     ns.Header.Layout(ah)

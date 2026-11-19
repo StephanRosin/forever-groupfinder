@@ -32,7 +32,7 @@ local OWN_REVISION = 10
 -- look: settings the theme sets (Settings.DEFAULTS keys). font: the
 -- header's font; bodyFont: every other text's (false: as they are; the
 -- list rows keep their own fonts: group comments are typed by players and
--- must stay readable at small sizes, so only Frost's is taken);
+-- must stay readable at small sizes, so only Frost's, Azeroth's and Goblin's are taken);
 -- fontSizeAdd: how much larger the header must be to read like the others.
 -- The header has the client's outline (OUTLINE for
 -- the comic): a hand-made soft outline under these fonts showed black
@@ -144,7 +144,7 @@ Themes.SPECS = Lib.Specs({
     -- The parchment under a dark body, as Parchment's: the list's light
     -- text stays as it is.
     AZEROTH = {
-        bodyFont = false,
+        bodyFont = Lib.THEMES.AZEROTH.bodyFont,   -- Stephan: the framed themes' text fonts in the list too
         look = { borderStyle = "FLAT", borderSize = 2, borderColor = Lib.THEMES.AZEROTH.rim, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.09, 0.06, 0.03 }, bgAlpha = 82, shadowEnabled = true, shadowAlpha = 60,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 1, 0.82, 0 }, headerLine = false },
@@ -154,7 +154,7 @@ Themes.SPECS = Lib.Specs({
     -- thin strip of warning stripes along the top (never text on it).
     GOBLIN = {
         -- Bungee runs wide: a point smaller keeps the title on one line.
-        bodyFont = false, fontSizeAdd = -1,
+        bodyFont = Lib.THEMES.GOBLIN.bodyFont, fontSizeAdd = -1,
         look = { borderStyle = "FLAT", borderSize = 2, borderColor = Lib.THEMES.GOBLIN.rim, cornerRadius = 0,
             bgMode = "SOLID", bgColor = { 0.05, 0.05, 0.05 }, bgAlpha = 0, shadowEnabled = true, shadowAlpha = 60,
             shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 0.95, 0.76, 0.19 }, headerLine = false },
