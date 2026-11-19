@@ -32,7 +32,7 @@ local OWN_REVISION = 10
 -- look: settings the theme sets (Settings.DEFAULTS keys). font: the
 -- header's font; bodyFont: every other text's (false: as they are; the
 -- list rows keep their own fonts: group comments are typed by players and
--- must stay readable at small sizes, so only Frost's, Azeroth's and Goblin's are taken);
+-- must stay readable at small sizes, so only Frost's and Goblin's are taken);
 -- fontSizeAdd: how much larger the header must be to read like the others.
 -- The header has the client's outline (OUTLINE for
 -- the comic): a hand-made soft outline under these fonts showed black
@@ -139,17 +139,6 @@ Themes.SPECS = Lib.Specs({
             headerColor = { 0.949, 0.953, 0.961 } },
         art = { padding = 4 },
     },
-    -- A window of the game's own world: a walnut frame, a gold ring and
-    -- corners, the title on a red banner in gold (never ink on the red).
-    -- The parchment under a dark body, as Parchment's: the list's light
-    -- text stays as it is.
-    AZEROTH = {
-        bodyFont = Lib.THEMES.AZEROTH.bodyFont,   -- Stephan: the framed themes' text fonts in the list too
-        look = { borderStyle = "FLAT", borderSize = 2, borderColor = Lib.THEMES.AZEROTH.rim, cornerRadius = 0,
-            bgMode = "SOLID", bgColor = { 0.09, 0.06, 0.03 }, bgAlpha = 82, shadowEnabled = true, shadowAlpha = 60,
-            shadowSize = 6, headerFlag = "OUTLINE", headerColor = { 1, 0.82, 0 }, headerLine = false },
-        art = { padding = 1, frameSize = FRAME, ornamentSize = 16, ornamentInset = 0 },
-    },
     -- A goblin workshop: sooty sheet metal in a copper frame with rivets, a
     -- thin strip of warning stripes along the top (never text on it).
     GOBLIN = {
@@ -255,14 +244,6 @@ end
 function Themes.Accent()
     return Lib.Accent(Themes.Current(), Themes.Color())
 end
-
--- Whether the theme's title band is a banner (Azeroth's red): the
--- header's title, icons and grip in its gold, notes in HEADER_INK.
-function Themes.Banner()
-    local art = Themes.Spec(Themes.Current()).art
-    return art ~= nil and art.banner ~= nil and art.bannerEnd ~= nil
-end
-Themes.HEADER_INK = { 0.96, 0.89, 0.72 }
 
 -- The ring's colour: the theme's colour's where it has one, else the setting.
 function Themes.RingColor()
@@ -418,11 +399,27 @@ local function same(a, b)
     return true
 end
 
+-- A theme the library no longer has (Azeroth, LibForeverThemes 13): its
+-- stored sets go; was it in use, the stored Classic set comes back, else
+-- its settings would stay live under Classic and be kept as Classic's.
+local function dropRemovedThemes()
+    local db = ns.DB()
+    local sets = type(db.themeSets) == "table" and db.themeSets or {}
+    for id, set in pairs(sets) do
+        if type(set) == "table" and not Themes.SPECS[id] then sets[id] = nil end
+    end
+    if db.theme == nil or Themes.SPECS[db.theme] then return end
+    local classic = sets[Themes.CLASSIC] or {}
+    sets[Themes.CLASSIC] = nil
+    use(classic)
+end
+
 -- At login and on a profile change: a base and its HD theme, kept apart
 -- before LibForeverThemes 9, made one set (a customised HD set wins); then a theme in
 -- use made under an older revision is made anew from CLASSIC and the stale
 -- stored sets go.
 function Themes.Upgrade()
+    dropRemovedThemes()
     local sets = ns.DB().themeSets
     if type(sets) ~= "table" then return end
     local merged = Lib.MergeHD(sets, Themes.Current(), settingsOf(ns.DB()), function(hdId, set)

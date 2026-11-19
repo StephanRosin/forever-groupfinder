@@ -13,7 +13,7 @@ local S = ns.Settings.Get
 -- colour starts within it; the frames' inner padding (8) hosts the band,
 -- the content keeps its place. The header shows the art too (unless
 -- art.header is false). No solid shadow: it would reach outside. A
--- framed theme (Azeroth, Goblin) puts its frame round the ring's outside,
+-- framed theme (Goblin) puts its frame round the ring's outside,
 -- still within that edge, the ornaments on the frame's corners, and its
 -- banner over the header (a texture instead of the strip's colour).
 -- Everything is a child of its frame: it shows, hides and resizes with it.

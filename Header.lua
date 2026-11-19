@@ -124,8 +124,7 @@ function Header.NoteStyle()
     style.size = math.max(8, S("headerSize") - 3)
     style.flag = ""
     local dark = ns.Themes.DarkInk()
-    -- Light on a banner's red (Azeroth), as every text there.
-    style.color = ns.Themes.Banner() and ns.Themes.HEADER_INK or dark and dark.text or ink() or Header.NOTE
+    style.color = dark and dark.text or ink() or Header.NOTE
     return style
 end
 
@@ -180,9 +179,6 @@ function Header.Layout(h, width)
     local start = ns.ThemeArt.TitleLeft()
     h.grip:ClearAllPoints()
     h.grip:SetPoint("LEFT", h, "LEFT", start or 8, 0)
-    -- On a banner's red the blue reads badly: the icons' gold there.
-    local grip = ns.Themes.Banner() and Header.ButtonColor({}) or Controls.ACCENT
-    h.grip:SetVertexColor(grip[1], grip[2], grip[3])
     local left = start and (movable and start + TITLE_X_GRIP - 8 or start) or (movable and TITLE_X_GRIP or TITLE_X)
     h.title:ClearAllPoints()
     h.title:SetPoint("LEFT", h, "LEFT", left, 0)

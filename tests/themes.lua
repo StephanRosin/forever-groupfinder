@@ -131,6 +131,19 @@ return function(t)
     check("upgrade: the current release's sets survive", db.themeSets.TECH and db.themeSets.TECH.x, 5)
     check("upgrade: theme in use kept", S("borderSize"), 5)
     db.themeSets.TECH = nil
+    -- A theme the library dropped (Azeroth, LibForeverThemes 13) still in
+    -- the saved data: loads, Classic comes back, its sets go.
+    db.themeSets.AZEROTH = { theme = "AZEROTH", x = 9 }
+    Themes.Upgrade()
+    check("removed theme: its idle set dropped", db.themeSets.AZEROTH, nil)
+    check("removed theme: the theme in use kept", Themes.Current(), "WOOD")
+    db.theme = "AZEROTH"
+    Settings.Set("x", 9)
+    Themes.Upgrade()
+    check("removed theme in use: back to classic", Themes.Current() .. " " .. S("x"), "CLASSIC -120")
+    check("removed theme in use: classic not kept twice", tostring(db.theme) .. " " .. tostring(db.themeSets.CLASSIC),
+        "nil nil")
+    Themes.Switch("WOOD")
 
     -- A first pick ships the author's look: the stored sets (place, size, lock,
     -- layout, filters, category and templates left out) equal the seeds.
@@ -538,7 +551,7 @@ return function(t)
     -- recolour it.
     local RINGS = { TECH = "0.25,0.88,0.94,0.9", PARCHMENT = "0.29,0.2,0.12,1", RUNESTONE = "0.1,0.1,0.12,1",
         GLASS = "0.07,0.06,0.05,1", COMIC = "0.07,0.07,0.07,1", FROST = "0.86,0.96,1,0.8", PIXEL = "1,0.95,0.91,1",
-        SWISS = "0.165,0.165,0.165,1", PITWALL = "0.043,0.047,0.055,1", AZEROTH = "0.79,0.635,0.29,1",
+        SWISS = "0.165,0.165,0.165,1", PITWALL = "0.043,0.047,0.055,1",
         GOBLIN = "0.23,0.11,0.05,1" }
     local OWN_RING = { CONSOLE = { MINT = "0.306,0.929,0.69,1", AMBER = "1,0.69,0,1", PHOSPHOR = "0.224,1,0.078,1",
         VIOLET = "0.627,0.471,1,1" }, PIXEL = { HANDHELD = "0.784,0.941,0.439,1" } }
@@ -558,37 +571,9 @@ return function(t)
             Themes.SetColor(chosen)
         end
     end
-    -- The framed themes (LibForeverThemes 10): a material frame round the
-    -- ring, a textured title band; on Azeroth's red banner nothing in ink.
+    -- The framed theme (LibForeverThemes 10): a material frame round the
+    -- ring, a textured title band.
     local function file(tex) return tex._texture and tex._texture:match("[^\\]+$") end
-    Themes.Switch("AZEROTH")
-    ns.ThemeArt.Style(frame, 0)
-    check("azeroth: fonts", S("headerFont") .. "/" .. S("commentFont"), "Cinzel/Alegreya")
-    local framed = 0
-    for _, strip in ipairs(art.frame) do
-        if strip:IsShown() and file(strip) == "WoodHDWalnut" then framed = framed + 1 end
-    end
-    check("azeroth: walnut frame on four sides", framed, 4)
-    local top = art.frame[1]._points.TOPLEFT
-    check("azeroth: frame round the ring", top[3] .. "/" .. top[4], -(2 + 4) .. "/" .. (2 + 4))
-    check("azeroth: banner as the title strip", art.strip:IsShown() and file(art.strip), "AzerothBanner")
-    check("azeroth: banner ends, the right one mirrored", art.ends[1]:IsShown() and art.ends[2]._texCoord[1], 1)
-    local stripH = ns.Header.HEIGHT - art.back._points.TOPLEFT[3]
-    local endW = math.floor(stripH / 2 + 0.5)
-    check("azeroth: banner between its ends, header high", art.strip._points.TOPLEFT[3] .. "/" .. art.strip:GetHeight(),
-        endW .. "/" .. stripH)
-    check("azeroth: no corner pieces", art.ornaments[1]:IsShown(), false)
-    local ah = ns.Header.Create(CreateFrame("Frame", nil, UIParent), { movable = function() return true end })
-    local ab = ns.Header.Button(ah, "Gear", "", function() end)
-    ns.Header.Layout(ah)
-    local inset = art.back._points.TOPLEFT[3]
-    check("azeroth: grip past the banner's end", ah.grip._points.LEFT[3], inset + endW + 4)
-    check("azeroth: buttons clear of the right end", ab._points.RIGHT[3], -(5 + inset + endW))
-    check("azeroth: grip in the icons' gold, not blue", rgb(ah.grip._vertex), rgb(ab.paintColor))
-    check("azeroth: icons gold", rgb(ab.paintColor), "1,0.82,0")
-    check("azeroth: title gold", accent(), "1,0.82,0")
-    check("azeroth: the note light", rgb(ns.Header.NoteStyle().color), rgb(Themes.HEADER_INK))
-    check("azeroth: no gold line under the banner", S("headerLine"), false)
     Themes.Switch("GOBLIN")
     ns.ThemeArt.Style(frame, 0)
     check("goblin: fonts, the title a point smaller", S("headerFont") .. "/" .. S("headerSize"),
@@ -597,6 +582,10 @@ return function(t)
     check("goblin: hazard strip 5 high, repeating", file(art.strip) .. " " .. art.strip:GetHeight() .. " "
         .. tostring(art.strip:GetHorizTile()), "GoblinHazard 5 true")
     check("goblin: no banner ends", art.ends[1]:IsShown(), false)
+    local top = art.frame[1]._points.TOPLEFT
+    check("goblin: frame round the ring", top[3] .. "/" .. top[4], -(2 + 4) .. "/" .. (2 + 4))
+    local ah = ns.Header.Create(CreateFrame("Frame", nil, UIParent), { movable = function() return true end })
+    local ab = ns.Header.Button(ah, "Gear", "", function() end)
     ns.Header.Layout(ah)
     check("goblin: grip blue, the note grey as elsewhere", rgb(ah.grip._vertex) .. " " .. rgb(ns.Header.NoteStyle().color),
         rgb(ns.Controls.ACCENT) .. " " .. rgb(ns.Header.NOTE))

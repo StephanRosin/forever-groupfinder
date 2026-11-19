@@ -302,8 +302,7 @@ function Detail.Refresh()
         Detail.Layout(height)
         ns.Header.Layout(p.header, WIDTH)
     end
-    -- On the panel's banner (Azeroth) light, as every text there; red reads badly on red.
-    Controls.Color(h.header.note, h == p and ns.Themes.Banner() and ns.Themes.HEADER_INK or Controls.RED)
+    Controls.Color(h.header.note, Controls.RED)
     updateButtons(h)
     render(h)
 end
