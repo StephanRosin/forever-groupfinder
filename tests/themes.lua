@@ -175,9 +175,78 @@ return function(t)
     check("options: no colours on classic", general[3].visible(), false)
     check("options: no reset on classic", general[11].visible(), false)
     general[2].set("COMIC")
-    check("options: comic colour under the comic", general[3].visible() and general[3].get(), "GREY")
+    check("options: comic colour under the comic", general[3].visible() and general[3].get(), "COMIC:GREY")
     general[2].set("CLASSIC")
     check("options: classic restored", S("width") .. "/" .. S("cornerRadius"), "800/8")
+
+    -- HD is a colour of its base: one set of settings for both.
+    local function labels(list)
+        local out = {}
+        for _, e in ipairs(list) do out[#out + 1] = e.label end
+        return table.concat(out, ",")
+    end
+    check("hd: not in the theme menu", labels(general[2].choices()):find("_HD") == nil, true)
+    general[2].set("TECH")
+    Settings.Set("x", -33)
+    local colours = general[3].choices()
+    check("hd: colour menu lists tech's, then HD", #colours .. " " .. colours[1].label .. " / " .. colours[7].label,
+        "8 " .. ns.L.THEME_COLOR_TECH_CYAN .. " / HD " .. ns.L.THEME_COLOR_TECH_HD_CARBON)
+    general[3].set(colours[8].value)
+    check("hd: colour switches to the HD theme", Themes.Current() .. " " .. Themes.Color(), "TECH_HD STEEL")
+    check("hd: settings kept", S("x"), -33)
+    check("hd: theme menu shows the base", general[2].get(), "TECH")
+    check("hd: colour menu shows HD steel", general[3].get(), "TECH_HD:STEEL")
+    general[2].set("TECH")
+    check("hd: choosing the base shown keeps HD", Themes.Current() .. " " .. Themes.Color(), "TECH_HD STEEL")
+    check("hd: no own set stored", ns.DB().themeSets.TECH_HD, nil)
+    general[3].set(colours[2].value)
+    check("hd: back to a plain colour", Themes.Current() .. " " .. Themes.Color() .. " " .. S("x"), "TECH GREEN -33")
+    Themes.Switch("TECH_HD")
+    general[2].set("PIXEL")
+    check("hd: stored under tech", ns.DB().themeSets.TECH.x, -33)
+    check("copy from: tech listed, no HD", table.concat(Themes.Stored(), " "):find("TECH") ~= nil
+        and table.concat(Themes.Stored(), " "):find("_HD") == nil, true)
+    general[2].set("TECH")
+    check("pixel -> tech: the shared set", S("x") .. " " .. Themes.Current(), "-33 TECH")
+    Themes.SetColor("CYAN", "TECH")
+    Themes.SetColor("CARBON", "TECH_HD")
+
+    -- Sets kept apart before LibForeverThemes 9, merged once: a customised
+    -- HD set wins, a plain one loses to the base's.
+    general[2].set("PIXEL")
+    local sets = ns.DB().themeSets
+    sets.TECH_HD = Themes.Seed("TECH_HD", sets.CLASSIC)
+    sets.TECH.x = -44
+    sets.hdMerged = nil
+    Themes.Upgrade()
+    check("merge: plain HD set, tech's stays", sets.TECH.x, -44)
+    check("merge: HD set gone", sets.TECH_HD, nil)
+    check("merge: once only", sets.hdMerged, true)
+    sets.TECH_HD = Themes.Seed("TECH_HD", sets.CLASSIC)
+    sets.TECH_HD.x = -55
+    sets.hdMerged = nil
+    Themes.Upgrade()
+    check("merge: customised HD set wins", sets.TECH.x, -55)
+    check("merge: under tech's name", sets.TECH.theme, "TECH")
+    -- On the HD theme itself: its live settings win when customised.
+    general[2].set("TECH")
+    sets = ns.DB().themeSets
+    ns.DB().theme = "TECH_HD"
+    Settings.Set("x", -66)
+    sets.TECH = Themes.Seed("TECH", sets.CLASSIC)
+    sets.TECH.x = -11
+    sets.hdMerged = nil
+    Themes.Upgrade()
+    check("merge: on customised HD, it stays live", S("x") .. " " .. Themes.Current(), "-66 TECH_HD")
+    check("merge: no stale tech set", sets.TECH, nil)
+    -- On a plain HD theme, the base's stored set comes in.
+    Themes.Reset()
+    sets.TECH = Themes.Seed("TECH", sets.CLASSIC)
+    sets.TECH.x = -12
+    sets.hdMerged = nil
+    Themes.Upgrade()
+    check("merge: on plain HD, tech's set comes in", S("x") .. " " .. Themes.Current(), "-12 TECH_HD")
+    general[2].set("CLASSIC")
 
     -- Following the hub "Forever Themes": pickers locked, a line and a
     -- button to its window, no "Apply to all"; own theme / no hub: as before.

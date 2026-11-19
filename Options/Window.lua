@@ -113,25 +113,39 @@ local function themeRows()
             key = "theme", type = "select", label = "OPT_THEME_CHOICE",
             choices = function()
                 local list = {}
-                for _, id in ipairs(Lib.SpecIds(Themes.SPECS)) do list[#list + 1] = { label = L["THEME_" .. id], value = id } end
+                -- HD themes are colours of their base (colour menu below).
+                for _, id in ipairs(Lib.MenuIds(Lib.SpecIds(Themes.SPECS))) do
+                    list[#list + 1] = { label = L["THEME_" .. id], value = id }
+                end
                 return list
             end,
-            get = function() return Themes.Current() end,
-            set = function(v) refused(Themes.Switch(v)) end,
+            get = function() return Lib.BaseTheme(Themes.Current()) end,
+            -- The base shown already (on its HD theme too): nothing changes, HD stays.
+            set = function(v)
+                if v == Lib.BaseTheme(Themes.Current()) then return end
+                refused(Themes.Switch(v))
+            end,
             enabled = ownTheme,
         },
         -- The current theme's colours, kept apart from the theme sets.
         visibleIf({
             type = "select", label = "OPT_THEME_COLOR",
             choices = function()
-                local theme, list = Themes.Current(), {}
-                for _, id in ipairs(Themes.Colors()) do
-                    list[#list + 1] = { label = L["THEME_COLOR_" .. theme .. "_" .. id], value = id }
+                local list = {}
+                for _, e in ipairs(Lib.MenuColors(Themes.SPECS, Themes.Current())) do
+                    local label = L["THEME_COLOR_" .. e.theme .. "_" .. e.color]
+                    list[#list + 1] = { label = e.hd and "HD " .. label or label, value = Lib.MenuValue(e.theme, e.color) }
                 end
                 return list
             end,
-            get = function() return Themes.Color() end,
-            set = function(v) refused(Themes.SetColor(v)) end,
+            get = function() return Lib.MenuValue(Themes.Current(), Themes.Color()) end,
+            -- An HD colour switches to the HD theme (same settings), a plain one back.
+            set = function(v)
+                local theme, color = Lib.ParseMenuValue(v)
+                local ok, why = Themes.Switch(theme)
+                if ok then ok, why = Themes.SetColor(color, theme) end
+                refused(ok, why)
+            end,
             enabled = ownTheme,
         }, function() return #Themes.Colors() > 0 end),
         visibleIf({ type = "text", label = hubText("HUB_FOLLOWS") }, followsHub),

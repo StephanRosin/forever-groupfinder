@@ -78,6 +78,7 @@ end
 -- A switch, copy or fallback replaced the theme: a hub that sets ours puts
 -- its own back.
 local function applyLook()
+    if ns.Themes then ns.Themes.Upgrade() end
     if ns.Settings then ns.Settings.Changed(nil) end
     LibForeverThemes.HubSync()
 end
