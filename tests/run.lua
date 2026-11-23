@@ -2134,7 +2134,7 @@ W.RefreshRows()
 -- Right click menu.
 click(groupRow, "RightButton")
 local menu = M.LastMenu()
-check("group menu: no invite", M.MenuTexts(menu), "Grimnar,Whisper,Whisper template,-,Mark as seen,Hide,Ignore the leader")
+check("group menu: no invite", M.MenuTexts(menu), "Grimnar,Whisper,Whisper template,-,Mark as seen,Hide,Ignore the leader,Rate...")
 ns.AccountDB().memory.seen = {}
 M.MenuClick(M.MenuFind(menu, "Whisper"))
 check("menu whisper", M.tells[#M.tells].name, "Grimnar")
@@ -3626,6 +3626,79 @@ lfg.leaders = nil
 lfg.reset()
 
 dofile("themes.lua")({ ns = ns, M = M, check = check, section = section })
+
+section("Ratings")
+do
+local R, L = ns.Ratings, ns.L
+ns.AccountDB().ratings = nil
+check("key: own realm drops", R.Key("Anna-Testrealm"), "Anna")
+check("key: realm with spaces", R.Key("Bob", "Other Realm"), "Bob-OtherRealm")
+check("key: other realm kept", R.Key("Bob-OtherRealm"), "Bob-OtherRealm")
+check("key: secret name", R.Key(M.Secret("Anna")), nil)
+check("key: secret realm", R.Key("Anna", M.Secret("X")), nil)
+check("unrated", R.Get("Anna"), nil)
+check("unrated badge", R.Badge("Anna"), "")
+check("no stars, no save", R.Set("Anna", 0, "x"), false)
+check("six stars, no save", R.Set("Anna", 6, "x"), false)
+check("save", R.Set("Anna-Testrealm", 4, "  good healer  "), true)
+check("stored under the short name", R.Get("Anna").stars, 4)
+check("note trimmed", R.Get("Anna").note, "good healer")
+check("note capped", (function() R.Set("Long", 2, ("x"):rep(500)) return #R.Get("Long").note end)(), 200)
+check("badge", R.Badge("Anna"):find("4$") ~= nil, true)
+check("five stars drawn", select(2, R.Stars(3):gsub("|T", "")), 5)
+check("menu text rated", R.MenuText("Anna"):find(L.RATING_MENU_RATED:sub(1, 5), 1, true) ~= nil, true)
+check("menu text unrated", R.MenuText("Nobody"), L.RATING_MENU)
+-- Who a unit or chat menu is about.
+M.units.party1 = { "Anna", nil, true }
+M.units.target = { "Wolf", nil, false }
+M.units.party2 = { M.Secret("Anna"), nil, true }
+check("menu: party member", R.MenuName({ unit = "party1" }), "Anna")
+check("menu: no NPC", R.MenuName({ unit = "target" }), nil)
+check("menu: no secret name", R.MenuName({ unit = "party2" }), nil)
+check("menu: not yourself", R.MenuName({ unit = "player" }), nil)
+check("menu: chat name with realm", R.MenuName({ name = "Kel-OtherRealm" }), "Kel-OtherRealm")
+check("menu: chat name and server", R.MenuName({ name = "Kel", server = "Testrealm" }), "Kel")
+for _, tag in ipairs({ "MENU_UNIT_PARTY", "MENU_UNIT_RAID_PLAYER", "MENU_UNIT_FRIEND", "MENU_UNIT_TARGET" }) do
+    check("registered for " .. tag, M.menuMods[tag] ~= nil, true)
+end
+local unitMenu = MenuUtil.CreateContextMenu(nil, function(_, root) M.menuMods.MENU_UNIT_PARTY[1](nil, root, { unit = "party1" }) end)
+local entry = unitMenu.items[3]
+check("unit menu: our title", unitMenu.items[2].text, L.ADDON_NAME)
+check("unit menu: rated entry", entry.text, R.MenuText("Anna"))
+check("unit menu: comment as tooltip", entry.tooltip ~= nil, true)
+local npcMenu = MenuUtil.CreateContextMenu(nil, function(_, root) R.ModifyMenu(nil, root, { unit = "target" }) end)
+check("npc menu untouched", #npcMenu.items, 0)
+-- The window.
+M.MenuClick(entry)
+local dlg = R.Frame()
+check("window opens", dlg:IsShown(), true)
+check("window holds the stars", dlg.stars, 4)
+check("window holds the note", dlg.note:GetText(), "good healer")
+check("remove shown when rated", dlg.remove:IsShown(), true)
+click(dlg.starButtons[2])
+dlg.note:SetText("late")
+click(dlg.save)
+check("window saves", R.Get("Anna").stars, 2)
+check("window saves the note", R.Get("Anna").note, "late")
+check("window closes", dlg:IsShown(), false)
+R.Open("Neu")
+check("new: no stars", dlg.stars, 0)
+check("new: no remove", dlg.remove:IsShown(), false)
+click(dlg.save)
+check("save needs stars", R.Get("Neu"), nil)
+R.Open("Anna")
+click(dlg.remove)
+check("remove", R.Get("Anna"), nil)
+-- In the list: tooltip and detail lines.
+R.Set("Grimnar", 5, "tank")
+local tipText = {}
+for _, line in ipairs(ns.Rows.TooltipLines({ leader = "Grimnar", kind = "GROUP", activityIDs = {}, members = {} })) do tipText[#tipText + 1] = line.text end
+check("tooltip shows the rating", table.concat(tipText, "|"):find("tank", 1, true) ~= nil, true)
+local detailText = {}
+for _, line in ipairs(ns.Detail.Lines({ leader = "Grimnar", activityIDs = { 1 }, members = {} })) do detailText[#detailText + 1] = line.text or "" end
+check("detail shows the rating", table.concat(detailText, "|"):find("tank", 1, true) ~= nil, true)
+ns.AccountDB().ratings = nil
+end
 
 section("Source rules")
 -- Listing.lua may name exactly one Blizzard thing: the global that shows the finder.

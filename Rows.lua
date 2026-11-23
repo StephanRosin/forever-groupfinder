@@ -206,7 +206,7 @@ function Rows.TooltipLines(row, elapsed)
     add(#names > 0 and table.concat(names, ", ") or L.UNKNOWN_ACTIVITY, Controls.GOLD, nil, true)
     for _, m in ipairs(type(row.members) == "table" and row.members or {}) do
         local name = type(m.name) == "string" and m.name or L.UNKNOWN_PLAYER   -- plain: Finder converted the member
-        local left = type(m.level) == "number" and L.TIP_MEMBER:format(name, m.level) or name
+        local left = (type(m.level) == "number" and L.TIP_MEMBER:format(name, m.level) or name) .. ns.Ratings.Badge(m.name)
         local parts = {}
         parts[#parts + 1] = Rows.ClassName(m.classFile)
         -- The role in a group; a player alone has none (Blizzard reports
@@ -220,6 +220,7 @@ function Rows.TooltipLines(row, elapsed)
     local wanted = roleNames(row.roles)
     if #wanted > 0 then add(L.TIP_WANTED_ROLES:format(table.concat(wanted, ", ")), Controls.DIM) end
     if type(row.comment) == "string" and row.comment ~= "" then add(row.comment, { 1, 1, 1 }, nil, true) end
+    ns.Ratings.AddLines(function(text, color, wrap) add(text, color, nil, wrap) end, row.leader)
     if row.playstyle then add(L.DETAIL_PLAYSTYLE:format(ns.Playstyle.Name(row.playstyle)), Controls.ACCENT) end   -- plain: our own value
     local age = Controls.Age(ageOf(row, elapsed))
     if age then add(L.TIP_AGE:format(age), Controls.DIM) end   -- plain: our formatted text
@@ -609,7 +610,7 @@ local function layoutGroup(row, entry, width, elapsed)
     local facts = Rows.GroupFacts(entry)
     row.leaderName:ClearAllPoints()
     row.leaderName:SetPoint("LEFT", row, "LEFT", x, 0)
-    row.leaderName:SetText(facts.leader or L.UNKNOWN_PLAYER)
+    row.leaderName:SetText((facts.leader or L.UNKNOWN_PLAYER) .. ns.Ratings.Badge(facts.leader))
     if S("classColorNames") and facts.classFile then row.leaderName:SetTextColor(Rows.ClassColor(facts.classFile)) end
     local nameW = math.min(row.leaderName:GetStringWidth() + 2, LEADER_W)
     row.leaderName:SetWidth(nameW)
@@ -805,7 +806,7 @@ local function layoutPlayer(row, entry, width, elapsed)
     row.class:ClearAllPoints()
     row.class:SetPoint("TOPLEFT", row, "TOPLEFT", x, top)
     local nx = x + ICON + 4
-    row.name:SetText(type(entry.leader) == "string" and entry.leader or L.UNKNOWN_PLAYER)
+    row.name:SetText(type(entry.leader) == "string" and entry.leader .. ns.Ratings.Badge(entry.leader) or L.UNKNOWN_PLAYER)
     local area = type(entry.area) == "string" and entry.area ~= "" and entry.area or L.UNKNOWN_AREA
     row.area:SetText(area)
     -- The name / area column is as wide as they need (measured), at least

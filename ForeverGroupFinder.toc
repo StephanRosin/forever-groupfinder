@@ -43,6 +43,7 @@ Controls.lua
 Header.lua
 Undo.lua
 Menu.lua
+Ratings.lua
 Rows.lua
 Detail.lua
 Column.lua

@@ -168,8 +168,9 @@ function Menu.BuildRowMenu(root, row)
     -- Both offer "Undo" for a few seconds (Undo.lua).
     root:CreateButton(L.MENU_HIDE, function() ns.Undo.Hide(row) end)
     local ignore = root:CreateButton(L.MENU_IGNORE, function() ns.Undo.Ignore(leader) end)
+    local rate = hasName and ns.Ratings.AddMenuEntry(root, leader) or root:CreateButton(L.RATING_MENU)
     if not hasName then
-        for _, item in pairs({ whisper, templates, invite, ignore }) do
+        for _, item in pairs({ whisper, templates, invite, ignore, rate }) do
             if item.SetEnabled then item:SetEnabled(false) end
         end
     end

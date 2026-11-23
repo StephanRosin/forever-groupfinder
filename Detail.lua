@@ -77,6 +77,7 @@ function Detail.Lines(row, elapsed)
         end
     end
     text(L.DETAIL_LEADER:format(leaderOf(row) or L.UNKNOWN_PLAYER))
+    ns.Ratings.AddLines(function(t, color, wrap) text(t, color, "small", wrap) end, leaderOf(row))
     local age = Controls.Age(type(row.age) == "number" and row.age + (elapsed or 0) or nil)   -- plain: Finder converted the row
     if age then text(L.TIP_AGE:format(age), Controls.DIM, "small") end   -- plain: our own value
     if type(row.comment) == "string" and row.comment ~= "" then

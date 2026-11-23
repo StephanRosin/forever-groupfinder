@@ -412,6 +412,18 @@ MenuUtil = {
     end,
 }
 function M.LastMenu() return M.menus[#M.menus] end
+-- Menu.ModifyMenu: the callbacks per tag (Blizzard's unit menus).
+M.menuMods = {}
+Menu = { ModifyMenu = function(tag, fn)
+    M.menuMods[tag] = M.menuMods[tag] or {}
+    table.insert(M.menuMods[tag], fn)
+end }
+-- Units for the unit menus: M.units[unit] = { name, realm, player }.
+M.units = { player = { "Me", nil, true } }
+function UnitName(unit) local u = M.units[unit] if u then return u[1], u[2] end end
+function UnitIsPlayer(unit) local u = M.units[unit] return u ~= nil and u[3] == true end
+function GetNormalizedRealmName() return "Testrealm" end
+strtrim = strtrim or function(s) return (s:gsub("^%s+", ""):gsub("%s+$", "")) end
 -- Depth first: the first entry whose text is `text`.
 function M.MenuFind(root, text)
     for _, item in ipairs(root and root.items or {}) do
