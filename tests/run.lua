@@ -546,7 +546,7 @@ section("Minimap button, compartment and slash command")
 -- The window opens and would search; the finder is unavailable here, so no
 -- search is started before the Finder tests.
 M.lfg.canUse = false
-local mb = M.byName["ForeverGroupFinderMinimapButton"]
+local mb = M.byName["Forever Group Finder"]
 check("minimap button", mb ~= nil, true)
 mb:GetScript("OnClick")(mb, "RightButton")
 check("right-click locks", S("locked"), true)
