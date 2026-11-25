@@ -84,7 +84,7 @@ for _, line in ipairs(tocLines()) do
 end
 check("Interface", toc.Interface, "16001")
 check("Title", toc.Title, "Forever Group Finder")
-check("Version", toc.Version, "1.7.0")
+check("Version", toc.Version, "1.7.1")
 check("saved variables (account)", toc.SavedVariables, "ForeverGroupFinderProfiles")
 check("saved variables (character)", toc.SavedVariablesPerCharacter, "ForeverGroupFinderChar")
 check("compartment click", toc.AddonCompartmentFunc, "ForeverGroupFinder_OnAddonCompartmentClick")
@@ -546,7 +546,7 @@ section("Minimap button, compartment and slash command")
 -- The window opens and would search; the finder is unavailable here, so no
 -- search is started before the Finder tests.
 M.lfg.canUse = false
-local mb = M.byName["Forever Group Finder"]
+local mb = M.byName["Forever Group Finder Minimap"]
 check("minimap button", mb ~= nil, true)
 mb:GetScript("OnClick")(mb, "RightButton")
 check("right-click locks", S("locked"), true)
